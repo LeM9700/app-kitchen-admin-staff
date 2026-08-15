@@ -1,0 +1,26 @@
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# IDE / editor state
+.idea/
+*.iml
+.vscode/
+
+# Logs, env and local debug artifacts
+*.log
+.env
+.env.*
+*.tmp
+coverage/
+
+android/.gradle/
+android/local.properties
+ios/Pods/
+ios/Flutter/ephemeral/
+macos/Pods/
+macos/Flutter/ephemeral/
+windows/flutter/ephemeral/
+linux/flutter/ephemeral/

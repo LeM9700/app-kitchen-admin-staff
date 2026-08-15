@@ -1,0 +1,17 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
+linter:
+  rules:
+    always_use_package_imports: true
+    avoid_print: true
+    avoid_relative_lib_imports: true
+    cancel_subscriptions: true
+    close_sinks: true
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    require_trailing_commas: true

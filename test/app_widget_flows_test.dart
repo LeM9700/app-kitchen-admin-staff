@@ -63,7 +63,9 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Rien en preparation'), findsOneWidget);
+    await tester.pump();
+
+    expect(find.text('AUCUNE COMMANDE EN COURS'), findsOneWidget);
   });
 }
 

@@ -43,13 +43,12 @@ void main() {
     expect(repository.statusCalls, 1);
   });
 
-  testWidgets('kitchen item action is single-flight while pending',
-      (tester) async {
+  testWidgets('kitchen board is read-only for LOT 4', (tester) async {
     addTearDown(tester.view.reset);
     tester.view.physicalSize = const Size(1280, 900);
     tester.view.devicePixelRatio = 1;
 
-    final repository = _SlowKitchenRepository();
+    final repository = _ReadOnlyKitchenRepository();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -60,18 +59,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final readyButton = find.widgetWithText(FilledButton, 'Pret');
-    expect(readyButton, findsOneWidget);
-
-    await tester.tap(readyButton);
-    await repository.itemStarted.future;
-    await tester.pump();
-    await tester.tap(readyButton);
-
-    expect(repository.itemCalls, 1);
-    repository.releaseItem.complete();
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(repository.itemCalls, 1);
+    expect(find.text('À COMMENCER'), findsOneWidget);
+    expect(find.text('1 × MARGHERITA'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Pret'), findsNothing);
+    expect(find.widgetWithText(FilledButton, 'En prep'), findsNothing);
   });
 }
 
@@ -120,12 +111,9 @@ class _SlowStatusRepository extends OrdersRepository {
   }
 }
 
-class _SlowKitchenRepository extends OrdersRepository {
-  _SlowKitchenRepository() : super(_unusedClient());
+class _ReadOnlyKitchenRepository extends OrdersRepository {
+  _ReadOnlyKitchenRepository() : super(_unusedClient());
 
-  final itemStarted = Completer<void>();
-  final releaseItem = Completer<void>();
-  int itemCalls = 0;
   String orderStatus = 'confirmed';
   String itemStatus = 'pending';
 
@@ -177,51 +165,6 @@ class _SlowKitchenRepository extends OrdersRepository {
           allReady: false,
         ),
       ],
-    );
-  }
-
-  @override
-  Future<OrderItem> updateItemPreparation({
-    required int orderId,
-    required int itemId,
-    required String status,
-    String? note,
-  }) async {
-    itemCalls++;
-    if (!itemStarted.isCompleted) {
-      itemStarted.complete();
-    }
-    await releaseItem.future;
-    itemStatus = status;
-    return OrderItem(
-      id: itemId,
-      productId: 3,
-      quantity: 1,
-      unitPrice: 14,
-      total: 14,
-      extras: const [],
-      preparationStatus: status,
-      preparationStation: 'kitchen',
-      productName: 'Margherita',
-    );
-  }
-
-  @override
-  Future<OrderSummary> updateStatus(
-    int orderId,
-    String status, {
-    String? note,
-  }) async {
-    orderStatus = status;
-    return OrderSummary(
-      id: orderId,
-      orderType: 'dine_in',
-      status: status,
-      paymentStatus: 'paid',
-      source: 'manual',
-      total: 14,
-      deliveryFee: 0,
-      tableNumber: '7',
     );
   }
 }

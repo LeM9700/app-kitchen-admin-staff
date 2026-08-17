@@ -66,6 +66,29 @@ void main() {
     });
 
     expect(detail.statusHistory, isEmpty);
+
+    final detailWithMissingAuthority = OrderDetail.fromJson({
+      'id': 44,
+      'order_type': 'delivery',
+      'status': 'pending',
+      'payment_status': 'pending',
+      'source': 'customer',
+      'total': 12,
+      'delivery_fee': 0,
+      'items': [],
+      'station_summary': [],
+      'status_history': [
+        {
+          'status': 'pending',
+          'note': 'Created',
+          'created_at': '2026-08-17T09:00:00Z',
+        },
+      ],
+    });
+
+    final history = detailWithMissingAuthority.statusHistory.single;
+
+    expect(history.authority, 'internal');
   });
 
   test('loyalty config parses decimal strings', () {

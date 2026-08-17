@@ -251,7 +251,7 @@ class OrderStatusHistory {
     return OrderStatusHistory(
       status: json['status']?.toString() ?? '',
       note: json['note']?.toString(),
-      authority: json['authority']?.toString() ?? '',
+      authority: json['authority']?.toString() ?? 'internal',
       createdAt: readDateTime(json['created_at']),
     );
   }

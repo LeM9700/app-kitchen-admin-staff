@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:app_admin_staff/app/theme/app_theme.dart';
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/auth/token_store.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_ticket_mapper.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_page.dart';
@@ -52,6 +55,10 @@ Future<void> pumpKitchenPage(
 Future<void> pumpKitchenTicket(
   WidgetTester tester,
   KitchenTicketViewModel ticket, {
+  KitchenScreenProfile profile = testKitchenProfile,
+  KitchenActionsState actionsState = const KitchenActionsState(),
+  VoidCallback? onStart,
+  VoidCallback? onReady,
   Size size = const Size(720, 520),
 }) async {
   tester.view.physicalSize = size;
@@ -67,7 +74,11 @@ Future<void> pumpKitchenTicket(
             child: KitchenTicket(
               ticket: ticket,
               focused: false,
+              profile: profile,
+              actionsState: actionsState,
               onTap: () {},
+              onStart: onStart,
+              onReady: onReady,
             ),
           ),
         ),
@@ -88,6 +99,7 @@ KitchenTicketViewModel testKitchenTicket({
   String? customerEmail,
   String? customerPhone,
   double total = 18,
+  KitchenScreenProfile profile = testKitchenProfile,
 }) {
   return mapOrderToKitchenTicket(
     order: testKitchenOrder(
@@ -102,7 +114,7 @@ KitchenTicketViewModel testKitchenTicket({
       customerPhone: customerPhone,
       total: total,
     ),
-    profile: testKitchenProfile,
+    profile: profile,
   );
 }
 
@@ -199,6 +211,12 @@ class TestKitchenRepository extends OrdersRepository {
   List<OrderSummary> summaries = const [];
   Map<int, OrderDetail> details = const {};
   Object? listError;
+  Object? updateStatusError;
+  Object? updateItemPreparationError;
+  Completer<void>? updateStatusGate;
+  Completer<void>? updateItemPreparationGate;
+  final List<TestStatusUpdate> statusUpdates = [];
+  final List<TestPreparationUpdate> preparationUpdates = [];
   int listCalls = 0;
 
   void setOrders(
@@ -259,6 +277,120 @@ class TestKitchenRepository extends OrdersRepository {
 
     return detail;
   }
+
+  @override
+  Future<OrderSummary> updateStatus(
+    int orderId,
+    String status, {
+    String? note,
+  }) async {
+    statusUpdates.add(
+      TestStatusUpdate(orderId: orderId, status: status, note: note),
+    );
+    final error = updateStatusError;
+    if (error != null) {
+      throw error;
+    }
+
+    final gate = updateStatusGate;
+    if (gate != null) {
+      await gate.future;
+    }
+
+    final detail = details[orderId];
+    if (detail != null) {
+      details = {
+        ...details,
+        orderId: _copyOrderDetail(detail, status: status),
+      };
+    }
+    summaries = [
+      for (final summary in summaries)
+        summary.id == orderId ? _copySummary(summary, status: status) : summary,
+    ];
+
+    return summaries.firstWhere(
+      (summary) => summary.id == orderId,
+      orElse: () => _summary(
+        orderId,
+        status: status,
+        orderType: detail?.orderType ?? 'pickup',
+        tableNumber: detail?.tableNumber,
+      ),
+    );
+  }
+
+  @override
+  Future<OrderItem> updateItemPreparation({
+    required int orderId,
+    required int itemId,
+    required String status,
+    String? note,
+  }) async {
+    preparationUpdates.add(
+      TestPreparationUpdate(
+        orderId: orderId,
+        itemId: itemId,
+        status: status,
+        note: note,
+      ),
+    );
+    final error = updateItemPreparationError;
+    if (error != null) {
+      throw error;
+    }
+
+    final gate = updateItemPreparationGate;
+    if (gate != null) {
+      await gate.future;
+    }
+
+    final detail = details[orderId];
+    if (detail == null) {
+      throw StateError('Order $orderId not found');
+    }
+
+    late OrderItem updatedItem;
+    final updatedItems = [
+      for (final item in detail.items)
+        if (item.id == itemId)
+          updatedItem = _copyOrderItem(item, preparationStatus: status)
+        else
+          item,
+    ];
+    details = {
+      ...details,
+      orderId: _copyOrderDetail(detail, items: updatedItems),
+    };
+
+    return updatedItem;
+  }
+}
+
+class TestStatusUpdate {
+  const TestStatusUpdate({
+    required this.orderId,
+    required this.status,
+    this.note,
+  });
+
+  final int orderId;
+  final String status;
+  final String? note;
+}
+
+class TestPreparationUpdate {
+  const TestPreparationUpdate({
+    required this.orderId,
+    required this.itemId,
+    required this.status,
+    this.note,
+  });
+
+  final int orderId;
+  final int itemId;
+  final String status;
+  final String? note;
 }
 
 OrderSummary _summary(
@@ -277,6 +409,72 @@ OrderSummary _summary(
     deliveryFee: 0,
     tableNumber: tableNumber,
     createdAt: DateTime.utc(2026, 8, 17, 10, id - 100),
+  );
+}
+
+OrderSummary _copySummary(
+  OrderSummary order, {
+  String? status,
+}) {
+  return OrderSummary(
+    id: order.id,
+    customerEmail: order.customerEmail,
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+    orderType: order.orderType,
+    status: status ?? order.status,
+    paymentStatus: order.paymentStatus,
+    source: order.source,
+    total: order.total,
+    deliveryFee: order.deliveryFee,
+    deliveryAddress: order.deliveryAddress,
+    tableNumber: order.tableNumber,
+    createdAt: order.createdAt,
+  );
+}
+
+OrderDetail _copyOrderDetail(
+  OrderDetail order, {
+  String? status,
+  List<OrderItem>? items,
+}) {
+  return OrderDetail(
+    id: order.id,
+    customerEmail: order.customerEmail,
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+    orderType: order.orderType,
+    status: status ?? order.status,
+    paymentStatus: order.paymentStatus,
+    source: order.source,
+    total: order.total,
+    deliveryFee: order.deliveryFee,
+    deliveryAddress: order.deliveryAddress,
+    tableNumber: order.tableNumber,
+    createdAt: order.createdAt,
+    items: items ?? order.items,
+    stationSummary: order.stationSummary,
+    statusHistory: order.statusHistory,
+  );
+}
+
+OrderItem _copyOrderItem(
+  OrderItem item, {
+  String? preparationStatus,
+}) {
+  return OrderItem(
+    id: item.id,
+    productId: item.productId,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    total: item.total,
+    extras: item.extras,
+    preparationStatus: preparationStatus ?? item.preparationStatus,
+    preparationStation: item.preparationStation,
+    productName: item.productName,
+    variantName: item.variantName,
+    preparedAt: item.preparedAt,
+    preparedByUserId: item.preparedByUserId,
   );
 }
 

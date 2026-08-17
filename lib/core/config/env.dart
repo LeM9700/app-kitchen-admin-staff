@@ -16,6 +16,11 @@ class Env {
     defaultValue: 'pizza_test',
   );
 
+  static const kdsInteractionMode = String.fromEnvironment(
+    'KDS_INTERACTION_MODE',
+    defaultValue: 'wall',
+  );
+
   static void validateStartupConfig({
     StripeConnectCallbackConfig? stripeConnectCallbacks,
   }) {

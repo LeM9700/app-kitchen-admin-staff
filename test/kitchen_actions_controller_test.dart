@@ -1,0 +1,263 @@
+import 'dart:async';
+
+import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_controller.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_ticket_mapper.dart';
+import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'kitchen_board_test_support.dart';
+
+void main() {
+  const kitchenProfile = KitchenScreenProfile(
+    mode: KitchenScreenMode.kitchen,
+    station: 'kitchen',
+    interactionMode: KitchenInteractionMode.touch,
+  );
+
+  test('startOrder appelle updateStatus preparing', () async {
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      );
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container
+        .read(kitchenActionsProvider.notifier)
+        .startOrder(orderId: 101);
+
+    expect(repository.statusUpdates.length, 1);
+    expect(repository.statusUpdates.single.orderId, 101);
+    expect(repository.statusUpdates.single.status, 'preparing');
+  });
+
+  test('busy est true pendant action puis nettoye', () async {
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      )
+      ..updateStatusGate = Completer<void>();
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    final future = container
+        .read(kitchenActionsProvider.notifier)
+        .startOrder(orderId: 101);
+    await Future<void>.delayed(Duration.zero);
+
+    final key = kitchenStartOrderActionKey(101);
+    expect(container.read(kitchenActionsProvider).isActionBusy(key), isTrue);
+    expect(container.read(kitchenActionsProvider).isOrderBusy(101), isTrue);
+
+    repository.updateStatusGate!.complete();
+    await future;
+
+    expect(container.read(kitchenActionsProvider).isActionBusy(key), isFalse);
+    expect(container.read(kitchenActionsProvider).isOrderBusy(101), isFalse);
+  });
+
+  test('double start simultane n envoie qu un appel', () async {
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      )
+      ..updateStatusGate = Completer<void>();
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    final controller = container.read(kitchenActionsProvider.notifier);
+    final first = controller.startOrder(orderId: 101);
+    await Future<void>.delayed(Duration.zero);
+    final second = controller.startOrder(orderId: 101);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(repository.statusUpdates.length, 1);
+
+    repository.updateStatusGate!.complete();
+    await Future.wait([first, second]);
+  });
+
+  test('erreur start conserve la queue courante', () async {
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      )
+      ..updateStatusError = StateError('boom');
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    final initial = await container.read(kitchenQueueProvider.future);
+    expect(initial.currentPageTickets.map((ticket) => ticket.order.id), [101]);
+
+    await container
+        .read(kitchenActionsProvider.notifier)
+        .startOrder(orderId: 101);
+
+    final queue = container.read(kitchenQueueProvider).valueOrNull!;
+    expect(queue.currentPageTickets.map((ticket) => ticket.order.id), [101]);
+    expect(
+      container.read(kitchenActionsProvider).lastError,
+      'Impossible de mettre a jour la commande.',
+    );
+  });
+
+  test('markStationReady ne touche que visibleItems non ready', () async {
+    final repository = TestKitchenRepository()..setOrders([101]);
+    repository.details = {
+      101: testKitchenOrder(
+        id: 101,
+        status: 'preparing',
+        items: [
+          testKitchenItem(id: 1, preparationStatus: 'ready'),
+          testKitchenItem(id: 2, preparationStatus: 'preparing'),
+          testKitchenItem(
+            id: 3,
+            productName: 'Coca',
+            preparationStatus: 'preparing',
+            preparationStation: 'counter',
+          ),
+        ],
+      ),
+    };
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container.read(kitchenActionsProvider.notifier).markStationReady(
+          ticket: _ticket(repository, kitchenProfile),
+          profile: kitchenProfile,
+        );
+
+    expect(
+      repository.preparationUpdates.map((update) => update.itemId),
+      [2],
+    );
+    expect(repository.statusUpdates, isEmpty);
+  });
+
+  test('station kitchen prete mais counter non prete garde preparing',
+      () async {
+    final repository = TestKitchenRepository()..setOrders([101]);
+    repository.details = {
+      101: testKitchenOrder(
+        id: 101,
+        status: 'preparing',
+        items: [
+          testKitchenItem(id: 1, preparationStatus: 'preparing'),
+          testKitchenItem(
+            id: 2,
+            productName: 'Coca',
+            preparationStatus: 'preparing',
+            preparationStation: 'counter',
+          ),
+        ],
+      ),
+    };
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container.read(kitchenActionsProvider.notifier).markStationReady(
+          ticket: _ticket(repository, kitchenProfile),
+          profile: kitchenProfile,
+        );
+
+    expect(repository.preparationUpdates.length, 1);
+    expect(repository.statusUpdates, isEmpty);
+    expect(repository.details[101]!.status, 'preparing');
+  });
+
+  test('toutes stations ready met la commande globale ready', () async {
+    final repository = TestKitchenRepository()..setOrders([101]);
+    repository.details = {
+      101: testKitchenOrder(
+        id: 101,
+        status: 'preparing',
+        items: [
+          testKitchenItem(id: 1, preparationStatus: 'preparing'),
+          testKitchenItem(
+            id: 2,
+            productName: 'Coca',
+            preparationStatus: 'ready',
+            preparationStation: 'counter',
+          ),
+        ],
+      ),
+    };
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container.read(kitchenActionsProvider.notifier).markStationReady(
+          ticket: _ticket(repository, kitchenProfile),
+          profile: kitchenProfile,
+        );
+
+    expect(repository.preparationUpdates.length, 1);
+    expect(repository.statusUpdates.map((update) => update.status), ['ready']);
+    expect(repository.details[101]!.status, 'ready');
+  });
+
+  test('service mode refuse markStationReady proprement', () async {
+    const serviceProfile = KitchenScreenProfile(
+      mode: KitchenScreenMode.service,
+      station: 'service',
+      interactionMode: KitchenInteractionMode.touch,
+    );
+    final repository = TestKitchenRepository()..setOrders([101]);
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container.read(kitchenActionsProvider.notifier).markStationReady(
+          ticket: _ticket(repository, serviceProfile),
+          profile: serviceProfile,
+        );
+
+    expect(repository.preparationUpdates, isEmpty);
+    expect(repository.statusUpdates, isEmpty);
+    expect(
+      container.read(kitchenActionsProvider).lastError,
+      'Action indisponible sur cet ecran.',
+    );
+  });
+
+  test('busy est nettoye apres erreur ready', () async {
+    final repository = TestKitchenRepository()
+      ..setOrders([101])
+      ..updateItemPreparationError = StateError('boom');
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container.read(kitchenActionsProvider.notifier).markStationReady(
+          ticket: _ticket(repository, kitchenProfile),
+          profile: kitchenProfile,
+        );
+
+    final key = kitchenReadyStationActionKey(101, kitchenProfile);
+    expect(container.read(kitchenActionsProvider).isActionBusy(key), isFalse);
+    expect(
+      container.read(kitchenActionsProvider).lastError,
+      'Impossible de mettre a jour la commande.',
+    );
+  });
+}
+
+KitchenTicketViewModel _ticket(
+  TestKitchenRepository repository,
+  KitchenScreenProfile profile,
+) {
+  return mapOrderToKitchenTicket(
+    order: repository.details[101]!,
+    profile: profile,
+  );
+}

@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/core/widgets/empty_state.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_controller.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_layout_policy.dart';
@@ -13,6 +14,20 @@ class KitchenPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<String?>(
+      kitchenActionsProvider.select((state) => state.lastError),
+      (previous, next) {
+        if (next == null || next == previous) {
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next)),
+        );
+        ref.read(kitchenActionsProvider.notifier).clearError();
+      },
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final policy = KitchenLayoutPolicy.fromConstraints(constraints);
@@ -59,6 +74,8 @@ class _KitchenBoard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(kitchenQueueProvider.notifier);
+    final actionsState = ref.watch(kitchenActionsProvider);
+    final actionsController = ref.read(kitchenActionsProvider.notifier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -76,10 +93,21 @@ class _KitchenBoard extends ConsumerWidget {
                 )
               : KitchenTicketGrid(
                   tickets: state.currentPageTickets,
+                  profile: state.profile,
                   policy: policy,
                   focusedOrderId: state.focusedOrderId,
+                  actionsState: actionsState,
                   onTicketTap: (ticket) {
                     controller.focusOrder(ticket.order.id);
+                  },
+                  onStart: (ticket) {
+                    actionsController.startOrder(orderId: ticket.order.id);
+                  },
+                  onReady: (ticket) {
+                    actionsController.markStationReady(
+                      ticket: ticket,
+                      profile: state.profile,
+                    );
                   },
                 ),
         ),

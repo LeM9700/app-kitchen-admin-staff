@@ -43,6 +43,7 @@ Optional compile-time values:
 ```text
 API_BASE_URL=http://127.0.0.1:8000/api/v1
 DEFAULT_TENANT_SLUG=pizza_test
+KDS_INTERACTION_MODE=touch # demo-only, default: wall
 ```
 
 The app keeps the API as source of truth. Offline support queues allowed service actions locally and exposes manual sync from settings.

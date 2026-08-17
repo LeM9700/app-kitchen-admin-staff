@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_controller.dart';
+import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -107,4 +108,82 @@ void main() {
     final state = container.read(kitchenQueueProvider).valueOrNull!;
     expect(state.focusedOrderId, 102);
   });
+
+  testWidgets('interactionMode wall ne montre pas les actions tactiles',
+      (tester) async {
+    addTearDown(tester.view.reset);
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      );
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+
+    await pumpKitchenPage(tester, container);
+
+    expect(find.text('COMMENCER'), findsNothing);
+    expect(find.text('PRÊTE'), findsNothing);
+  });
+
+  testWidgets('tap COMMENCER appelle la mutation sans focus incorrect',
+      (tester) async {
+    addTearDown(tester.view.reset);
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      );
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    container.read(kitchenScreenProfileProvider.notifier).setProfile(
+          testKitchenProfile.copyWith(
+            interactionMode: KitchenInteractionMode.touch,
+          ),
+        );
+
+    await pumpKitchenPage(tester, container);
+    await tester.tap(find.text('COMMENCER'));
+    await _pumpAction(tester);
+
+    expect(repository.statusUpdates.map((update) => update.status), [
+      'preparing',
+    ]);
+    expect(
+      container.read(kitchenQueueProvider).valueOrNull!.focusedOrderId,
+      isNull,
+    );
+  });
+
+  testWidgets('tap PRÊTE appelle la mutation sans focus incorrect',
+      (tester) async {
+    addTearDown(tester.view.reset);
+    final repository = TestKitchenRepository()..setOrders([101]);
+    final container = createKitchenContainer(repository);
+    addTearDown(container.dispose);
+    container.read(kitchenScreenProfileProvider.notifier).setProfile(
+          testKitchenProfile.copyWith(
+            interactionMode: KitchenInteractionMode.touch,
+          ),
+        );
+
+    await pumpKitchenPage(tester, container);
+    await tester.tap(find.text('PRÊTE'));
+    await _pumpAction(tester);
+
+    expect(repository.preparationUpdates.map((update) => update.itemId), [
+      1010,
+    ]);
+    expect(repository.statusUpdates.map((update) => update.status), ['ready']);
+    expect(
+      container.read(kitchenQueueProvider).valueOrNull!.focusedOrderId,
+      isNull,
+    );
+  });
+}
+
+Future<void> _pumpAction(WidgetTester tester) async {
+  for (var index = 0; index < 6; index++) {
+    await tester.pump(const Duration(milliseconds: 20));
+  }
 }

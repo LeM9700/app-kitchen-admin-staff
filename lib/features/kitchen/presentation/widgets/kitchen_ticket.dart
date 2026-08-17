@@ -1,8 +1,11 @@
 import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_status_ui.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ready_transition.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_actions.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_header.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_items.dart';
 import 'package:flutter/material.dart';
@@ -11,14 +14,25 @@ class KitchenTicket extends StatelessWidget {
   const KitchenTicket({
     required this.ticket,
     required this.focused,
+    this.profile = const KitchenScreenProfile(
+      mode: KitchenScreenMode.kitchen,
+      station: 'kitchen',
+    ),
+    this.actionsState = const KitchenActionsState(),
     this.onTap,
+    this.onStart,
+    this.onReady,
     this.compact = false,
     super.key,
   });
 
   final KitchenTicketViewModel ticket;
   final bool focused;
+  final KitchenScreenProfile profile;
+  final KitchenActionsState actionsState;
   final VoidCallback? onTap;
+  final VoidCallback? onStart;
+  final VoidCallback? onReady;
   final bool compact;
 
   @override
@@ -34,40 +48,80 @@ class KitchenTicket extends StatelessWidget {
           )
         : scheme.surface;
 
-    return Material(
-      color: surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        side: BorderSide(color: borderColor, width: borderWidth),
-      ),
-      child: InkWell(
-        onTap: onTap,
+    return KitchenReadyTransition(
+      active: ticket.state == KitchenTicketState.ready,
+      child: Material(
+        color: surface,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          side: BorderSide(color: borderColor, width: borderWidth),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            KitchenTicketHeader(ticket: ticket, compact: compact),
+            _KitchenTapRegion(
+              onTap: onTap,
+              child: KitchenTicketHeader(ticket: ticket, compact: compact),
+            ),
             Expanded(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(
-                      color:
-                          ticket.isLocked ? statusUi.color : Colors.transparent,
-                      width: ticket.isLocked ? 4 : 0,
+              child: _KitchenTapRegion(
+                onTap: onTap,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: ticket.isLocked
+                            ? statusUi.color
+                            : Colors.transparent,
+                        width: ticket.isLocked ? 4 : 0,
+                      ),
                     ),
                   ),
-                ),
-                child: KitchenTicketItems(
-                  items: ticket.visibleItems,
-                  compact: compact,
+                  child: KitchenTicketItems(
+                    items: ticket.visibleItems,
+                    compact: compact,
+                  ),
                 ),
               ),
             ),
-            _KitchenTicketMeta(ticket: ticket),
+            KitchenTicketActions(
+              ticket: ticket,
+              profile: profile,
+              actionsState: actionsState,
+              compact: compact,
+              onStart: onStart,
+              onReady: onReady,
+            ),
+            _KitchenTapRegion(
+              onTap: onTap,
+              child: _KitchenTicketMeta(ticket: ticket),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _KitchenTapRegion extends StatelessWidget {
+  const _KitchenTapRegion({
+    required this.child,
+    this.onTap,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (onTap == null) {
+      return child;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      child: child,
     );
   }
 }

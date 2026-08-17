@@ -1,14 +1,15 @@
+import 'package:app_admin_staff/core/config/env.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_pagination.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_loader.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-const initialKitchenScreenProfile = KitchenScreenProfile(
+final initialKitchenScreenProfile = KitchenScreenProfile(
   mode: KitchenScreenMode.kitchen,
   station: 'kitchen',
   ticketsPerPage: 4,
-  interactionMode: KitchenInteractionMode.wall,
+  interactionMode: _initialKitchenInteractionMode(),
 );
 
 final kitchenScreenProfileProvider =
@@ -133,10 +134,18 @@ class KitchenQueueController extends AsyncNotifier<KitchenQueueState> {
     state = AsyncValue.data(current.copyWith(focusedOrderId: null));
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool preserveCurrentOnError = false}) async {
+    final previous = state.valueOrNull;
     ref.invalidate(activeOrdersProvider);
     ref.invalidateSelf();
-    await future;
+    try {
+      await future;
+    } catch (_) {
+      if (preserveCurrentOnError && previous != null) {
+        state = AsyncValue.data(previous);
+      }
+      rethrow;
+    }
   }
 
   void setProfile(KitchenScreenProfile profile) {
@@ -270,4 +279,15 @@ bool _hasSameOrderIds(
   }
 
   return true;
+}
+
+KitchenInteractionMode _initialKitchenInteractionMode() {
+  switch (Env.kdsInteractionMode.trim().toLowerCase()) {
+    case 'touch':
+      return KitchenInteractionMode.touch;
+    case 'remote':
+      return KitchenInteractionMode.remote;
+    default:
+      return KitchenInteractionMode.wall;
+  }
 }

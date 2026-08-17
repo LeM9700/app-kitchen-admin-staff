@@ -1,3 +1,5 @@
+import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
+import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_items.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,11 @@ import 'kitchen_board_test_support.dart';
 
 void main() {
   final confirmedAt = DateTime.now().subtract(const Duration(minutes: 7));
+  const touchKitchenProfile = KitchenScreenProfile(
+    mode: KitchenScreenMode.kitchen,
+    station: 'kitchen',
+    interactionMode: KitchenInteractionMode.touch,
+  );
 
   final cases = <String, String>{
     'pending': 'EN ATTENTE DE CONFIRMATION',
@@ -124,6 +131,162 @@ void main() {
     );
 
     expect(find.text('--:--'), findsOneWidget);
+  });
+
+  testWidgets('interactionMode wall masque COMMENCER et PRETE interactifs',
+      (tester) async {
+    addTearDown(tester.view.reset);
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'confirmed',
+        confirmedAt: confirmedAt,
+      ),
+    );
+
+    expect(find.text('COMMENCER'), findsNothing);
+    expect(find.text('PRÊTE'), findsNothing);
+  });
+
+  testWidgets('interactionMode touch + confirmed affiche COMMENCER',
+      (tester) async {
+    addTearDown(tester.view.reset);
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'confirmed',
+        confirmedAt: confirmedAt,
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+    );
+
+    expect(find.text('COMMENCER'), findsOneWidget);
+  });
+
+  testWidgets('interactionMode touch + preparing affiche PRETE',
+      (tester) async {
+    addTearDown(tester.view.reset);
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+    );
+
+    expect(find.text('PRÊTE'), findsOneWidget);
+  });
+
+  testWidgets('stationReady affiche POSTE PRET', (tester) async {
+    addTearDown(tester.view.reset);
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        items: [
+          testKitchenItem(preparationStatus: 'ready'),
+          testKitchenItem(
+            id: 1002,
+            productName: 'Coca',
+            preparationStatus: 'preparing',
+            preparationStation: 'counter',
+          ),
+        ],
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+    );
+
+    expect(find.text('✓ POSTE PRÊT'), findsOneWidget);
+  });
+
+  testWidgets('ready affiche un etat final PRETE', (tester) async {
+    addTearDown(tester.view.reset);
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'ready',
+        confirmedAt: confirmedAt,
+        items: [
+          testKitchenItem(preparationStatus: 'ready'),
+        ],
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+    );
+
+    expect(find.text('✓ PRÊTE'), findsOneWidget);
+  });
+
+  testWidgets('busy desactive le bouton et affiche un progress indicator',
+      (tester) async {
+    addTearDown(tester.view.reset);
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'confirmed',
+        confirmedAt: confirmedAt,
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+      actionsState: KitchenActionsState(
+        busyKeys: {kitchenStartOrderActionKey(101)},
+      ),
+    );
+
+    final button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'COMMENCER'),
+    );
+    expect(button.onPressed, isNull);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('tap COMMENCER appelle la mutation', (tester) async {
+    addTearDown(tester.view.reset);
+    var called = false;
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'confirmed',
+        confirmedAt: confirmedAt,
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+      onStart: () => called = true,
+    );
+
+    await tester.tap(find.text('COMMENCER'));
+    expect(called, isTrue);
+  });
+
+  testWidgets('tap PRETE appelle la mutation', (tester) async {
+    addTearDown(tester.view.reset);
+    var called = false;
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+      onReady: () => called = true,
+    );
+
+    await tester.tap(find.text('PRÊTE'));
+    expect(called, isTrue);
   });
 
   testWidgets('commande normale non compact sans scroll interne',

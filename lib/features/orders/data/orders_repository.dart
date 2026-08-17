@@ -181,6 +181,7 @@ class OrderDetail extends OrderSummary {
     required super.deliveryFee,
     required this.items,
     required this.stationSummary,
+    this.statusHistory = const [],
     super.customerEmail,
     super.customerName,
     super.customerPhone,
@@ -191,6 +192,7 @@ class OrderDetail extends OrderSummary {
 
   final List<OrderItem> items;
   final List<OrderStationSummary> stationSummary;
+  final List<OrderStatusHistory> statusHistory;
 
   factory OrderDetail.fromJson(Map<String, dynamic> json) {
     final summary = OrderSummary.fromJson(json);
@@ -220,6 +222,37 @@ class OrderDetail extends OrderSummary {
             ),
           )
           .toList(),
+      statusHistory: (json['status_history'] as List? ?? const [])
+          .whereType<Map>()
+          .map(
+            (value) => OrderStatusHistory.fromJson(
+              Map<String, dynamic>.from(value),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class OrderStatusHistory {
+  const OrderStatusHistory({
+    required this.status,
+    required this.authority,
+    this.note,
+    this.createdAt,
+  });
+
+  final String status;
+  final String? note;
+  final String authority;
+  final DateTime? createdAt;
+
+  factory OrderStatusHistory.fromJson(Map<String, dynamic> json) {
+    return OrderStatusHistory(
+      status: json['status']?.toString() ?? '',
+      note: json['note']?.toString(),
+      authority: json['authority']?.toString() ?? '',
+      createdAt: readDateTime(json['created_at']),
     );
   }
 }

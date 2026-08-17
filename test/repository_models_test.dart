@@ -2,6 +2,7 @@ import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
 import 'package:app_admin_staff/features/dashboard/data/dashboard_repository.dart';
 import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart';
 import 'package:app_admin_staff/features/loyalty/data/loyalty_repository.dart';
+import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/promotions/data/promotions_repository.dart';
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +21,51 @@ void main() {
     expect(zone.name, 'Centre');
     expect(zone.fee, 3.5);
     expect(zone.isActive, isTrue);
+  });
+
+  test('order detail parses status history', () {
+    final detail = OrderDetail.fromJson({
+      'id': 42,
+      'order_type': 'delivery',
+      'status': 'preparing',
+      'payment_status': 'paid',
+      'source': 'customer',
+      'total': '18.50',
+      'delivery_fee': 2,
+      'items': [],
+      'station_summary': [],
+      'status_history': [
+        {
+          'status': 'confirmed',
+          'note': 'Validated by staff',
+          'authority': 'staff',
+          'created_at': '2026-08-17T09:15:30Z',
+        },
+      ],
+    });
+
+    final history = detail.statusHistory.single;
+
+    expect(history.status, 'confirmed');
+    expect(history.note, 'Validated by staff');
+    expect(history.authority, 'staff');
+    expect(history.createdAt, DateTime.utc(2026, 8, 17, 9, 15, 30));
+  });
+
+  test('order detail returns empty status history when absent', () {
+    final detail = OrderDetail.fromJson({
+      'id': 43,
+      'order_type': 'delivery',
+      'status': 'pending',
+      'payment_status': 'pending',
+      'source': 'customer',
+      'total': 12,
+      'delivery_fee': 0,
+      'items': [],
+      'station_summary': [],
+    });
+
+    expect(detail.statusHistory, isEmpty);
   });
 
   test('loyalty config parses decimal strings', () {

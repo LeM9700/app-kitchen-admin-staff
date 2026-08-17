@@ -138,6 +138,64 @@ void main() {
     expect(find.text('PRÊTE'), findsNothing);
   });
 
+  test('fallback counts lines not quantities — all ready', () {
+    final order = testKitchenOrder(
+      status: 'preparing',
+      orderType: 'dine_in',
+      confirmedAt: DateTime.utc(2026, 8, 17, 10),
+      items: [
+        testKitchenItem(
+          id: 10,
+          quantity: 2,
+          productName: 'Burger',
+          preparationStatus: 'ready',
+          preparationStation: 'kitchen',
+        ),
+        testKitchenItem(
+          id: 11,
+          productName: 'Frites',
+          preparationStatus: 'ready',
+          preparationStation: 'kitchen',
+        ),
+      ],
+    );
+    final statuses = kitchenStationStatusesForOrder(order);
+    expect(statuses.length, 1);
+    expect(statuses.first.station, 'kitchen');
+    expect(statuses.first.totalItems, 2);
+    expect(statuses.first.readyItems, 2);
+    expect(statuses.first.allReady, isTrue);
+  });
+
+  test('fallback counts lines not quantities — partial ready', () {
+    final order = testKitchenOrder(
+      status: 'preparing',
+      orderType: 'dine_in',
+      confirmedAt: DateTime.utc(2026, 8, 17, 10),
+      items: [
+        testKitchenItem(
+          id: 12,
+          quantity: 2,
+          productName: 'Burger',
+          preparationStatus: 'ready',
+          preparationStation: 'kitchen',
+        ),
+        testKitchenItem(
+          id: 13,
+          productName: 'Frites',
+          preparationStatus: 'preparing',
+          preparationStation: 'kitchen',
+        ),
+      ],
+    );
+    final statuses = kitchenStationStatusesForOrder(order);
+    expect(statuses.length, 1);
+    expect(statuses.first.station, 'kitchen');
+    expect(statuses.first.totalItems, 2);
+    expect(statuses.first.readyItems, 1);
+    expect(statuses.first.allReady, isFalse);
+  });
+
   test('station status falls back to order items when summary is absent', () {
     final order = _serviceOrder(status: 'preparing');
     final ticket = mapOrderToKitchenTicket(
@@ -154,7 +212,7 @@ void main() {
     expect(ticket.canStart, isFalse);
     expect(ticket.canMarkReady, isFalse);
     expect(statuses.map((status) => status.station), ['kitchen', 'counter']);
-    expect(statuses.map((status) => status.totalItems), [3, 2]);
+    expect(statuses.map((status) => status.totalItems), [2, 1]);
     expect(statuses.map((status) => status.allReady), [true, false]);
   });
 }

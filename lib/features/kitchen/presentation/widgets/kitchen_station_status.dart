@@ -82,11 +82,10 @@ List<KitchenStationStatusViewModel> kitchenStationStatusesForOrder(
     final station = item.preparationStation.trim().isEmpty
         ? 'kitchen'
         : item.preparationStation;
-    final quantity = item.quantity > 0 ? item.quantity : 1;
     final counter = counters.putIfAbsent(station, _StationCounter.new);
-    counter.totalItems += quantity;
+    counter.totalItems += 1;
     if (item.preparationStatus == 'ready') {
-      counter.readyItems += quantity;
+      counter.readyItems += 1;
     }
   }
 
@@ -97,7 +96,7 @@ List<KitchenStationStatusViewModel> kitchenStationStatusesForOrder(
         totalItems: entry.value.totalItems,
         readyItems: entry.value.readyItems,
         allReady: entry.value.totalItems > 0 &&
-            entry.value.readyItems >= entry.value.totalItems,
+            entry.value.readyItems == entry.value.totalItems,
       ),
   ];
 }

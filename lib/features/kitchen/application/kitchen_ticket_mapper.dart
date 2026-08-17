@@ -8,6 +8,14 @@ KitchenTicketViewModel mapOrderToKitchenTicket({
 }) {
   final visibleItems = _visibleItemsForProfile(order, profile);
   final state = _ticketStateForStatus(order.status);
+  final stationReady = _stationReady(
+    order: order,
+    profile: profile,
+    visibleItems: visibleItems,
+  );
+  final isPreparationScreen = profile.mode == KitchenScreenMode.kitchen ||
+      profile.mode == KitchenScreenMode.counter;
+  final hasVisibleItems = visibleItems.isNotEmpty;
 
   return KitchenTicketViewModel(
     order: order,
@@ -15,13 +23,15 @@ KitchenTicketViewModel mapOrderToKitchenTicket({
     visibleItems: visibleItems,
     confirmedAt: resolveConfirmedAt(order),
     isLocked: state == KitchenTicketState.awaitingConfirmation,
-    canStart: state == KitchenTicketState.readyToStart,
-    canMarkReady: state == KitchenTicketState.preparing,
-    stationReady: _stationReady(
-      order: order,
-      profile: profile,
-      visibleItems: visibleItems,
-    ),
+    canStart: isPreparationScreen &&
+        state == KitchenTicketState.readyToStart &&
+        hasVisibleItems &&
+        !stationReady,
+    canMarkReady: isPreparationScreen &&
+        state == KitchenTicketState.preparing &&
+        hasVisibleItems &&
+        !stationReady,
+    stationReady: stationReady,
   );
 }
 

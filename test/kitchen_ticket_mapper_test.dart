@@ -32,7 +32,12 @@ void main() {
 
   test('maps confirmed orders as startable tickets', () {
     final ticket = mapOrderToKitchenTicket(
-      order: _order(status: 'confirmed'),
+      order: _order(
+        status: 'confirmed',
+        items: [
+          _item(id: 1, station: 'kitchen'),
+        ],
+      ),
       profile: kitchenProfile,
     );
 
@@ -44,7 +49,12 @@ void main() {
 
   test('maps preparing orders as ready-action tickets', () {
     final ticket = mapOrderToKitchenTicket(
-      order: _order(status: 'preparing'),
+      order: _order(
+        status: 'preparing',
+        items: [
+          _item(id: 1, station: 'kitchen', preparationStatus: 'preparing'),
+        ],
+      ),
       profile: kitchenProfile,
     );
 
@@ -157,6 +167,114 @@ void main() {
     );
 
     expect(ticket.stationReady, isTrue);
+  });
+
+  test('does not allow ready action when current station is already ready', () {
+    final ticket = mapOrderToKitchenTicket(
+      order: _order(
+        status: 'preparing',
+        items: [
+          _item(
+            id: 1,
+            productName: 'Burger',
+            station: 'kitchen',
+            preparationStatus: 'ready',
+          ),
+          _item(
+            id: 2,
+            productName: 'Coca',
+            station: 'counter',
+            preparationStatus: 'preparing',
+          ),
+        ],
+        stationSummary: const [
+          OrderStationSummary(
+            station: 'kitchen',
+            totalItems: 1,
+            readyItems: 1,
+            allReady: true,
+          ),
+          OrderStationSummary(
+            station: 'counter',
+            totalItems: 1,
+            readyItems: 0,
+            allReady: false,
+          ),
+        ],
+      ),
+      profile: kitchenProfile,
+    );
+
+    expect(ticket.stationReady, isTrue);
+    expect(ticket.canMarkReady, isFalse);
+  });
+
+  test('does not expose preparation actions when profile has no station items',
+      () {
+    final confirmedTicket = mapOrderToKitchenTicket(
+      order: _order(
+        status: 'confirmed',
+        items: [
+          _item(id: 1, productName: 'Coca', station: 'counter'),
+        ],
+      ),
+      profile: kitchenProfile,
+    );
+    final preparingTicket = mapOrderToKitchenTicket(
+      order: _order(
+        status: 'preparing',
+        items: [
+          _item(
+            id: 1,
+            productName: 'Coca',
+            station: 'counter',
+            preparationStatus: 'preparing',
+          ),
+        ],
+      ),
+      profile: kitchenProfile,
+    );
+
+    expect(confirmedTicket.visibleItems, isEmpty);
+    expect(confirmedTicket.canStart, isFalse);
+    expect(confirmedTicket.canMarkReady, isFalse);
+    expect(preparingTicket.visibleItems, isEmpty);
+    expect(preparingTicket.canStart, isFalse);
+    expect(preparingTicket.canMarkReady, isFalse);
+  });
+
+  test('service mode never exposes kitchen preparation actions', () {
+    const serviceProfile = KitchenScreenProfile(
+      mode: KitchenScreenMode.service,
+      station: 'service',
+    );
+    final confirmedTicket = mapOrderToKitchenTicket(
+      order: _order(
+        status: 'confirmed',
+        items: [
+          _item(id: 1, station: 'kitchen'),
+          _item(id: 2, station: 'counter'),
+        ],
+      ),
+      profile: serviceProfile,
+    );
+    final preparingTicket = mapOrderToKitchenTicket(
+      order: _order(
+        status: 'preparing',
+        items: [
+          _item(id: 1, station: 'kitchen', preparationStatus: 'preparing'),
+          _item(id: 2, station: 'counter', preparationStatus: 'preparing'),
+        ],
+      ),
+      profile: serviceProfile,
+    );
+
+    expect(confirmedTicket.visibleItems.length, 2);
+    expect(confirmedTicket.canStart, isFalse);
+    expect(confirmedTicket.canMarkReady, isFalse);
+    expect(preparingTicket.visibleItems.length, 2);
+    expect(preparingTicket.canStart, isFalse);
+    expect(preparingTicket.canMarkReady, isFalse);
   });
 
   test('uses confirmedAt resolved from status history', () {

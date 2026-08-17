@@ -1,3 +1,6 @@
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_items.dart';
+import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'kitchen_board_test_support.dart';
@@ -122,4 +125,129 @@ void main() {
 
     expect(find.text('--:--'), findsOneWidget);
   });
+
+  testWidgets('commande normale non compact sans scroll interne',
+      (tester) async {
+    addTearDown(tester.view.reset);
+
+    await _pumpKitchenTicketItems(
+      tester,
+      items: [
+        testKitchenItem(productName: 'Margherita'),
+        testKitchenItem(id: 1002, productName: 'Frites'),
+      ],
+    );
+
+    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(find.textContaining('MARGHERITA'), findsOneWidget);
+    expect(find.textContaining('FRITES'), findsOneWidget);
+  });
+
+  testWidgets('commande non compact de 6 produits passe en 2 colonnes',
+      (tester) async {
+    addTearDown(tester.view.reset);
+    final items = _sixProductOrderItems();
+
+    await _pumpKitchenTicketItems(tester, items: items);
+
+    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(find.byType(Row), findsOneWidget);
+    expect(find.text('COMMANDE VOLUMINEUSE'), findsNothing);
+    for (final item in items) {
+      expect(
+        find.textContaining(item.productName!.toUpperCase()),
+        findsOneWidget,
+      );
+      expect(find.text(item.variantName!.toUpperCase()), findsOneWidget);
+      for (final extra in item.extras) {
+        expect(find.text('+ ${extra.name}'), findsOneWidget);
+      }
+    }
+  });
+
+  testWidgets('commande oversized conserve tous les produits et signale',
+      (tester) async {
+    addTearDown(tester.view.reset);
+    final items = _oversizedOrderItems();
+
+    await _pumpKitchenTicketItems(
+      tester,
+      items: items,
+      size: const Size(820, 1500),
+    );
+
+    expect(isOversizedKitchenOrder(items), isTrue);
+    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(find.text('COMMANDE VOLUMINEUSE'), findsOneWidget);
+    for (final item in items) {
+      expect(
+        find.textContaining(item.productName!.toUpperCase()),
+        findsOneWidget,
+      );
+    }
+  });
+
+  testWidgets('compact autorise le scroll vertical en fallback',
+      (tester) async {
+    addTearDown(tester.view.reset);
+
+    await _pumpKitchenTicketItems(
+      tester,
+      items: _oversizedOrderItems(),
+      compact: true,
+      size: const Size(390, 640),
+    );
+
+    expect(find.byType(SingleChildScrollView), findsOneWidget);
+  });
+}
+
+Future<void> _pumpKitchenTicketItems(
+  WidgetTester tester, {
+  required List<OrderItem> items,
+  bool compact = false,
+  Size size = const Size(820, 900),
+}) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1.0;
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: SizedBox.expand(
+          child: KitchenTicketItems(items: items, compact: compact),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+}
+
+List<OrderItem> _sixProductOrderItems() {
+  return [
+    for (var index = 1; index <= 6; index++)
+      testKitchenItem(
+        id: 2000 + index,
+        productName: 'Produit $index',
+        variantName: 'Variant $index',
+        extras: [
+          testKitchenExtra(id: 3000 + index, name: 'Extra $index'),
+        ],
+      ),
+  ];
+}
+
+List<OrderItem> _oversizedOrderItems() {
+  return [
+    for (var index = 1; index <= 7; index++)
+      testKitchenItem(
+        id: 4000 + index,
+        productName: 'Grande commande $index',
+        variantName: 'Format $index',
+        extras: [
+          testKitchenExtra(id: 5000 + index, name: 'Cheddar $index'),
+          testKitchenExtra(id: 6000 + index, name: 'Bacon $index'),
+        ],
+      ),
+  ];
 }

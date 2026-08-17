@@ -1,26 +1,40 @@
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_connection.dart';
+import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
+import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_screen_selector.dart';
 import 'package:flutter/material.dart';
 
 class KitchenStatusHeader extends StatelessWidget {
   const KitchenStatusHeader({
+    required this.profile,
     required this.totalWaiting,
     required this.totalPreparing,
     required this.totalNew,
     this.connection,
+    this.onProfileSelected,
     super.key,
   });
 
+  final KitchenScreenProfile profile;
   final int totalWaiting;
   final int totalPreparing;
   final int totalNew;
   final KitchenConnectionState? connection;
+  final ValueChanged<KitchenScreenProfile>? onProfileSelected;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final title = kitchenScreenModeLabel(profile.mode);
+    final selector = onProfileSelected == null
+        ? null
+        : KitchenScreenSelector(
+            profile: profile,
+            onProfileSelected: onProfileSelected!,
+          );
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -57,9 +71,16 @@ class KitchenStatusHeader extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'CUISINE',
-                      style: KitchenTypography.headerTitle(context),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: KitchenTypography.headerTitle(context),
+                          ),
+                        ),
+                        if (selector != null) selector,
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -79,7 +100,7 @@ class KitchenStatusHeader extends StatelessWidget {
               return Row(
                 children: [
                   Text(
-                    'CUISINE',
+                    title,
                     style: KitchenTypography.headerTitle(context),
                   ),
                   const SizedBox(width: 28),
@@ -94,6 +115,10 @@ class KitchenStatusHeader extends StatelessWidget {
                   if (connection != null) ...[
                     const SizedBox(width: 12),
                     _KitchenConnectionChip(connection: connection!),
+                  ],
+                  if (selector != null) ...[
+                    const SizedBox(width: 8),
+                    selector,
                   ],
                 ],
               );

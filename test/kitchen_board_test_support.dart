@@ -101,6 +101,7 @@ KitchenTicketViewModel testKitchenTicket({
   String? tableNumber = '08',
   DateTime? confirmedAt,
   List<OrderItem>? items,
+  List<OrderStationSummary>? stationSummary,
   String? customerName,
   String? customerEmail,
   String? customerPhone,
@@ -115,6 +116,7 @@ KitchenTicketViewModel testKitchenTicket({
       tableNumber: tableNumber,
       confirmedAt: confirmedAt,
       items: items,
+      stationSummary: stationSummary,
       customerName: customerName,
       customerEmail: customerEmail,
       customerPhone: customerPhone,
@@ -132,6 +134,7 @@ OrderDetail testKitchenOrder({
   DateTime? createdAt,
   DateTime? confirmedAt,
   List<OrderItem>? items,
+  List<OrderStationSummary>? stationSummary,
   String? customerName,
   String? customerEmail,
   String? customerPhone,
@@ -154,7 +157,7 @@ OrderDetail testKitchenOrder({
         [
           testKitchenItem(),
         ],
-    stationSummary: const [],
+    stationSummary: stationSummary ?? const [],
     statusHistory: confirmedAt == null
         ? const []
         : [

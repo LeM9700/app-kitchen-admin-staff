@@ -2,12 +2,12 @@ import 'package:app_admin_staff/core/config/env.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_pagination.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_loader.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
+import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final initialKitchenScreenProfile = KitchenScreenProfile(
+final initialKitchenScreenProfile = kitchenScreenPresetFor(
   mode: KitchenScreenMode.kitchen,
-  station: 'kitchen',
   ticketsPerPage: 4,
   interactionMode: _initialKitchenInteractionMode(),
 );

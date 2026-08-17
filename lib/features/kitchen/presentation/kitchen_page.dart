@@ -42,8 +42,11 @@ class KitchenPage extends ConsumerWidget {
 
         return queue.when(
           data: (state) => _KitchenBoard(state: state, policy: policy),
-          loading: () => const _KitchenLoadingBoard(),
-          error: (error, stackTrace) => _KitchenErrorBoard(error: error),
+          loading: () => _KitchenLoadingBoard(profile: profile),
+          error: (error, stackTrace) => _KitchenErrorBoard(
+            error: error,
+            profile: profile,
+          ),
         );
       },
     );
@@ -89,10 +92,12 @@ class _KitchenBoard extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         KitchenStatusHeader(
+          profile: state.profile,
           totalWaiting: state.totalWaiting,
           totalPreparing: state.totalPreparing,
           totalNew: state.totalNew,
           connection: connection,
+          onProfileSelected: controller.setProfile,
         ),
         KitchenOfflineBanner(connection: connection),
         Expanded(
@@ -140,7 +145,9 @@ int _prepTimeNormalMinutes(int? value) {
 }
 
 class _KitchenLoadingBoard extends ConsumerWidget {
-  const _KitchenLoadingBoard();
+  const _KitchenLoadingBoard({required this.profile});
+
+  final KitchenScreenProfile profile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -150,10 +157,12 @@ class _KitchenLoadingBoard extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         KitchenStatusHeader(
+          profile: profile,
           totalWaiting: 0,
           totalPreparing: 0,
           totalNew: 0,
           connection: connection,
+          onProfileSelected: ref.read(kitchenQueueProvider.notifier).setProfile,
         ),
         KitchenOfflineBanner(connection: connection),
         const Expanded(
@@ -165,9 +174,13 @@ class _KitchenLoadingBoard extends ConsumerWidget {
 }
 
 class _KitchenErrorBoard extends ConsumerWidget {
-  const _KitchenErrorBoard({required this.error});
+  const _KitchenErrorBoard({
+    required this.error,
+    required this.profile,
+  });
 
   final Object error;
+  final KitchenScreenProfile profile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -177,10 +190,12 @@ class _KitchenErrorBoard extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         KitchenStatusHeader(
+          profile: profile,
           totalWaiting: 0,
           totalPreparing: 0,
           totalNew: 0,
           connection: connection,
+          onProfileSelected: ref.read(kitchenQueueProvider.notifier).setProfile,
         ),
         KitchenOfflineBanner(connection: connection),
         Expanded(

@@ -9,6 +9,7 @@ import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_status_ui.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ready_transition.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_station_status.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_actions.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_header.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_items.dart';
@@ -155,6 +156,14 @@ class _KitchenTicketState extends State<KitchenTicket> {
                 onStart: widget.onStart,
                 onReady: widget.onReady,
               ),
+              if (widget.profile.mode == KitchenScreenMode.service)
+                _KitchenTapRegion(
+                  onTap: widget.onTap,
+                  child: KitchenStationStatus(
+                    order: widget.ticket.order,
+                    compact: widget.compact,
+                  ),
+                ),
               _KitchenTapRegion(
                 onTap: widget.onTap,
                 child: _KitchenTicketMeta(ticket: widget.ticket),

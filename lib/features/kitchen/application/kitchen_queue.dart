@@ -8,6 +8,10 @@ const _kdsStatuses = {
   'ready',
 };
 
+bool isKdsOrderStatus(String status) {
+  return _kdsStatuses.contains(status);
+}
+
 List<OrderSummary> sortKitchenOrdersFifo(
   Iterable<OrderSummary> orders,
 ) {
@@ -41,7 +45,7 @@ List<OrderSummary> sortKitchenOrdersFifo(
 List<OrderSummary> filterOrdersForKds(
   Iterable<OrderSummary> orders,
 ) {
-  return orders.where((order) => _kdsStatuses.contains(order.status)).toList();
+  return orders.where((order) => isKdsOrderStatus(order.status)).toList();
 }
 
 List<OrderSummary> buildKitchenQueue(

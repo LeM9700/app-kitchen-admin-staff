@@ -1,4 +1,6 @@
 import 'package:app_admin_staff/core/api/api_error.dart';
+import 'package:app_admin_staff/core/api/api_endpoints.dart';
+import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_controller.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
@@ -60,7 +62,17 @@ class KitchenActionsController extends Notifier<KitchenActionsState> {
           );
       await _refreshAfterSuccessfulMutation(orderId);
     } catch (error) {
-      _storeActionError(error);
+      if (_isOfflineCompatible(error)) {
+        _queueOrderStatusUpdate(
+          orderId: orderId,
+          status: 'preparing',
+          label: 'Commande #$orderId -> PREPARATION',
+          lastError: error.toString(),
+        );
+        _storeOfflineQueuedMessage();
+      } else {
+        await _handleActionError(error, orderId: orderId);
+      }
     } finally {
       _finishAction(key);
     }
@@ -91,23 +103,54 @@ class KitchenActionsController extends Notifier<KitchenActionsState> {
 
       // Sequential PATCHes keep backend aggregate status recalculation
       // coherent until the future bulk station endpoint exists.
-      for (final item in itemsToPatch) {
-        await repository.updateItemPreparation(
-          orderId: orderId,
-          itemId: item.id,
-          status: 'ready',
-        );
+      for (var index = 0; index < itemsToPatch.length; index++) {
+        final item = itemsToPatch[index];
+        try {
+          await repository.updateItemPreparation(
+            orderId: orderId,
+            itemId: item.id,
+            status: 'ready',
+          );
+        } catch (error) {
+          if (_isOfflineCompatible(error)) {
+            _queueItemPreparationUpdates(
+              orderId: orderId,
+              items: itemsToPatch.skip(index),
+              status: 'ready',
+              lastError: error.toString(),
+            );
+            _storeOfflineQueuedMessage();
+          } else {
+            await _handleActionError(error, orderId: orderId);
+          }
+          return;
+        }
       }
 
       final reloadedOrder = await repository.getOrder(orderId);
       if (reloadedOrder.status != 'ready' &&
           _allOrderItemsReady(reloadedOrder)) {
-        await repository.updateStatus(orderId, 'ready');
+        try {
+          await repository.updateStatus(orderId, 'ready');
+        } catch (error) {
+          if (_isOfflineCompatible(error)) {
+            _queueOrderStatusUpdate(
+              orderId: orderId,
+              status: 'ready',
+              label: 'Commande #$orderId -> PRETE',
+              lastError: error.toString(),
+            );
+            _storeOfflineQueuedMessage();
+          } else {
+            await _handleActionError(error, orderId: orderId);
+          }
+          return;
+        }
       }
 
       await _refreshAfterSuccessfulMutation(orderId);
     } catch (error) {
-      _storeActionError(error);
+      await _handleActionError(error, orderId: orderId);
     } finally {
       _finishAction(key);
     }
@@ -149,6 +192,68 @@ class KitchenActionsController extends Notifier<KitchenActionsState> {
         );
   }
 
+  Future<void> _refreshAfterConflict(int orderId) async {
+    ref.invalidate(orderDetailProvider(orderId));
+    try {
+      await ref.read(kitchenQueueProvider.notifier).refresh(
+            preserveCurrentOnError: true,
+          );
+    } catch (_) {
+      // Keep the current board usable if the conflict refresh also fails.
+    }
+  }
+
+  Future<void> _handleActionError(
+    Object error, {
+    required int orderId,
+  }) async {
+    if (error is ConflictException) {
+      state = state.copyWith(lastError: 'DEJA MISE A JOUR');
+      await _refreshAfterConflict(orderId);
+      return;
+    }
+
+    _storeActionError(error);
+  }
+
+  void _queueOrderStatusUpdate({
+    required int orderId,
+    required String status,
+    required String label,
+    required String lastError,
+  }) {
+    ref.read(syncQueueProvider.notifier).add(
+          feature: 'kitchen',
+          label: label,
+          endpoint: ApiEndpoints.orderStatus(orderId),
+          method: 'PATCH',
+          payload: {'status': status},
+          lastError: lastError,
+        );
+  }
+
+  void _queueItemPreparationUpdates({
+    required int orderId,
+    required Iterable<OrderItem> items,
+    required String status,
+    required String lastError,
+  }) {
+    for (final item in items) {
+      ref.read(syncQueueProvider.notifier).add(
+            feature: 'kitchen',
+            label: 'Commande #$orderId item #${item.id} -> PRETE',
+            endpoint: ApiEndpoints.orderItemPreparation(orderId, item.id),
+            method: 'PATCH',
+            payload: {'status': status},
+            lastError: lastError,
+          );
+    }
+  }
+
+  void _storeOfflineQueuedMessage() {
+    state = state.copyWith(lastError: 'Action mise en file offline.');
+  }
+
   void _storeActionError(Object error) {
     state = state.copyWith(lastError: _actionErrorMessage(error));
   }
@@ -184,6 +289,10 @@ String _actionErrorMessage(Object error) {
   }
 
   return 'Impossible de mettre a jour la commande.';
+}
+
+bool _isOfflineCompatible(Object error) {
+  return error is NetworkException;
 }
 
 String _screenModeKey(KitchenScreenMode mode) {

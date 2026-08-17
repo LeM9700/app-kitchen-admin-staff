@@ -70,7 +70,7 @@ void main() {
 
     await client.connect();
     await channels.first.closeFromServer();
-    await Future<void>.delayed(const Duration(milliseconds: 150));
+    await _waitFor(() => channels.length == 2);
 
     expect(channels, hasLength(2));
   });
@@ -90,6 +90,16 @@ void main() {
 
     expect(channel.sink.closed, isTrue);
   });
+}
+
+Future<void> _waitFor(
+  bool Function() condition, {
+  Duration timeout = const Duration(seconds: 2),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!condition() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+  }
 }
 
 class _FakeWebSocketChannel implements WebSocketChannel {

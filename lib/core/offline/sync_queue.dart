@@ -7,6 +7,13 @@ final syncQueueProvider = NotifierProvider<SyncQueue, List<QueuedAction>>(
   SyncQueue.new,
 );
 
+int pendingSyncCountForFeature(
+  Iterable<QueuedAction> actions,
+  String feature,
+) {
+  return actions.where((action) => action.feature == feature).length;
+}
+
 class QueuedAction {
   const QueuedAction({
     required this.id,

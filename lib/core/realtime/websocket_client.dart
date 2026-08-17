@@ -16,13 +16,21 @@ final realtimeClientProvider = Provider<RealtimeClient>((ref) {
     ref.watch(tokenStoreProvider),
     ref.read(notificationBusProvider.notifier),
   );
-  ref.onDispose(client.disconnect);
+  ref.onDispose(client.dispose);
   return client;
+});
+
+final realtimeConnectionStatusProvider =
+    StreamProvider<RealtimeConnectionStatus>((ref) async* {
+  final client = ref.watch(realtimeClientProvider);
+  yield client.status;
+  yield* client.statusStream;
 });
 
 enum RealtimeConnectionStatus {
   disconnected,
   connecting,
+  reconnecting,
   connected,
 }
 
@@ -47,8 +55,11 @@ class RealtimeClient {
   bool _intentionalDisconnect = true;
   int _reconnectAttempts = 0;
   RealtimeConnectionStatus _status = RealtimeConnectionStatus.disconnected;
+  final _statusController =
+      StreamController<RealtimeConnectionStatus>.broadcast();
 
   RealtimeConnectionStatus get status => _status;
+  Stream<RealtimeConnectionStatus> get statusStream => _statusController.stream;
 
   Future<void> connect() async {
     final token = await _tokenStore.readAccessToken();
@@ -57,7 +68,8 @@ class RealtimeClient {
       await disconnect();
       return;
     }
-    if (_status != RealtimeConnectionStatus.disconnected &&
+    if ((_status == RealtimeConnectionStatus.connected ||
+            _status == RealtimeConnectionStatus.connecting) &&
         _token == token &&
         _tenant == tenant) {
       return;
@@ -66,7 +78,7 @@ class RealtimeClient {
     _intentionalDisconnect = false;
     _token = token;
     _tenant = tenant;
-    _status = RealtimeConnectionStatus.connecting;
+    _setStatus(RealtimeConnectionStatus.connecting);
     _logDev('connect tenant=$tenant');
 
     final channel = _channelFactory(_wsUri(tenant));
@@ -85,7 +97,7 @@ class RealtimeClient {
       },
       cancelOnError: true,
     );
-    _status = RealtimeConnectionStatus.connected;
+    _setStatus(RealtimeConnectionStatus.connected);
     _reconnectAttempts = 0;
   }
 
@@ -97,8 +109,13 @@ class RealtimeClient {
     _subscription = null;
     await _channel?.sink.close();
     _channel = null;
-    _status = RealtimeConnectionStatus.disconnected;
+    _setStatus(RealtimeConnectionStatus.disconnected);
     _logDev('disconnect');
+  }
+
+  Future<void> dispose() async {
+    await disconnect();
+    await _statusController.close();
   }
 
   void _handleMessage(Object? message, String token) {
@@ -138,7 +155,7 @@ class RealtimeClient {
     if (_intentionalDisconnect) {
       return;
     }
-    _status = RealtimeConnectionStatus.disconnected;
+    _setStatus(RealtimeConnectionStatus.reconnecting);
     _reconnectTimer?.cancel();
     _reconnectAttempts++;
     final milliseconds =
@@ -166,6 +183,16 @@ class RealtimeClient {
   void _logDev(String message) {
     if (kDebugMode) {
       debugPrint('[realtime] $message');
+    }
+  }
+
+  void _setStatus(RealtimeConnectionStatus status) {
+    if (_status == status) {
+      return;
+    }
+    _status = status;
+    if (!_statusController.isClosed) {
+      _statusController.add(status);
     }
   }
 }

@@ -22,6 +22,7 @@ class RealtimeNotification {
   final Map<String, dynamic> data;
 
   String? get notificationId => data['notification_id']?.toString();
+  int? get orderId => _readInt(data['order_id'] ?? data['orderId']);
 
   factory RealtimeNotification.fromJson(Map<String, dynamic> json) {
     final event = json['event']?.toString();
@@ -80,6 +81,16 @@ class RealtimeNotification {
           r'$1=[redacted]',
         );
   }
+}
+
+int? _readInt(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return int.tryParse(value?.toString() ?? '');
 }
 
 class RealtimeEventRouter {

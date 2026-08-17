@@ -9,6 +9,7 @@ import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_page.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
+import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -20,10 +21,15 @@ const testKitchenProfile = KitchenScreenProfile(
   station: 'kitchen',
 );
 
-ProviderContainer createKitchenContainer(TestKitchenRepository repository) {
+ProviderContainer createKitchenContainer(
+  TestKitchenRepository repository, {
+  List<Override> overrides = const [],
+}) {
   return ProviderContainer(
     overrides: [
       ordersRepositoryProvider.overrideWithValue(repository),
+      tenantConfigProvider.overrideWith((ref) async => testTenantConfig()),
+      ...overrides,
     ],
   );
 }
@@ -198,6 +204,25 @@ OrderItemExtra testKitchenExtra({
     quantity: quantity,
     unitPrice: 1,
     total: quantity.toDouble(),
+  );
+}
+
+TenantConfig testTenantConfig({
+  int prepTimeNormalMinutes = 15,
+}) {
+  return TenantConfig(
+    id: 1,
+    isTemporarilyClosed: false,
+    defaultClosureMessage: '',
+    prepTimeNormalMinutes: prepTimeNormalMinutes,
+    prepTimePeakMinutes: 20,
+    peakOrdersThreshold: 8,
+    autoCalcPrepTime: true,
+    overheadPerOrderMinutes: 2,
+    timezone: 'Europe/Paris',
+    largeStockAdjustmentThreshold: 10,
+    printEnabled: false,
+    printConfig: const {},
   );
 }
 

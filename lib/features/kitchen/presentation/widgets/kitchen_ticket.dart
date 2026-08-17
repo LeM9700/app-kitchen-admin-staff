@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:app_admin_staff/core/utils/formatters.dart';
+import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_time.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_status_ui.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
@@ -10,7 +14,7 @@ import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ti
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_items.dart';
 import 'package:flutter/material.dart';
 
-class KitchenTicket extends StatelessWidget {
+class KitchenTicket extends StatefulWidget {
   const KitchenTicket({
     required this.ticket,
     required this.focused,
@@ -19,6 +23,7 @@ class KitchenTicket extends StatelessWidget {
       station: 'kitchen',
     ),
     this.actionsState = const KitchenActionsState(),
+    this.prepTimeNormalMinutes = defaultKitchenPrepTimeNormalMinutes,
     this.onTap,
     this.onStart,
     this.onReady,
@@ -30,77 +35,149 @@ class KitchenTicket extends StatelessWidget {
   final bool focused;
   final KitchenScreenProfile profile;
   final KitchenActionsState actionsState;
+  final int prepTimeNormalMinutes;
   final VoidCallback? onTap;
   final VoidCallback? onStart;
   final VoidCallback? onReady;
   final bool compact;
 
   @override
+  State<KitchenTicket> createState() => _KitchenTicketState();
+}
+
+class _KitchenTicketState extends State<KitchenTicket> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimerIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(KitchenTicket oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.ticket.confirmedAt != widget.ticket.confirmedAt) {
+      _timer?.cancel();
+      _timer = null;
+      _startTimerIfNeeded();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final statusUi = KitchenStatusUi.from(ticket.state);
-    final borderColor = focused ? scheme.primary : scheme.outlineVariant;
-    final borderWidth = focused ? 3.0 : 1.0;
-    final surface = focused
+    final statusUi = KitchenStatusUi.from(widget.ticket.state);
+    final urgency = resolveKitchenUrgency(
+      confirmedAt: widget.ticket.confirmedAt,
+      now: DateTime.now(),
+      prepTimeNormalMinutes: widget.prepTimeNormalMinutes,
+    );
+    final isLate = urgency == KitchenUrgency.late;
+    final borderColor = isLate
+        ? AppColors.danger
+        : widget.focused
+            ? scheme.primary
+            : scheme.outlineVariant;
+    final borderWidth = isLate ? 2.0 : (widget.focused ? 3.0 : 1.0);
+    final surface = widget.focused
         ? Color.alphaBlend(
             scheme.primary.withValues(alpha: 0.08),
             scheme.surface,
           )
         : scheme.surface;
 
-    return KitchenReadyTransition(
-      active: ticket.state == KitchenTicketState.ready,
-      child: Material(
-        color: surface,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
+    final card = KitchenReadyTransition(
+      active: widget.ticket.state == KitchenTicketState.ready,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          side: BorderSide(color: borderColor, width: borderWidth),
+          boxShadow: widget.focused
+              ? [
+                  BoxShadow(
+                    color: scheme.primary.withValues(alpha: 0.28),
+                    blurRadius: 0,
+                    spreadRadius: isLate ? 3 : 2,
+                  ),
+                ]
+              : const [],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _KitchenTapRegion(
-              onTap: onTap,
-              child: KitchenTicketHeader(ticket: ticket, compact: compact),
-            ),
-            Expanded(
-              child: _KitchenTapRegion(
-                onTap: onTap,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                        color: ticket.isLocked
-                            ? statusUi.color
-                            : Colors.transparent,
-                        width: ticket.isLocked ? 4 : 0,
+        child: Material(
+          color: surface,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            side: BorderSide(color: borderColor, width: borderWidth),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _KitchenTapRegion(
+                onTap: widget.onTap,
+                child: KitchenTicketHeader(
+                  ticket: widget.ticket,
+                  compact: widget.compact,
+                  prepTimeNormalMinutes: widget.prepTimeNormalMinutes,
+                ),
+              ),
+              Expanded(
+                child: _KitchenTapRegion(
+                  onTap: widget.onTap,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: widget.ticket.isLocked
+                              ? statusUi.color
+                              : Colors.transparent,
+                          width: widget.ticket.isLocked ? 4 : 0,
+                        ),
                       ),
                     ),
-                  ),
-                  child: KitchenTicketItems(
-                    items: ticket.visibleItems,
-                    compact: compact,
+                    child: KitchenTicketItems(
+                      items: widget.ticket.visibleItems,
+                      compact: widget.compact,
+                    ),
                   ),
                 ),
               ),
-            ),
-            KitchenTicketActions(
-              ticket: ticket,
-              profile: profile,
-              actionsState: actionsState,
-              compact: compact,
-              onStart: onStart,
-              onReady: onReady,
-            ),
-            _KitchenTapRegion(
-              onTap: onTap,
-              child: _KitchenTicketMeta(ticket: ticket),
-            ),
-          ],
+              KitchenTicketActions(
+                ticket: widget.ticket,
+                profile: widget.profile,
+                actionsState: widget.actionsState,
+                compact: widget.compact,
+                onStart: widget.onStart,
+                onReady: widget.onReady,
+              ),
+              _KitchenTapRegion(
+                onTap: widget.onTap,
+                child: _KitchenTicketMeta(ticket: widget.ticket),
+              ),
+            ],
+          ),
         ),
       ),
     );
+
+    return card;
+  }
+
+  void _startTimerIfNeeded() {
+    if (widget.ticket.confirmedAt == null) {
+      return;
+    }
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 }
 

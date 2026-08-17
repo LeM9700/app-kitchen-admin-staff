@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:app_admin_staff/core/utils/formatters.dart';
+import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_time.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_status_ui.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
@@ -10,11 +12,13 @@ class KitchenTicketHeader extends StatelessWidget {
   const KitchenTicketHeader({
     required this.ticket,
     this.compact = false,
+    this.prepTimeNormalMinutes = defaultKitchenPrepTimeNormalMinutes,
     super.key,
   });
 
   final KitchenTicketViewModel ticket;
   final bool compact;
+  final int prepTimeNormalMinutes;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +65,7 @@ class KitchenTicketHeader extends StatelessWidget {
             const SizedBox(width: 12),
             KitchenPreparationTimer(
               confirmedAt: ticket.confirmedAt,
+              prepTimeNormalMinutes: prepTimeNormalMinutes,
               style: KitchenTypography.timer(
                 context,
                 compact: compact,
@@ -85,11 +90,13 @@ class KitchenTicketHeader extends StatelessWidget {
 class KitchenPreparationTimer extends StatefulWidget {
   const KitchenPreparationTimer({
     required this.confirmedAt,
+    this.prepTimeNormalMinutes = defaultKitchenPrepTimeNormalMinutes,
     this.style,
     super.key,
   });
 
   final DateTime? confirmedAt;
+  final int prepTimeNormalMinutes;
   final TextStyle? style;
 
   @override
@@ -109,7 +116,8 @@ class _KitchenPreparationTimerState extends State<KitchenPreparationTimer> {
   @override
   void didUpdateWidget(KitchenPreparationTimer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.confirmedAt != widget.confirmedAt) {
+    if (oldWidget.confirmedAt != widget.confirmedAt ||
+        oldWidget.prepTimeNormalMinutes != widget.prepTimeNormalMinutes) {
       _timer?.cancel();
       _timer = null;
       _startTimerIfNeeded();
@@ -125,12 +133,21 @@ class _KitchenPreparationTimerState extends State<KitchenPreparationTimer> {
   @override
   Widget build(BuildContext context) {
     final confirmedAt = widget.confirmedAt;
+    final urgency = resolveKitchenUrgency(
+      confirmedAt: confirmedAt,
+      now: DateTime.now(),
+      prepTimeNormalMinutes: widget.prepTimeNormalMinutes,
+    );
+    final style = urgency == KitchenUrgency.late
+        ? widget.style?.copyWith(color: AppColors.danger) ??
+            TextStyle(color: Theme.of(context).colorScheme.error)
+        : widget.style;
 
     return Text(
       confirmedAt == null
           ? '--:--'
           : formatKitchenPreparationElapsed(confirmedAt),
-      style: widget.style,
+      style: style,
     );
   }
 

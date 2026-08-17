@@ -38,4 +38,30 @@ void main() {
     expect(retried.idempotencyKey, action.idempotencyKey);
     expect(retried.retryCount, 1);
   });
+
+  test('pending count can be scoped by feature', () {
+    final actions = [
+      _action(id: '1', feature: 'kitchen'),
+      _action(id: '2', feature: 'orders'),
+      _action(id: '3', feature: 'kitchen'),
+    ];
+
+    expect(pendingSyncCountForFeature(actions, 'kitchen'), 2);
+    expect(pendingSyncCountForFeature(actions, 'orders'), 1);
+  });
+}
+
+QueuedAction _action({
+  required String id,
+  required String feature,
+}) {
+  return QueuedAction(
+    id: id,
+    feature: feature,
+    label: 'Action $id',
+    endpoint: '/test/$id',
+    method: 'PATCH',
+    payload: const {},
+    createdAt: DateTime.utc(2026, 8, 17, 10),
+  );
 }

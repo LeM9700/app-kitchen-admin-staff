@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:app_admin_staff/core/api/api_error.dart';
+import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_controller.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_ticket_mapper.dart';
@@ -107,6 +109,57 @@ void main() {
       container.read(kitchenActionsProvider).lastError,
       'Impossible de mettre a jour la commande.',
     );
+  });
+
+  test('startOrder met en file kitchen uniquement sur erreur reseau', () async {
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      )
+      ..updateStatusError = const NetworkException(message: 'offline');
+    final container = createKitchenContainer(
+      repository,
+      overrides: [syncQueueProvider.overrideWith(_TestSyncQueue.new)],
+    );
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container
+        .read(kitchenActionsProvider.notifier)
+        .startOrder(orderId: 101);
+
+    final queued = container.read(syncQueueProvider);
+    expect(queued, hasLength(1));
+    expect(queued.single.feature, 'kitchen');
+    expect(queued.single.endpoint, '/orders/101/status');
+    expect(queued.single.payload, {'status': 'preparing'});
+    expect(
+      container.read(kitchenActionsProvider).lastError,
+      'Action mise en file offline.',
+    );
+  });
+
+  test('startOrder ne met pas en file une erreur metier', () async {
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      )
+      ..updateStatusError = const ForbiddenException(message: 'Forbidden');
+    final container = createKitchenContainer(
+      repository,
+      overrides: [syncQueueProvider.overrideWith(_TestSyncQueue.new)],
+    );
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container
+        .read(kitchenActionsProvider.notifier)
+        .startOrder(orderId: 101);
+
+    expect(container.read(syncQueueProvider), isEmpty);
+    expect(container.read(kitchenActionsProvider).lastError, 'Forbidden');
   });
 
   test('markStationReady ne touche que visibleItems non ready', () async {
@@ -250,6 +303,87 @@ void main() {
       'Impossible de mettre a jour la commande.',
     );
   });
+
+  test('markStationReady met les PATCH restants en file si le reseau tombe',
+      () async {
+    final repository = TestKitchenRepository()..setOrders([101]);
+    repository.details = {
+      101: testKitchenOrder(
+        id: 101,
+        status: 'preparing',
+        items: [
+          testKitchenItem(id: 1, preparationStatus: 'preparing'),
+          testKitchenItem(id: 2, preparationStatus: 'preparing'),
+        ],
+      ),
+    };
+    repository.updateItemPreparationError =
+        const NetworkException(message: 'offline');
+    final container = createKitchenContainer(
+      repository,
+      overrides: [syncQueueProvider.overrideWith(_TestSyncQueue.new)],
+    );
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container.read(kitchenActionsProvider.notifier).markStationReady(
+          ticket: _ticket(repository, kitchenProfile),
+          profile: kitchenProfile,
+        );
+
+    final queued = container.read(syncQueueProvider);
+    expect(queued.map((action) => action.feature), ['kitchen', 'kitchen']);
+    expect(
+      queued.map((action) => action.endpoint).toSet(),
+      {
+        '/orders/101/items/1/preparation',
+        '/orders/101/items/2/preparation',
+      },
+    );
+    expect(
+      repository.details[101]!.items.map((item) => item.preparationStatus),
+      ['preparing', 'preparing'],
+    );
+  });
+
+  test('conflit 409 affiche un message court et rafraichit sans error board',
+      () async {
+    final repository = TestKitchenRepository()
+      ..setOrders(
+        [101],
+        statuses: {101: 'confirmed'},
+      )
+      ..updateStatusError = const ConflictException(
+        message: 'state changed',
+        statusCode: 409,
+      );
+    final container = createKitchenContainer(
+      repository,
+      overrides: [syncQueueProvider.overrideWith(_TestSyncQueue.new)],
+    );
+    addTearDown(container.dispose);
+    await container.read(kitchenQueueProvider.future);
+
+    await container
+        .read(kitchenActionsProvider.notifier)
+        .startOrder(orderId: 101);
+
+    expect(container.read(syncQueueProvider), isEmpty);
+    expect(
+      container.read(kitchenActionsProvider).lastError,
+      'DEJA MISE A JOUR',
+    );
+    expect(container.read(kitchenQueueProvider).hasValue, isTrue);
+    expect(
+      container
+          .read(kitchenQueueProvider)
+          .valueOrNull!
+          .currentPageTickets
+          .map((ticket) => ticket.order.id),
+      [101],
+    );
+    expect(repository.listCalls, greaterThan(1));
+  });
 }
 
 KitchenTicketViewModel _ticket(
@@ -260,4 +394,35 @@ KitchenTicketViewModel _ticket(
     order: repository.details[101]!,
     profile: profile,
   );
+}
+
+class _TestSyncQueue extends SyncQueue {
+  @override
+  List<QueuedAction> build() => const [];
+
+  @override
+  void add({
+    required String feature,
+    required String label,
+    required String endpoint,
+    required String method,
+    required Map<String, dynamic> payload,
+    String? idempotencyKey,
+    String? lastError,
+  }) {
+    state = [
+      QueuedAction(
+        id: (state.length + 1).toString(),
+        feature: feature,
+        label: label,
+        endpoint: endpoint,
+        method: method,
+        payload: payload,
+        createdAt: DateTime.utc(2026, 8, 17, 10, state.length),
+        idempotencyKey: idempotencyKey,
+        lastError: lastError,
+      ),
+      ...state,
+    ];
+  }
 }

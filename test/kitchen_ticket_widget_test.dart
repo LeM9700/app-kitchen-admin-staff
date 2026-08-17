@@ -1,6 +1,9 @@
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
+import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_items.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_header.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -131,6 +134,59 @@ void main() {
     );
 
     expect(find.text('--:--'), findsOneWidget);
+  });
+
+  testWidgets('late affiche bordure danger et timer danger', (tester) async {
+    addTearDown(tester.view.reset);
+    final confirmedAt = DateTime.now().subtract(const Duration(minutes: 16));
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(status: 'preparing', confirmedAt: confirmedAt),
+      size: const Size(720, 520),
+    );
+
+    final ticketMaterial = tester.widget<Material>(
+      find
+          .descendant(
+            of: find.byType(KitchenTicket),
+            matching: find.byType(Material),
+          )
+          .last,
+    );
+    final shape = ticketMaterial.shape! as RoundedRectangleBorder;
+    expect(shape.side.color, AppColors.danger);
+    expect(shape.side.width, 2);
+
+    final timerText = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(KitchenPreparationTimer),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(timerText.style?.color, AppColors.danger);
+  });
+
+  testWidgets('normal conserve les styles standards', (tester) async {
+    addTearDown(tester.view.reset);
+    final confirmedAt = DateTime.now().subtract(const Duration(minutes: 14));
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(status: 'preparing', confirmedAt: confirmedAt),
+      size: const Size(720, 520),
+    );
+
+    final ticketMaterial = tester.widget<Material>(
+      find
+          .descendant(
+            of: find.byType(KitchenTicket),
+            matching: find.byType(Material),
+          )
+          .last,
+    );
+    final shape = ticketMaterial.shape! as RoundedRectangleBorder;
+    expect(shape.side.color, isNot(AppColors.danger));
   });
 
   testWidgets('interactionMode wall masque COMMENCER et PRETE interactifs',

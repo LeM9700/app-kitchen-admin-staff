@@ -13,6 +13,7 @@ class KitchenTicketGrid extends StatelessWidget {
     required this.policy,
     required this.focusedOrderId,
     required this.actionsState,
+    required this.prepTimeNormalMinutes,
     required this.onTicketTap,
     required this.onStart,
     required this.onReady,
@@ -24,6 +25,7 @@ class KitchenTicketGrid extends StatelessWidget {
   final KitchenLayoutPolicy policy;
   final int? focusedOrderId;
   final KitchenActionsState actionsState;
+  final int prepTimeNormalMinutes;
   final ValueChanged<KitchenTicketViewModel> onTicketTap;
   final ValueChanged<KitchenTicketViewModel> onStart;
   final ValueChanged<KitchenTicketViewModel> onReady;
@@ -67,6 +69,7 @@ class KitchenTicketGrid extends StatelessWidget {
               focused: ticket.order.id == focusedOrderId,
               profile: profile,
               actionsState: actionsState,
+              prepTimeNormalMinutes: prepTimeNormalMinutes,
               compact: policy.compact,
               onTap: () => onTicketTap(ticket),
               onStart: () => onStart(ticket),

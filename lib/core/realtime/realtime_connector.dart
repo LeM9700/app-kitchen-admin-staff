@@ -47,7 +47,14 @@ class _RealtimeConnectorState extends ConsumerState<RealtimeConnector>
       }
       final latest = next.first;
       if ((latest.event ?? '').startsWith('order.')) {
-        ref.invalidate(activeOrdersProvider);
+        final invalidation = resolveOrderRealtimeInvalidation(latest);
+        if (invalidation.invalidateActiveOrders) {
+          ref.invalidate(activeOrdersProvider);
+        }
+        final orderId = invalidation.orderId;
+        if (orderId != null) {
+          ref.invalidate(orderDetailProvider(orderId));
+        }
         SystemSound.play(SystemSoundType.alert);
       }
       if ((latest.event ?? '').startsWith('hr.')) {
@@ -127,4 +134,28 @@ class _RealtimeConnectorState extends ConsumerState<RealtimeConnector>
     }
     return notification.title;
   }
+}
+
+class OrderRealtimeInvalidation {
+  const OrderRealtimeInvalidation({
+    required this.invalidateActiveOrders,
+    this.orderId,
+  });
+
+  final bool invalidateActiveOrders;
+  final int? orderId;
+}
+
+OrderRealtimeInvalidation resolveOrderRealtimeInvalidation(
+  RealtimeNotification notification,
+) {
+  final event = notification.event ?? '';
+  if (!event.startsWith('order.')) {
+    return const OrderRealtimeInvalidation(invalidateActiveOrders: false);
+  }
+
+  return OrderRealtimeInvalidation(
+    invalidateActiveOrders: true,
+    orderId: notification.orderId,
+  );
 }

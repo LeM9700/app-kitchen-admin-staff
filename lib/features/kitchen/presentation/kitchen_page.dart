@@ -1,11 +1,15 @@
 import 'package:app_admin_staff/core/widgets/empty_state.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_connection.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_controller.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_time.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_layout_policy.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_offline_banner.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_pagination_bar.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_status_header.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_grid.dart';
+import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -76,6 +80,10 @@ class _KitchenBoard extends ConsumerWidget {
     final controller = ref.read(kitchenQueueProvider.notifier);
     final actionsState = ref.watch(kitchenActionsProvider);
     final actionsController = ref.read(kitchenActionsProvider.notifier);
+    final connection = ref.watch(kitchenConnectionStateProvider);
+    final prepTimeNormalMinutes = _prepTimeNormalMinutes(
+      ref.watch(tenantConfigProvider).valueOrNull?.prepTimeNormalMinutes,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -84,7 +92,9 @@ class _KitchenBoard extends ConsumerWidget {
           totalWaiting: state.totalWaiting,
           totalPreparing: state.totalPreparing,
           totalNew: state.totalNew,
+          connection: connection,
         ),
+        KitchenOfflineBanner(connection: connection),
         Expanded(
           child: state.tickets.isEmpty
               ? const EmptyState(
@@ -97,6 +107,7 @@ class _KitchenBoard extends ConsumerWidget {
                   policy: policy,
                   focusedOrderId: state.focusedOrderId,
                   actionsState: actionsState,
+                  prepTimeNormalMinutes: prepTimeNormalMinutes,
                   onTicketTap: (ticket) {
                     controller.focusOrder(ticket.order.id);
                   },
@@ -121,20 +132,31 @@ class _KitchenBoard extends ConsumerWidget {
   }
 }
 
-class _KitchenLoadingBoard extends StatelessWidget {
+int _prepTimeNormalMinutes(int? value) {
+  if (value == null || value <= 0) {
+    return defaultKitchenPrepTimeNormalMinutes;
+  }
+  return value;
+}
+
+class _KitchenLoadingBoard extends ConsumerWidget {
   const _KitchenLoadingBoard();
 
   @override
-  Widget build(BuildContext context) {
-    return const Column(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(kitchenConnectionStateProvider);
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         KitchenStatusHeader(
           totalWaiting: 0,
           totalPreparing: 0,
           totalNew: 0,
+          connection: connection,
         ),
-        Expanded(
+        KitchenOfflineBanner(connection: connection),
+        const Expanded(
           child: Center(child: CircularProgressIndicator()),
         ),
       ],
@@ -149,14 +171,18 @@ class _KitchenErrorBoard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(kitchenConnectionStateProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const KitchenStatusHeader(
+        KitchenStatusHeader(
           totalWaiting: 0,
           totalPreparing: 0,
           totalNew: 0,
+          connection: connection,
         ),
+        KitchenOfflineBanner(connection: connection),
         Expanded(
           child: Center(
             child: ConstrainedBox(

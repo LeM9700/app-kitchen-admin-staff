@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/core/widgets/empty_state.dart';
 import 'package:app_admin_staff/design_system/components/badges/status_badge.dart';
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
@@ -99,7 +98,7 @@ class KdsSettingsSection extends ConsumerWidget {
           error: (error, stackTrace) => EmptyState(
             icon: Icons.error_outline,
             title: 'Écrans indisponibles',
-            subtitle: _loadErrorMessage(error),
+            subtitle: mapKdsError(error),
           ),
           data: (value) => _buildContent(context, ref, value),
         ),
@@ -891,9 +890,3 @@ String _modeLabel(String rawMode) {
   return kitchenScreenModeLabel(mode);
 }
 
-String _loadErrorMessage(Object error) {
-  if (error is AppException) {
-    return error.message;
-  }
-  return 'UNE ERREUR EST SURVENUE';
-}

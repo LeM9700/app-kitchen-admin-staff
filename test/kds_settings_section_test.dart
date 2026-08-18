@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/core/api/api_client.dart';
+import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/core/auth/token_store.dart';
 import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/data/kds_repository.dart';
@@ -174,6 +175,60 @@ void main() {
       expect(call['station'], 'counter');
     },
   );
+
+  group('erreur au chargement initial (listScreens) utilise mapKdsError', () {
+    // Final whole-branch review finding: the initial listScreens error
+    // branch must reuse the exact same mapper as the mutation paths
+    // (`mapKdsError`), never surface raw AppException.message text. These
+    // tests are modeled on the mutation-error tests in
+    // kds_screen_management_controller_test.dart.
+    testWidgets(
+      "code metier KDS_SCREEN_NOT_FOUND affiche le libelle francais dedie",
+      (tester) async {
+        final repository = _FakeKdsRepository()
+          ..listScreensError = const BusinessException(
+            message: 'screen 42 not found in tenant schema',
+            code: 'KDS_SCREEN_NOT_FOUND',
+            statusCode: 404,
+          );
+        await _pumpSection(tester, isAdmin: true, repository: repository);
+
+        expect(find.text('ÉCRAN INTROUVABLE'), findsOneWidget);
+        expect(
+          find.text('screen 42 not found in tenant schema'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets('erreur 403 affiche ACTION NON AUTORISEE', (tester) async {
+      final repository = _FakeKdsRepository()
+        ..listScreensError = const ForbiddenException(
+          message: 'user lacks orders:preparation permission',
+        );
+      await _pumpSection(tester, isAdmin: true, repository: repository);
+
+      expect(find.text('ACTION NON AUTORISÉE'), findsOneWidget);
+      expect(
+        find.text('user lacks orders:preparation permission'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('erreur reseau affiche CONNEXION IMPOSSIBLE', (tester) async {
+      final repository = _FakeKdsRepository()
+        ..listScreensError = const NetworkException(
+          message: 'DioException [connection error]: Failed host lookup',
+        );
+      await _pumpSection(tester, isAdmin: true, repository: repository);
+
+      expect(find.text('CONNEXION IMPOSSIBLE'), findsOneWidget);
+      expect(
+        find.text('DioException [connection error]: Failed host lookup'),
+        findsNothing,
+      );
+    });
+  });
 }
 
 Future<ProviderContainer> _pumpSection(
@@ -231,11 +286,16 @@ class _FakeKdsRepository extends KdsRepository {
   _FakeKdsRepository() : super(_unusedClient());
 
   List<KdsScreen> screensResult = const [];
+  Object? listScreensError;
   final List<Map<String, dynamic>> createScreenCalls = [];
   final List<Map<String, dynamic>> updateScreenCalls = [];
 
   @override
   Future<List<KdsScreen>> listScreens({bool includeInactive = false}) async {
+    final error = listScreensError;
+    if (error != null) {
+      throw error;
+    }
     return screensResult;
   }
 

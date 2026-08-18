@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/core/auth/token_store.dart';
+import 'package:app_admin_staff/features/kitchen/application/kds_active_screens_provider.dart';
 import 'package:app_admin_staff/features/kitchen/application/kds_screen_management_controller.dart';
 import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/data/kds_repository.dart';
@@ -55,6 +56,39 @@ void main() {
     expect(repository.createScreenCalls.single['screen_key'], 'nouvel-ecran');
   });
 
+  test(
+      'createScreen succes invalide kdsActiveScreensProvider (visible sur '
+      'le board sans redemarrage)', () async {
+    // Final whole-branch review finding: createScreen must invalidate the
+    // board's screen-selector provider the same way updateScreen already
+    // does (see comment on updateScreen), otherwise a newly created screen
+    // stays invisible in the board selector until an unrelated edit or an
+    // app restart happens to refresh it.
+    final repository = _FakeKdsRepository()
+      ..screensResult = [_screen(id: 1)]
+      ..createScreenResult = _screen(id: 2, name: 'Nouvel ecran');
+    final container = _container(repository: repository);
+    addTearDown(container.dispose);
+    await container.read(kdsScreenManagementProvider.future);
+    await container.read(kdsActiveScreensProvider.future);
+    final callsBeforeCreate = repository.listScreensCallCount;
+
+    await container.read(kdsScreenManagementProvider.notifier).createScreen(
+          name: 'Nouvel ecran',
+          screenKey: 'nouvel-ecran',
+          mode: 'kitchen',
+          station: 'kitchen',
+          interactionMode: 'wall',
+          ticketsPerPage: 4,
+        );
+
+    // If kdsActiveScreensProvider was invalidated, re-reading it triggers a
+    // fresh listScreens() call instead of returning the stale cached
+    // result from before the screen was created.
+    await container.read(kdsActiveScreensProvider.future);
+    expect(repository.listScreensCallCount, greaterThan(callsBeforeCreate));
+  });
+
   test('createScreen reste en AsyncData (liste visible) pendant creating',
       () async {
     final repository = _FakeKdsRepository()..screensResult = [_screen(id: 1)];
@@ -103,6 +137,27 @@ void main() {
     final state = container.read(kdsScreenManagementProvider).value!;
     expect(state.screens.single.name, 'Apres');
     expect(state.actionError, isNull);
+  });
+
+  test(
+      'updateScreen succes invalide kdsActiveScreensProvider (visible sur '
+      'le board sans redemarrage)', () async {
+    final repository = _FakeKdsRepository()
+      ..screensResult = [_screen(id: 1, name: 'Avant')]
+      ..updateScreenResult = _screen(id: 1, name: 'Apres');
+    final container = _container(repository: repository);
+    addTearDown(container.dispose);
+    await container.read(kdsScreenManagementProvider.future);
+    await container.read(kdsActiveScreensProvider.future);
+    final callsBeforeUpdate = repository.listScreensCallCount;
+
+    await container.read(kdsScreenManagementProvider.notifier).updateScreen(
+          screenId: 1,
+          name: 'Apres',
+        );
+
+    await container.read(kdsActiveScreensProvider.future);
+    expect(repository.listScreensCallCount, greaterThan(callsBeforeUpdate));
   });
 
   test('toggle actif ne transmet que is_active', () async {
@@ -352,6 +407,7 @@ class _FakeKdsRepository extends KdsRepository {
   List<KdsScreen> screensResult = const [];
   Object? listScreensError;
   bool includeInactiveCaptured = false;
+  int listScreensCallCount = 0;
 
   KdsScreen? createScreenResult;
   Object? createScreenError;
@@ -376,6 +432,7 @@ class _FakeKdsRepository extends KdsRepository {
   @override
   Future<List<KdsScreen>> listScreens({bool includeInactive = false}) async {
     includeInactiveCaptured = includeInactive;
+    listScreensCallCount++;
     final error = listScreensError;
     if (error != null) {
       throw error;

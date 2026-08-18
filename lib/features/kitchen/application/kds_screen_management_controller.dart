@@ -83,10 +83,16 @@ class KdsScreenManagementController
           creating: false,
         ),
       );
+      // Same reasoning as updateScreen below (LOT 11 Task 6 comment): the
+      // board's selector list must reflect a newly created screen without
+      // any extra realtime sync. Missing this call was a final review
+      // finding — a created screen previously only became selectable after
+      // an unrelated screen edit invalidated the provider, or app restart.
+      ref.invalidate(kdsActiveScreensProvider);
     } catch (error) {
       final base = state.value ?? current;
       state = AsyncValue.data(
-        base.copyWith(creating: false, actionError: _mapKdsError(error)),
+        base.copyWith(creating: false, actionError: mapKdsError(error)),
       );
     }
   }
@@ -169,7 +175,7 @@ class KdsScreenManagementController
       await action();
     } catch (error) {
       final base = state.value ?? current;
-      state = AsyncValue.data(base.copyWith(actionError: _mapKdsError(error)));
+      state = AsyncValue.data(base.copyWith(actionError: mapKdsError(error)));
     } finally {
       final base = state.value;
       if (base != null) {
@@ -200,7 +206,7 @@ class KdsScreenManagementController
       result = await action();
     } catch (error) {
       final base = state.value ?? current;
-      state = AsyncValue.data(base.copyWith(actionError: _mapKdsError(error)));
+      state = AsyncValue.data(base.copyWith(actionError: mapKdsError(error)));
     } finally {
       final base = state.value;
       if (base != null) {
@@ -225,11 +231,16 @@ class KdsScreenManagementController
 }
 
 /// Maps a repository exception to the exact French label the KDS screen
-/// management UI (Task 4/5) must display. Kept private to this file (not
-/// shared with `kitchen_remote_controller.dart`'s own error mapper) because
-/// the label set is specific to the admin screen-management flows and does
-/// not overlap with the kitchen remote pairing/session error vocabulary.
-String _mapKdsError(Object error) {
+/// management UI (Task 4/5/6, plus the initial `listScreens` load error
+/// branch in `kds_settings_section.dart`) must display. Public (not
+/// underscore-prefixed) so `kds_settings_section.dart` can reuse the exact
+/// same mapping for the initial-load error instead of maintaining a second,
+/// less complete mapper — final whole-branch review finding: the load-error
+/// branch must never surface raw `AppException.message` text. Not shared
+/// with `kitchen_remote_controller.dart`'s own error mapper because the
+/// label set is specific to the admin screen-management flows and does not
+/// overlap with the kitchen remote pairing/session error vocabulary.
+String mapKdsError(Object error) {
   if (error is! AppException) {
     return 'UNE ERREUR EST SURVENUE';
   }

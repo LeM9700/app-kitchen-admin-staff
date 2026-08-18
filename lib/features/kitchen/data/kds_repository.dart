@@ -12,8 +12,11 @@ class KdsRepository {
 
   final ApiClient _apiClient;
 
-  Future<List<KdsScreen>> listScreens() async {
-    final response = await _apiClient.get(ApiEndpoints.kdsScreens);
+  Future<List<KdsScreen>> listScreens({bool includeInactive = false}) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.kdsScreens,
+      queryParameters: includeInactive ? {'include_inactive': true} : null,
+    );
     final data = response.data;
     if (data is! List) {
       throw const FormatException('KDS screens response must be a list');
@@ -63,6 +66,74 @@ class KdsRepository {
       ApiEndpoints.kdsRemoteSessionRevoke,
       headers: _sessionHeaders(sessionToken),
     );
+  }
+
+  Future<KdsScreen> createScreen({
+    required String name,
+    required String screenKey,
+    required String mode,
+    required String station,
+    required String interactionMode,
+    required int ticketsPerPage,
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.kdsScreens,
+      data: {
+        'name': name,
+        'screen_key': screenKey,
+        'mode': mode,
+        'station': station,
+        'interaction_mode': interactionMode,
+        'tickets_per_page': ticketsPerPage,
+      },
+    );
+    return KdsScreen.fromJson(_responseMap(response.data, 'KDS create screen'));
+  }
+
+  Future<KdsScreen> updateScreen({
+    required int screenId,
+    String? name,
+    String? screenKey,
+    String? mode,
+    String? station,
+    String? interactionMode,
+    int? ticketsPerPage,
+    bool? isActive,
+  }) async {
+    final body = <String, dynamic>{
+      if (name != null) 'name': name,
+      if (screenKey != null) 'screen_key': screenKey,
+      if (mode != null) 'mode': mode,
+      if (station != null) 'station': station,
+      if (interactionMode != null) 'interaction_mode': interactionMode,
+      if (ticketsPerPage != null) 'tickets_per_page': ticketsPerPage,
+      if (isActive != null) 'is_active': isActive,
+    };
+    final response = await _apiClient.patch(
+      ApiEndpoints.kdsScreen(screenId),
+      data: body,
+    );
+    return KdsScreen.fromJson(_responseMap(response.data, 'KDS update screen'));
+  }
+
+  Future<KdsPairingCode> generatePairingCode({required int screenId}) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.kdsScreenPairingCode(screenId),
+    );
+    return KdsPairingCode.fromJson(
+      _responseMap(response.data, 'KDS pairing code'),
+    );
+  }
+
+  Future<int> revokeScreenSessions({required int screenId}) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.kdsScreenRevokeSessions(screenId),
+    );
+    final data = _responseMap(response.data, 'KDS revoke sessions');
+    final value = data['revoked_count'];
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    throw const FormatException('KDS revoke sessions response must contain "revoked_count"');
   }
 
   Map<String, dynamic> _sessionHeaders(String sessionToken) {

@@ -164,7 +164,8 @@ void main() {
     expect(screen.name, 'Cuisine modifiée');
   });
 
-  test('updateScreen envoie PATCH avec deux champs dont isActive:false', () async {
+  test('updateScreen envoie PATCH avec deux champs dont isActive:false',
+      () async {
     late RequestOptions seenOptions;
     late Map<String, dynamic> body;
     final repository = _repository((options) {
@@ -213,7 +214,8 @@ void main() {
     expect(result.code.runtimeType, String);
   });
 
-  test('revokeScreenSessions POST sur kdsScreenRevokeSessions et parse revoked_count',
+  test(
+      'revokeScreenSessions POST sur kdsScreenRevokeSessions et parse revoked_count',
       () async {
     late RequestOptions seenOptions;
     final repository = _repository((options) {
@@ -228,7 +230,8 @@ void main() {
     expect(count, 3);
   });
 
-  test('listScreens() sans argument ne passe pas include_inactive en query', () async {
+  test('listScreens() sans argument ne passe pas include_inactive en query',
+      () async {
     late RequestOptions seenOptions;
     final repository = _repository((options) {
       seenOptions = options;
@@ -241,7 +244,8 @@ void main() {
     expect(seenOptions.queryParameters.containsKey('include_inactive'), false);
   });
 
-  test('listScreens(includeInactive: true) passe include_inactive=true en query',
+  test(
+      'listScreens(includeInactive: true) passe include_inactive=true en query',
       () async {
     late RequestOptions seenOptions;
     final repository = _repository((options) {

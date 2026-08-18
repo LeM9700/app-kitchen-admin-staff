@@ -4,7 +4,8 @@ import 'package:app_admin_staff/features/kitchen/domain/kds_screen_key.dart';
 void main() {
   group('buildKdsScreenKey', () {
     test('converts "Cuisine principale" to "cuisine-principale"', () {
-      expect(buildKdsScreenKey('Cuisine principale'), equals('cuisine-principale'));
+      expect(buildKdsScreenKey('Cuisine principale'),
+          equals('cuisine-principale'));
     });
 
     test('converts "Comptoir 2" to "comptoir-2"', () {
@@ -15,11 +16,16 @@ void main() {
       expect(buildKdsScreenKey('Écran Chaud 2'), equals('ecran-chaud-2'));
     });
 
-    test('converts "  Comptoir   Principal " to "comptoir-principal" (multiple spaces and border)', () {
-      expect(buildKdsScreenKey('  Comptoir   Principal '), equals('comptoir-principal'));
+    test(
+        'converts "  Comptoir   Principal " to "comptoir-principal" (multiple spaces and border)',
+        () {
+      expect(buildKdsScreenKey('  Comptoir   Principal '),
+          equals('comptoir-principal'));
     });
 
-    test('removes special characters from "Salle #1 (VIP)!" and returns valid slug', () {
+    test(
+        'removes special characters from "Salle #1 (VIP)!" and returns valid slug',
+        () {
       final result = buildKdsScreenKey('Salle #1 (VIP)!');
       // Verify no characters outside a-z, 0-9, _, - exist
       expect(RegExp(r'^[a-z0-9_\-]+$').hasMatch(result), isTrue);
@@ -30,7 +36,8 @@ void main() {
       expect(result, equals('salle-1-vip'));
     });
 
-    test('truncates string longer than 64 characters and returns length <= 64', () {
+    test('truncates string longer than 64 characters and returns length <= 64',
+        () {
       // Create a string that, after normalization, exceeds 64 chars
       final longName = 'a' * 100;
       final result = buildKdsScreenKey(longName);
@@ -50,8 +57,11 @@ void main() {
       expect(buildKdsScreenKey('Café'), equals('cafe'));
     });
 
-    test('handles mixed case: "CuIsInE PrInCiPaLe" becomes "cuisine-principale"', () {
-      expect(buildKdsScreenKey('CuIsInE PrInCiPaLe'), equals('cuisine-principale'));
+    test(
+        'handles mixed case: "CuIsInE PrInCiPaLe" becomes "cuisine-principale"',
+        () {
+      expect(buildKdsScreenKey('CuIsInE PrInCiPaLe'),
+          equals('cuisine-principale'));
     });
 
     test('preserves underscores in input', () {
@@ -62,12 +72,14 @@ void main() {
       expect(buildKdsScreenKey('Screen 123'), equals('screen-123'));
     });
 
-    test('removes all special characters except dash, underscore, alphanumeric', () {
+    test('removes all special characters except dash, underscore, alphanumeric',
+        () {
       expect(buildKdsScreenKey('Hello@World#2024!'), equals('helloworld2024'));
     });
 
     test('handles multiple consecutive spaces correctly', () {
-      expect(buildKdsScreenKey('Multiple    Spaces'), equals('multiple-spaces'));
+      expect(
+          buildKdsScreenKey('Multiple    Spaces'), equals('multiple-spaces'));
     });
 
     test('trims dashes from beginning and end after filtering', () {
@@ -75,15 +87,20 @@ void main() {
     });
 
     test('handles tab and newline characters as spaces', () {
-      expect(buildKdsScreenKey('Test\tTab\nNewline'), equals('test-tab-newline'));
+      expect(
+          buildKdsScreenKey('Test\tTab\nNewline'), equals('test-tab-newline'));
     });
 
-    test('handles very long string with valid and invalid chars at boundary', () {
+    test('handles very long string with valid and invalid chars at boundary',
+        () {
       // Create string that will be 70 chars after processing, ensuring truncation happens correctly
       final longValid = 'abcdefghij' * 7; // 70 chars of valid chars
       final result = buildKdsScreenKey(longValid);
       expect(result.length, lessThanOrEqualTo(64));
-      expect(result, equals('abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd')); // Should truncate at 64 chars
+      expect(
+          result,
+          equals(
+              'abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd')); // Should truncate at 64 chars
     });
 
     test('handles truncation that ends with a dash', () {

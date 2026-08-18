@@ -889,4 +889,3 @@ String _modeLabel(String rawMode) {
   }
   return kitchenScreenModeLabel(mode);
 }
-

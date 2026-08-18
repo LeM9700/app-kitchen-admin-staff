@@ -64,6 +64,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/forbidden',
         builder: (context, state) => const ForbiddenPage(),
       ),
+      GoRoute(
+        path: '/kitchen/remote',
+        builder: (context, state) => const KitchenRemotePage(),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return AdminShell(
@@ -83,10 +87,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/kitchen',
             builder: (context, state) => const KitchenPage(),
-          ),
-          GoRoute(
-            path: '/kitchen/remote',
-            builder: (context, state) => const KitchenRemotePage(),
           ),
           GoRoute(
             path: '/checkout',

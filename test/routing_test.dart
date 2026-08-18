@@ -1,6 +1,13 @@
 import 'package:app_admin_staff/app/permissions/permissions.dart';
 import 'package:app_admin_staff/app/router/app_router.dart';
+import 'package:app_admin_staff/app/theme/app_theme.dart';
+import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/auth/session_models.dart';
+import 'package:app_admin_staff/core/widgets/admin_shell.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_connection.dart';
+import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
+import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -81,6 +88,55 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  test('remote KDS conserve la permission preparation par prefixe kitchen', () {
+    expect(routePermission('/kitchen'), AppPermission.ordersPreparation);
+    expect(routePermission('/kitchen/remote'), AppPermission.ordersPreparation);
+  });
+
+  test('remote KDS redirige les sessions non autorisees', () {
+    expect(
+      redirectForSession(
+        const AsyncData(SessionState.unauthenticated()),
+        '/kitchen/remote',
+      ),
+      '/login',
+    );
+    expect(
+      redirectForSession(
+        AsyncData(
+          SessionState.authenticated(
+            user: _user(
+              role: 'staff',
+              permissions: {AppPermission.ordersRead},
+            ),
+            tenantSlug: 'pizza',
+            sessionId: 1,
+          ),
+        ),
+        '/kitchen/remote',
+      ),
+      '/forbidden',
+    );
+  });
+
+  testWidgets('remote KDS existe et s ouvre hors AdminShell', (tester) async {
+    await _pumpRouterAt(tester, '/kitchen/remote');
+
+    expect(find.text('AUCUN ÉCRAN ASSOCIÉ'), findsOneWidget);
+    expect(find.byType(AdminShell), findsNothing);
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('API KITCHEN'), findsNothing);
+  });
+
+  testWidgets('kitchen classique reste dans AdminShell', (tester) async {
+    await _pumpRouterAt(tester, '/kitchen');
+
+    expect(find.byType(AdminShell), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('AUCUNE COMMANDE EN COURS'), findsOneWidget);
   });
 
   test('authenticated users land on role-appropriate first route', () {
@@ -209,5 +265,77 @@ StaffUser _user({
     tenantSlug: 'pizza',
     permissions: permissions,
     mustChangePassword: mustChangePassword,
+  );
+}
+
+Future<void> _pumpRouterAt(
+  WidgetTester tester,
+  String location,
+) async {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+
+  final container = ProviderContainer(
+    overrides: [
+      sessionControllerProvider.overrideWith(
+        _PreparationStaffSessionController.new,
+      ),
+      activeOrdersProvider.overrideWith((ref) async => const []),
+      tenantConfigProvider.overrideWith((ref) async => _tenantConfig()),
+      kitchenConnectionStateProvider.overrideWithValue(
+        const KitchenConnectionState(
+          status: KitchenConnectionStatus.online,
+          pendingActions: 0,
+        ),
+      ),
+    ],
+  );
+  addTearDown(container.dispose);
+  final router = container.read(appRouterProvider);
+
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        routerConfig: router,
+      ),
+    ),
+  );
+  await tester.pump();
+  router.go(location);
+  await tester.pumpAndSettle();
+}
+
+class _PreparationStaffSessionController extends SessionController {
+  @override
+  Future<SessionState> build() async {
+    return SessionState.authenticated(
+      user: _user(
+        role: 'staff',
+        permissions: {AppPermission.ordersPreparation},
+      ),
+      tenantSlug: 'pizza',
+      sessionId: 1,
+    );
+  }
+}
+
+TenantConfig _tenantConfig() {
+  return const TenantConfig(
+    id: 1,
+    isTemporarilyClosed: false,
+    defaultClosureMessage: '',
+    prepTimeNormalMinutes: 15,
+    prepTimePeakMinutes: 20,
+    peakOrdersThreshold: 8,
+    autoCalcPrepTime: true,
+    overheadPerOrderMinutes: 2,
+    timezone: 'Europe/Paris',
+    largeStockAdjustmentThreshold: 10,
+    printEnabled: false,
+    printConfig: {},
   );
 }

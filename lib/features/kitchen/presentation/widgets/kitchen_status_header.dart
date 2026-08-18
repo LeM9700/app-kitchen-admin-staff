@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_connection.dart';
+import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
@@ -15,6 +16,7 @@ class KitchenStatusHeader extends StatelessWidget {
     required this.totalNew,
     this.connection,
     this.onProfileSelected,
+    this.selectedScreen,
     super.key,
   });
 
@@ -25,10 +27,21 @@ class KitchenStatusHeader extends StatelessWidget {
   final KitchenConnectionState? connection;
   final ValueChanged<KitchenScreenProfile>? onProfileSelected;
 
+  /// The backend KDS screen selected via the new `KitchenScreenSelector`
+  /// flow (LOT 11 Task 6), if any. When set, its `name` (uppercased) is
+  /// shown as the header title instead of the local mode label — passed in
+  /// from `kitchen_page.dart` (`ref.watch(kitchenSelectedScreenProvider)`)
+  /// rather than watched here, so this widget stays a `StatelessWidget`
+  /// (no ripple to its existing call sites/tests beyond the new parameter).
+  final KdsScreen? selectedScreen;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final title = kitchenScreenModeLabel(profile.mode);
+    final screen = selectedScreen;
+    final title = screen != null
+        ? screen.name.toUpperCase()
+        : kitchenScreenModeLabel(profile.mode);
     final selector = onProfileSelected == null
         ? null
         : KitchenScreenSelector(

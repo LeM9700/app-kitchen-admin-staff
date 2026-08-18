@@ -2,6 +2,7 @@ import 'package:app_admin_staff/core/config/env.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_pagination.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_loader.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_remote_navigation.dart';
+import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
@@ -28,6 +29,14 @@ class KitchenScreenProfileController extends Notifier<KitchenScreenProfile> {
     state = profile;
   }
 }
+
+/// The backend KDS screen currently selected on the board via
+/// `KitchenScreenSelector`, if any (LOT 11 Task 6). `null` means no backend
+/// screen has been picked yet — the board keeps falling back to the local
+/// mode-label title (`kitchenScreenModeLabel`) in that case. Runtime-only:
+/// no persistence for this lot, resets to `null` on app restart, which is
+/// the default `StateProvider` behavior (nothing extra to do).
+final kitchenSelectedScreenProvider = StateProvider<KdsScreen?>((ref) => null);
 
 final kitchenQueueProvider =
     AsyncNotifierProvider<KitchenQueueController, KitchenQueueState>(

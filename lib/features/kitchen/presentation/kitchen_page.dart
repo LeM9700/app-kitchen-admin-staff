@@ -84,6 +84,7 @@ class _KitchenBoard extends ConsumerWidget {
     final actionsState = ref.watch(kitchenActionsProvider);
     final actionsController = ref.read(kitchenActionsProvider.notifier);
     final connection = ref.watch(kitchenConnectionStateProvider);
+    final selectedScreen = ref.watch(kitchenSelectedScreenProvider);
     final prepTimeNormalMinutes = _prepTimeNormalMinutes(
       ref.watch(tenantConfigProvider).valueOrNull?.prepTimeNormalMinutes,
     );
@@ -98,6 +99,7 @@ class _KitchenBoard extends ConsumerWidget {
           totalNew: state.totalNew,
           connection: connection,
           onProfileSelected: controller.setProfile,
+          selectedScreen: selectedScreen,
         ),
         KitchenOfflineBanner(connection: connection),
         Expanded(
@@ -152,6 +154,7 @@ class _KitchenLoadingBoard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(kitchenConnectionStateProvider);
+    final selectedScreen = ref.watch(kitchenSelectedScreenProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -163,6 +166,7 @@ class _KitchenLoadingBoard extends ConsumerWidget {
           totalNew: 0,
           connection: connection,
           onProfileSelected: ref.read(kitchenQueueProvider.notifier).setProfile,
+          selectedScreen: selectedScreen,
         ),
         KitchenOfflineBanner(connection: connection),
         const Expanded(
@@ -185,6 +189,7 @@ class _KitchenErrorBoard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(kitchenConnectionStateProvider);
+    final selectedScreen = ref.watch(kitchenSelectedScreenProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -196,6 +201,7 @@ class _KitchenErrorBoard extends ConsumerWidget {
           totalNew: 0,
           connection: connection,
           onProfileSelected: ref.read(kitchenQueueProvider.notifier).setProfile,
+          selectedScreen: selectedScreen,
         ),
         KitchenOfflineBanner(connection: connection),
         Expanded(

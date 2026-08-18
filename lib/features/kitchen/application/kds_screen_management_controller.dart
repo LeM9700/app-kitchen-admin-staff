@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/core/api/api_error.dart';
+import 'package:app_admin_staff/features/kitchen/application/kds_active_screens_provider.dart';
 import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/data/kds_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,6 +113,14 @@ class KdsScreenManagementController
             isActive: isActive,
           );
       _replaceScreen(updated);
+      // Point 29 de la spec: le board's selector list must reflect a config
+      // change (name/mode/station/activation) made here without any extra
+      // realtime sync — invalidating on success means the next time the
+      // selector's bottom sheet is opened, it refetches and shows the new
+      // data. updateScreen is the single funnel for all screen mutations
+      // (including activation/deactivation), so one invalidation here is
+      // sufficient (LOT 11 Task 6).
+      ref.invalidate(kdsActiveScreensProvider);
     });
   }
 
@@ -225,7 +234,8 @@ String _mapKdsError(Object error) {
     return 'UNE ERREUR EST SURVENUE';
   }
   final businessMessage = switch (error.code) {
-    'KDS_SCREEN_KEY_ALREADY_EXISTS' => 'UN ÉCRAN AVEC CET IDENTIFIANT EXISTE DÉJÀ',
+    'KDS_SCREEN_KEY_ALREADY_EXISTS' =>
+      'UN ÉCRAN AVEC CET IDENTIFIANT EXISTE DÉJÀ',
     'KDS_SCREEN_NOT_FOUND' => 'ÉCRAN INTROUVABLE',
     'KDS_SCREEN_INACTIVE' => 'ÉCRAN INACTIF',
     _ => null,

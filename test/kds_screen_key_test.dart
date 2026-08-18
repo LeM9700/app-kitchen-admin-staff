@@ -4,8 +4,10 @@ import 'package:app_admin_staff/features/kitchen/domain/kds_screen_key.dart';
 void main() {
   group('buildKdsScreenKey', () {
     test('converts "Cuisine principale" to "cuisine-principale"', () {
-      expect(buildKdsScreenKey('Cuisine principale'),
-          equals('cuisine-principale'));
+      expect(
+        buildKdsScreenKey('Cuisine principale'),
+        equals('cuisine-principale'),
+      );
     });
 
     test('converts "Comptoir 2" to "comptoir-2"', () {
@@ -19,8 +21,10 @@ void main() {
     test(
         'converts "  Comptoir   Principal " to "comptoir-principal" (multiple spaces and border)',
         () {
-      expect(buildKdsScreenKey('  Comptoir   Principal '),
-          equals('comptoir-principal'));
+      expect(
+        buildKdsScreenKey('  Comptoir   Principal '),
+        equals('comptoir-principal'),
+      );
     });
 
     test(
@@ -60,8 +64,10 @@ void main() {
     test(
         'handles mixed case: "CuIsInE PrInCiPaLe" becomes "cuisine-principale"',
         () {
-      expect(buildKdsScreenKey('CuIsInE PrInCiPaLe'),
-          equals('cuisine-principale'));
+      expect(
+        buildKdsScreenKey('CuIsInE PrInCiPaLe'),
+        equals('cuisine-principale'),
+      );
     });
 
     test('preserves underscores in input', () {
@@ -79,7 +85,9 @@ void main() {
 
     test('handles multiple consecutive spaces correctly', () {
       expect(
-          buildKdsScreenKey('Multiple    Spaces'), equals('multiple-spaces'));
+        buildKdsScreenKey('Multiple    Spaces'),
+        equals('multiple-spaces'),
+      );
     });
 
     test('trims dashes from beginning and end after filtering', () {
@@ -88,7 +96,9 @@ void main() {
 
     test('handles tab and newline characters as spaces', () {
       expect(
-          buildKdsScreenKey('Test\tTab\nNewline'), equals('test-tab-newline'));
+        buildKdsScreenKey('Test\tTab\nNewline'),
+        equals('test-tab-newline'),
+      );
     });
 
     test('handles very long string with valid and invalid chars at boundary',
@@ -98,9 +108,11 @@ void main() {
       final result = buildKdsScreenKey(longValid);
       expect(result.length, lessThanOrEqualTo(64));
       expect(
-          result,
-          equals(
-              'abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd')); // Should truncate at 64 chars
+        result,
+        equals(
+          'abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd',
+        ),
+      ); // Should truncate at 64 chars
     });
 
     test('handles truncation that ends with a dash', () {

@@ -110,15 +110,17 @@ void main() {
     final repository = _repository((options) {
       seenOptions = options;
       body = Map<String, dynamic>.from(options.data as Map);
-      return _jsonResponse(_screenJson(
-        id: 99,
-        name: 'Nouvelle cuisine',
-        screenKey: 'new-kitchen',
-        mode: 'kitchen',
-        station: 'cold',
-        interactionMode: 'tablet',
-        ticketsPerPage: 8,
-      ));
+      return _jsonResponse(
+        _screenJson(
+          id: 99,
+          name: 'Nouvelle cuisine',
+          screenKey: 'new-kitchen',
+          mode: 'kitchen',
+          station: 'cold',
+          interactionMode: 'tablet',
+          ticketsPerPage: 8,
+        ),
+      );
     });
 
     final screen = await repository.createScreen(
@@ -171,11 +173,13 @@ void main() {
     final repository = _repository((options) {
       seenOptions = options;
       body = Map<String, dynamic>.from(options.data as Map);
-      return _jsonResponse(_screenJson(
-        id: 12,
-        name: 'Cuisine maj',
-        isActive: false,
-      ));
+      return _jsonResponse(
+        _screenJson(
+          id: 12,
+          name: 'Cuisine maj',
+          isActive: false,
+        ),
+      );
     });
 
     final screen = await repository.updateScreen(

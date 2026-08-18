@@ -134,7 +134,8 @@ class KdsRepository {
     if (value is int) return value;
     if (value is num) return value.toInt();
     throw const FormatException(
-        'KDS revoke sessions response must contain "revoked_count"');
+      'KDS revoke sessions response must contain "revoked_count"',
+    );
   }
 
   Map<String, dynamic> _sessionHeaders(String sessionToken) {

@@ -15,18 +15,30 @@ class KdsScreenManagementState {
     this.busyScreenIds = const {},
     this.creating = false,
     this.actionError,
+    this.actionErrorCode,
   });
 
   final List<KdsScreen> screens;
   final Set<int> busyScreenIds;
   final bool creating;
+
+  /// French, user-facing message for the SnackBar. Never branch business
+  /// logic on this text — use [actionErrorCode] instead.
   final String? actionError;
+
+  /// Structured counterpart to [actionError] (e.g.
+  /// `KDS_SCREEN_KEY_ALREADY_EXISTS`, `NETWORK_ERROR`, `UNKNOWN_ERROR`, or a
+  /// raw `AppException.code`). This is what UI decision points (like
+  /// whether the create form should reopen for a rename retry) must branch
+  /// on — see `kdsErrorCode` below.
+  final String? actionErrorCode;
 
   KdsScreenManagementState copyWith({
     List<KdsScreen>? screens,
     Set<int>? busyScreenIds,
     bool? creating,
     String? actionError,
+    String? actionErrorCode,
     bool clearActionError = false,
   }) {
     return KdsScreenManagementState(
@@ -34,6 +46,8 @@ class KdsScreenManagementState {
       busyScreenIds: busyScreenIds ?? this.busyScreenIds,
       creating: creating ?? this.creating,
       actionError: clearActionError ? null : (actionError ?? this.actionError),
+      actionErrorCode:
+          clearActionError ? null : (actionErrorCode ?? this.actionErrorCode),
     );
   }
 }
@@ -52,7 +66,16 @@ class KdsScreenManagementController
     await future;
   }
 
-  Future<void> createScreen({
+  /// Creates a screen, absorbing any exception into `actionError`/
+  /// `actionErrorCode` on `state` exactly like the other mutations (never
+  /// throws to the caller). Also returns the structured error code directly
+  /// (`null` on success) instead of `void`, unlike `updateScreen`/
+  /// `generatePairingCode`/`revokeScreenSessions` — see the comment on the
+  /// call site in `kds_settings_section.dart`'s `_createDialog` for why:
+  /// in short, the return value lets that caller make its reopen-vs-not
+  /// decision without racing the section's own `ref.listen(actionError)`
+  /// side effect, which clears `actionErrorCode` off `state` synchronously.
+  Future<String?> createScreen({
     required String name,
     required String screenKey,
     required String mode,
@@ -62,7 +85,7 @@ class KdsScreenManagementController
   }) async {
     final current = state.value;
     if (current == null) {
-      return;
+      return null;
     }
     state = AsyncValue.data(
       current.copyWith(creating: true, clearActionError: true),
@@ -89,11 +112,18 @@ class KdsScreenManagementController
       // finding — a created screen previously only became selectable after
       // an unrelated screen edit invalidated the provider, or app restart.
       ref.invalidate(kdsActiveScreensProvider);
+      return null;
     } catch (error) {
+      final code = kdsErrorCode(error);
       final base = state.value ?? current;
       state = AsyncValue.data(
-        base.copyWith(creating: false, actionError: mapKdsError(error)),
+        base.copyWith(
+          creating: false,
+          actionError: mapKdsError(error),
+          actionErrorCode: code,
+        ),
       );
+      return code;
     }
   }
 
@@ -175,7 +205,12 @@ class KdsScreenManagementController
       await action();
     } catch (error) {
       final base = state.value ?? current;
-      state = AsyncValue.data(base.copyWith(actionError: mapKdsError(error)));
+      state = AsyncValue.data(
+        base.copyWith(
+          actionError: mapKdsError(error),
+          actionErrorCode: kdsErrorCode(error),
+        ),
+      );
     } finally {
       final base = state.value;
       if (base != null) {
@@ -206,7 +241,12 @@ class KdsScreenManagementController
       result = await action();
     } catch (error) {
       final base = state.value ?? current;
-      state = AsyncValue.data(base.copyWith(actionError: mapKdsError(error)));
+      state = AsyncValue.data(
+        base.copyWith(
+          actionError: mapKdsError(error),
+          actionErrorCode: kdsErrorCode(error),
+        ),
+      );
     } finally {
       final base = state.value;
       if (base != null) {
@@ -261,4 +301,29 @@ String mapKdsError(Object error) {
     return 'CONNEXION IMPOSSIBLE';
   }
   return error.message;
+}
+
+/// Structured counterpart to [mapKdsError]: derives the
+/// [KdsScreenManagementState.actionErrorCode] paired with the French
+/// message. Business logic must always branch on this code, never on the
+/// French text `mapKdsError` returns.
+///
+/// - A [NetworkException] never carries a reliable business `code` from the
+///   backend (there was no response), so it always maps to `NETWORK_ERROR`
+///   regardless of whatever `error.code` happens to hold.
+/// - Any other [AppException] uses its own `error.code` when present (e.g.
+///   `KDS_SCREEN_KEY_ALREADY_EXISTS`), falling back to `UNKNOWN_ERROR` when
+///   the exception carries no business code at all (e.g. a plain 403
+///   `ForbiddenException` with no `code`) — deliberately treated the same
+///   as a fully unrecognized error, since neither gives calling code a
+///   structured signal to branch on.
+/// - Anything that isn't an [AppException] is `UNKNOWN_ERROR`.
+String kdsErrorCode(Object error) {
+  if (error is NetworkException) {
+    return 'NETWORK_ERROR';
+  }
+  if (error is AppException) {
+    return error.code ?? 'UNKNOWN_ERROR';
+  }
+  return 'UNKNOWN_ERROR';
 }

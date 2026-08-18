@@ -229,6 +229,97 @@ void main() {
       );
     });
   });
+
+  group('creation en echec : rouvrir ou non le formulaire', () {
+    // Bug fix: le formulaire de creation ne doit rouvrir automatiquement
+    // (pre-rempli, pour un renommage) que dans le SEUL cas d'un conflit de
+    // screen_key. Toute autre erreur (reseau, 403, inconnue...) est deja
+    // remontee par le SnackBar de `ref.listen(actionError)` (Task 4) : le
+    // formulaire ne doit pas rouvrir dans ces cas-la.
+
+    testWidgets(
+      'Case 1 - conflit KDS_SCREEN_KEY_ALREADY_EXISTS : le formulaire '
+      'rouvre pre-rempli avec les valeurs deja saisies',
+      (tester) async {
+        final repository = _FakeKdsRepository()
+          ..screensResult = []
+          ..createScreenError = const ConflictException(
+            message: 'deja utilise',
+            code: 'KDS_SCREEN_KEY_ALREADY_EXISTS',
+            statusCode: 409,
+          );
+        await _pumpSection(tester, isAdmin: true, repository: repository);
+
+        await tester.tap(find.text('+ AJOUTER UN ÉCRAN'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'Écran Terrasse');
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('CRÉER'));
+        await tester.pumpAndSettle();
+
+        // Le SnackBar d'echec s'affiche...
+        expect(
+          find.text('UN ÉCRAN AVEC CET IDENTIFIANT EXISTE DÉJÀ'),
+          findsOneWidget,
+        );
+        // ...et le formulaire de creation est rouvert, pre-rempli avec le
+        // nom deja saisi (pas de suffixe aleatoire automatique).
+        expect(find.text('Ajouter un écran'), findsOneWidget);
+        expect(find.text('Écran Terrasse'), findsOneWidget);
+        expect(repository.createScreenCalls, hasLength(1));
+      },
+    );
+
+    testWidgets(
+      'Case 2 - erreur reseau : SnackBar CONNEXION IMPOSSIBLE, le '
+      'formulaire ne rouvre PAS',
+      (tester) async {
+        final repository = _FakeKdsRepository()
+          ..screensResult = []
+          ..createScreenError = const NetworkException(message: 'offline');
+        await _pumpSection(tester, isAdmin: true, repository: repository);
+
+        await tester.tap(find.text('+ AJOUTER UN ÉCRAN'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'Écran Terrasse');
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('CRÉER'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('CONNEXION IMPOSSIBLE'), findsOneWidget);
+        expect(find.text('Ajouter un écran'), findsNothing);
+        expect(repository.createScreenCalls, hasLength(1));
+      },
+    );
+
+    testWidgets(
+      'Case 3 - refus 403 : SnackBar ACTION NON AUTORISÉE, le formulaire '
+      'ne rouvre PAS',
+      (tester) async {
+        final repository = _FakeKdsRepository()
+          ..screensResult = []
+          ..createScreenError = const ForbiddenException(message: 'forbidden');
+        await _pumpSection(tester, isAdmin: true, repository: repository);
+
+        await tester.tap(find.text('+ AJOUTER UN ÉCRAN'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'Écran Terrasse');
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('CRÉER'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('ACTION NON AUTORISÉE'), findsOneWidget);
+        expect(find.text('Ajouter un écran'), findsNothing);
+        expect(repository.createScreenCalls, hasLength(1));
+      },
+    );
+  });
 }
 
 Future<ProviderContainer> _pumpSection(
@@ -287,6 +378,7 @@ class _FakeKdsRepository extends KdsRepository {
 
   List<KdsScreen> screensResult = const [];
   Object? listScreensError;
+  Object? createScreenError;
   final List<Map<String, dynamic>> createScreenCalls = [];
   final List<Map<String, dynamic>> updateScreenCalls = [];
 
@@ -316,6 +408,10 @@ class _FakeKdsRepository extends KdsRepository {
       'interaction_mode': interactionMode,
       'tickets_per_page': ticketsPerPage,
     });
+    final error = createScreenError;
+    if (error != null) {
+      throw error;
+    }
     final created = KdsScreen(
       id: 900 + createScreenCalls.length,
       name: name,

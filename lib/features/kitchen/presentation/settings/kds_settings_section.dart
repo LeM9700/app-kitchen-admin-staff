@@ -252,10 +252,18 @@ class KdsSettingsSection extends ConsumerWidget {
         return;
       }
       final notifier = ref.read(kdsScreenManagementProvider.notifier);
-      final before =
-          ref.read(kdsScreenManagementProvider).valueOrNull?.screens.length ??
-              0;
-      await notifier.createScreen(
+      // `createScreen` returns the structured error code directly (`null`
+      // on success) instead of `void`. This is required, not cosmetic: the
+      // section's own `ref.listen(actionError)` (Task 4) fires synchronously
+      // the instant the controller sets `actionError`/`actionErrorCode` on
+      // failure, shows the SnackBar, and immediately calls
+      // `clearActionError()` — all before `await notifier.createScreen(...)`
+      // below even returns. So by the time this line resumes, re-reading
+      // `actionErrorCode` off `ref.read(kdsScreenManagementProvider)` would
+      // already observe it wiped back to `null`, making the collision case
+      // indistinguishable from success. Taking the code as a return value
+      // sidesteps that race entirely.
+      final errorCode = await notifier.createScreen(
         name: result.name,
         screenKey: buildKdsScreenKey(result.name),
         mode: result.mode,
@@ -263,18 +271,24 @@ class KdsSettingsSection extends ConsumerWidget {
         interactionMode: result.interactionMode,
         ticketsPerPage: result.ticketsPerPage,
       );
-      final after =
-          ref.read(kdsScreenManagementProvider).valueOrNull?.screens.length ??
-              0;
-      if (after > before) {
+      if (errorCode == null) {
+        // Succès : on ferme définitivement le flux.
+        return;
+      }
+      if (errorCode != 'KDS_SCREEN_KEY_ALREADY_EXISTS') {
+        // Tout autre échec (réseau, 403, erreur inconnue...) est déjà
+        // remonté par le SnackBar de `ref.listen(actionError)` (Task 4) :
+        // rouvrir le formulaire n'aurait de sens que pour un conflit
+        // d'identifiant, où renommer est la bonne action de rattrapage.
         return;
       }
       if (!context.mounted) {
         return;
       }
-      // Échec (ex: identifiant déjà utilisé) : on rouvre immédiatement le
-      // dialog pré-rempli avec les valeurs saisies pour que l'utilisateur
-      // puisse renommer et réessayer — pas de suffixe aléatoire automatique.
+      // Conflit d'identifiant (screen_key déjà utilisé) : on rouvre
+      // immédiatement le dialog pré-rempli avec les valeurs saisies pour que
+      // l'utilisateur puisse renommer et réessayer — pas de suffixe
+      // aléatoire automatique.
       initialName = result.name;
       initialMode = result.mode;
       initialInteractionMode = result.interactionMode;

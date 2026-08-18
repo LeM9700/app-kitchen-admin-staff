@@ -367,6 +367,94 @@ void main() {
       isNull,
     );
   });
+
+  test(
+      'createScreen conflit screen_key remplit actionErrorCode '
+      'KDS_SCREEN_KEY_ALREADY_EXISTS et le renvoie comme resultat', () async {
+    final repository = _FakeKdsRepository()
+      ..screensResult = [_screen(id: 1)]
+      ..createScreenError = const ConflictException(
+        message: 'deja utilise',
+        code: 'KDS_SCREEN_KEY_ALREADY_EXISTS',
+        statusCode: 409,
+      );
+    final container = _container(repository: repository);
+    addTearDown(container.dispose);
+    await container.read(kdsScreenManagementProvider.future);
+
+    final errorCode =
+        await container.read(kdsScreenManagementProvider.notifier).createScreen(
+              name: 'X',
+              screenKey: 'x',
+              mode: 'kitchen',
+              station: 'kitchen',
+              interactionMode: 'wall',
+              ticketsPerPage: 4,
+            );
+
+    expect(errorCode, 'KDS_SCREEN_KEY_ALREADY_EXISTS');
+    final state = container.read(kdsScreenManagementProvider).value!;
+    expect(state.actionErrorCode, 'KDS_SCREEN_KEY_ALREADY_EXISTS');
+    expect(state.actionError, 'UN ÉCRAN AVEC CET IDENTIFIANT EXISTE DÉJÀ');
+    expect(state.screens, hasLength(1));
+  });
+
+  test(
+      'createScreen erreur reseau remplit actionError CONNEXION IMPOSSIBLE '
+      'et actionErrorCode NETWORK_ERROR, screens reste peuple', () async {
+    final repository = _FakeKdsRepository()
+      ..screensResult = [_screen(id: 1), _screen(id: 2)]
+      ..createScreenError = const NetworkException(message: 'offline');
+    final container = _container(repository: repository);
+    addTearDown(container.dispose);
+    await container.read(kdsScreenManagementProvider.future);
+
+    final errorCode =
+        await container.read(kdsScreenManagementProvider.notifier).createScreen(
+              name: 'X',
+              screenKey: 'x',
+              mode: 'kitchen',
+              station: 'kitchen',
+              interactionMode: 'wall',
+              ticketsPerPage: 4,
+            );
+
+    expect(errorCode, 'NETWORK_ERROR');
+    final state = container.read(kdsScreenManagementProvider).value!;
+    expect(state.actionError, 'CONNEXION IMPOSSIBLE');
+    expect(state.actionErrorCode, 'NETWORK_ERROR');
+    expect(state.screens, hasLength(2));
+  });
+
+  test('clearActionError vide actionError ET actionErrorCode', () async {
+    final repository = _FakeKdsRepository()
+      ..screensResult = [_screen(id: 1)]
+      ..createScreenError = const ConflictException(
+        message: 'deja utilise',
+        code: 'KDS_SCREEN_KEY_ALREADY_EXISTS',
+        statusCode: 409,
+      );
+    final container = _container(repository: repository);
+    addTearDown(container.dispose);
+    await container.read(kdsScreenManagementProvider.future);
+    await container.read(kdsScreenManagementProvider.notifier).createScreen(
+          name: 'X',
+          screenKey: 'x',
+          mode: 'kitchen',
+          station: 'kitchen',
+          interactionMode: 'wall',
+          ticketsPerPage: 4,
+        );
+    final beforeClear = container.read(kdsScreenManagementProvider).value!;
+    expect(beforeClear.actionError, isNotNull);
+    expect(beforeClear.actionErrorCode, isNotNull);
+
+    container.read(kdsScreenManagementProvider.notifier).clearActionError();
+
+    final afterClear = container.read(kdsScreenManagementProvider).value!;
+    expect(afterClear.actionError, isNull);
+    expect(afterClear.actionErrorCode, isNull);
+  });
 }
 
 ProviderContainer _container({_FakeKdsRepository? repository}) {

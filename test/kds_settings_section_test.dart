@@ -109,6 +109,71 @@ void main() {
       expect(call['tickets_per_page'], 4);
     },
   );
+
+  testWidgets(
+    "modifier un champ sans toucher au type ne renvoie pas station "
+    '(poste custom preserve)',
+    (tester) async {
+      final repository = _FakeKdsRepository()
+        ..screensResult = [
+          _screen(
+            id: 1,
+            name: 'Cuisine principale',
+            mode: 'kitchen',
+            station: 'grill',
+          ),
+        ];
+      await _pumpSection(tester, isAdmin: true, repository: repository);
+
+      await tester.tap(find.text('MODIFIER'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Cuisine principale bis');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('ENREGISTRER'));
+      await tester.pumpAndSettle();
+
+      expect(repository.updateScreenCalls, hasLength(1));
+      final call = repository.updateScreenCalls.single;
+      expect(call['name'], 'Cuisine principale bis');
+      expect(call.containsKey('station'), isFalse);
+      expect(call.containsKey('mode'), isFalse);
+    },
+  );
+
+  testWidgets(
+    'changer le type dans MODIFIER envoie le mode et le poste derives du '
+    'nouveau type',
+    (tester) async {
+      final repository = _FakeKdsRepository()
+        ..screensResult = [
+          _screen(
+            id: 1,
+            name: 'Cuisine principale',
+            mode: 'kitchen',
+            station: 'grill',
+          ),
+        ];
+      await _pumpSection(tester, isAdmin: true, repository: repository);
+
+      await tester.tap(find.text('MODIFIER'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Cuisine').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Comptoir').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('ENREGISTRER'));
+      await tester.pumpAndSettle();
+
+      expect(repository.updateScreenCalls, hasLength(1));
+      final call = repository.updateScreenCalls.single;
+      expect(call['mode'], 'counter');
+      expect(call['station'], 'counter');
+    },
+  );
 }
 
 Future<ProviderContainer> _pumpSection(

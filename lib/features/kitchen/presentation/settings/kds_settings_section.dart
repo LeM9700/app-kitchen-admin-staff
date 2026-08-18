@@ -242,11 +242,22 @@ class KdsSettingsSection extends ConsumerWidget {
     if (result == null) {
       return;
     }
+    // `station` is only ever derived from the selected type in this form
+    // (there's no free-text station field), while `screen.station` at the
+    // model/repository level is an unconstrained string that may hold a
+    // custom value (e.g. 'grill') that doesn't match any type's default. If
+    // we diffed `result.station` against `screen.station` unconditionally,
+    // an edit that only touches an unrelated field (name, tickets/page…)
+    // would still compute a "changed" station and silently clobber that
+    // custom value with the type-derived default. So station only follows
+    // the diff when `mode` itself actually changed — that's the only case
+    // where this form can legitimately express a new station.
+    final modeChanged = result.mode != screen.mode;
     await ref.read(kdsScreenManagementProvider.notifier).updateScreen(
           screenId: screen.id,
           name: result.name != screen.name ? result.name : null,
-          mode: result.mode != screen.mode ? result.mode : null,
-          station: result.station != screen.station ? result.station : null,
+          mode: modeChanged ? result.mode : null,
+          station: modeChanged ? result.station : null,
           interactionMode: result.interactionMode != screen.interactionMode
               ? result.interactionMode
               : null,

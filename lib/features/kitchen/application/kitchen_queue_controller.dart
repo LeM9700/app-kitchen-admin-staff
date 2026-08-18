@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/core/config/env.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_pagination.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_loader.dart';
+import 'package:app_admin_staff/features/kitchen/application/kitchen_remote_navigation.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
@@ -132,6 +133,56 @@ class KitchenQueueController extends AsyncNotifier<KitchenQueueState> {
 
     _focusedOrderId = null;
     state = AsyncValue.data(current.copyWith(focusedOrderId: null));
+  }
+
+  bool focusNextOrder() {
+    return _focusAdjacentOrder(1);
+  }
+
+  bool focusPreviousOrder() {
+    return _focusAdjacentOrder(-1);
+  }
+
+  bool _focusAdjacentOrder(int offset) {
+    final current = state.valueOrNull;
+    if (current == null) {
+      return false;
+    }
+
+    final navigation = resolveRemoteNavigationState(current);
+    final currentIndex = navigation.currentQueueIndex;
+    if (currentIndex < 0) {
+      return false;
+    }
+
+    final targetIndex = currentIndex + offset;
+    if (targetIndex < 0 || targetIndex >= current.tickets.length) {
+      return false;
+    }
+
+    final target = current.tickets[targetIndex];
+    final targetPage = targetIndex ~/ current.profile.ticketsPerPage;
+    _currentPage = targetPage;
+
+    final targetVisibleInSnapshot = current.currentPage == targetPage &&
+        current.currentPageTickets.any(
+          (ticket) => ticket.order.id == target.order.id,
+        );
+    if (targetPage == 0) {
+      _clearSecondarySnapshot();
+    } else if (!targetVisibleInSnapshot) {
+      _snapshotPage = targetPage;
+      _secondaryPageSnapshot = _ticketsForPage(current.pages, targetPage);
+    }
+
+    _focusedOrderId = target.order.id;
+    state = AsyncValue.data(
+      _composeState(
+        tickets: current.tickets,
+        profile: current.profile,
+      ),
+    );
+    return state.valueOrNull?.focusedOrderId == target.order.id;
   }
 
   Future<void> refresh({bool preserveCurrentOnError = false}) async {

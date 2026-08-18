@@ -64,6 +64,25 @@ void main() {
     );
   });
 
+  test('staff preparation permission donne acces au remote KDS', () {
+    expect(
+      redirectForSession(
+        AsyncData(
+          SessionState.authenticated(
+            user: _user(
+              role: 'staff',
+              permissions: {AppPermission.ordersPreparation},
+            ),
+            tenantSlug: 'pizza',
+            sessionId: 1,
+          ),
+        ),
+        '/kitchen/remote',
+      ),
+      isNull,
+    );
+  });
+
   test('authenticated users land on role-appropriate first route', () {
     final staffSession = AsyncData(
       SessionState.authenticated(

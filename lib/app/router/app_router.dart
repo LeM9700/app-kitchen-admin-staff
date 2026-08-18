@@ -11,6 +11,7 @@ import 'package:app_admin_staff/features/dashboard/presentation/dashboard_page.d
 import 'package:app_admin_staff/features/delivery/presentation/delivery_page.dart';
 import 'package:app_admin_staff/features/hr/presentation/hr_page.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_page.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_remote_page.dart';
 import 'package:app_admin_staff/features/loyalty/presentation/loyalty_page.dart';
 import 'package:app_admin_staff/features/orders/presentation/orders_board_page.dart';
 import 'package:app_admin_staff/features/payments/presentation/payments_page.dart';
@@ -82,6 +83,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/kitchen',
             builder: (context, state) => const KitchenPage(),
+          ),
+          GoRoute(
+            path: '/kitchen/remote',
+            builder: (context, state) => const KitchenRemotePage(),
           ),
           GoRoute(
             path: '/checkout',

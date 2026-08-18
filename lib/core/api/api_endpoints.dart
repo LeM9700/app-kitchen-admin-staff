@@ -18,6 +18,10 @@ class ApiEndpoints {
     return '/orders/$orderId/items/$itemId/preparation';
   }
 
+  static String orderStationPreparation(int orderId, String station) {
+    return '/orders/$orderId/stations/${Uri.encodeComponent(station)}/preparation';
+  }
+
   static const kdsScreens = '/kds/screens';
   static String kdsScreen(int screenId) => '/kds/screens/$screenId';
   static const kdsPair = '/kds/pair';

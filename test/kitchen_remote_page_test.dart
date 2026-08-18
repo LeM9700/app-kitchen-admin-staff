@@ -310,6 +310,72 @@ void main() {
     expect(find.text('PRÊTE'), findsOneWidget);
   });
 
+  testWidgets('cuisine station prete affiche le maintien de reouverture', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    final orders = TestKitchenRepository()
+      ..setOrders([101], statuses: {101: 'ready'});
+    orders.details = {
+      101: _remoteKitchenOrder(status: 'ready'),
+    };
+    final container = connectedRemoteContainer(orders);
+    addTearDown(container.dispose);
+
+    await pumpKitchenRemotePage(tester, container);
+
+    expect(find.byKey(const Key('kitchen-remote-reopen')), findsOneWidget);
+    expect(find.text('COMMENCER'), findsNothing);
+    expect(find.byType(FilledButton), findsNothing);
+  });
+
+  testWidgets('service n affiche jamais le maintien de reouverture', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    final orders = TestKitchenRepository()
+      ..setOrders([101], statuses: {101: 'preparing'});
+    orders.details = {
+      101: _remoteServiceOrder(),
+    };
+    final container = connectedRemoteContainer(
+      orders,
+      screen: _kdsScreen(name: 'Service', mode: 'service', station: 'service'),
+    );
+    addTearDown(container.dispose);
+
+    await pumpKitchenRemotePage(tester, container);
+
+    expect(find.byKey(const Key('kitchen-remote-reopen')), findsNothing);
+  });
+
+  testWidgets('maintien complet sur remote appelle reopenStation', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    final orders = TestKitchenRepository()
+      ..setOrders([101], statuses: {101: 'ready'});
+    orders.details = {
+      101: _remoteKitchenOrder(status: 'ready'),
+    };
+    final container = connectedRemoteContainer(orders);
+    addTearDown(container.dispose);
+
+    await pumpKitchenRemotePage(tester, container);
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('kitchen-remote-reopen'))),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(seconds: 3));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(orders.stationPreparationUpdates.length, 1);
+    expect(orders.stationPreparationUpdates.single.station, 'kitchen');
+    expect(orders.stationPreparationUpdates.single.status, 'preparing');
+  });
+
   testWidgets('service affiche les stations sans actions production', (
     tester,
   ) async {

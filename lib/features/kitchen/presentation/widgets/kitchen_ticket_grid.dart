@@ -17,6 +17,7 @@ class KitchenTicketGrid extends StatelessWidget {
     required this.onTicketTap,
     required this.onStart,
     required this.onReady,
+    required this.onReopen,
     super.key,
   });
 
@@ -29,6 +30,7 @@ class KitchenTicketGrid extends StatelessWidget {
   final ValueChanged<KitchenTicketViewModel> onTicketTap;
   final ValueChanged<KitchenTicketViewModel> onStart;
   final ValueChanged<KitchenTicketViewModel> onReady;
+  final ValueChanged<KitchenTicketViewModel> onReopen;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +76,7 @@ class KitchenTicketGrid extends StatelessWidget {
               onTap: () => onTicketTap(ticket),
               onStart: () => onStart(ticket),
               onReady: () => onReady(ticket),
+              onReopen: () => onReopen(ticket),
             );
           },
         );

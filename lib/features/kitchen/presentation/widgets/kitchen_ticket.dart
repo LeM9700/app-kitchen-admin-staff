@@ -28,6 +28,7 @@ class KitchenTicket extends StatefulWidget {
     this.onTap,
     this.onStart,
     this.onReady,
+    this.onReopen,
     this.compact = false,
     super.key,
   });
@@ -40,6 +41,7 @@ class KitchenTicket extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onStart;
   final VoidCallback? onReady;
+  final VoidCallback? onReopen;
   final bool compact;
 
   @override
@@ -155,6 +157,7 @@ class _KitchenTicketState extends State<KitchenTicket> {
                 compact: widget.compact,
                 onStart: widget.onStart,
                 onReady: widget.onReady,
+                onReopen: widget.onReopen,
               ),
               if (widget.profile.mode == KitchenScreenMode.service)
                 _KitchenTapRegion(

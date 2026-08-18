@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_hold_to_reopen_action.dart';
 import 'package:flutter/material.dart';
 
 class KitchenTicketActions extends StatelessWidget {
@@ -10,6 +11,7 @@ class KitchenTicketActions extends StatelessWidget {
     required this.actionsState,
     this.onStart,
     this.onReady,
+    this.onReopen,
     this.compact = false,
     super.key,
   });
@@ -19,22 +21,26 @@ class KitchenTicketActions extends StatelessWidget {
   final KitchenActionsState actionsState;
   final VoidCallback? onStart;
   final VoidCallback? onReady;
+  final VoidCallback? onReopen;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    if (ticket.state == KitchenTicketState.ready) {
-      return _ActionStateLabel(
-        label: '✓ PRÊTE',
-        compact: compact,
-      );
-    }
+    if (ticket.state == KitchenTicketState.ready || ticket.stationReady) {
+      final label =
+          ticket.state == KitchenTicketState.ready ? '✓ PRÊTE' : '✓ POSTE PRÊT';
 
-    if (ticket.stationReady) {
-      return _ActionStateLabel(
-        label: '✓ POSTE PRÊT',
-        compact: compact,
-      );
+      if (_reopenGestureEnabled) {
+        final key = kitchenReopenStationActionKey(ticket.order.id, profile);
+        return KitchenHoldToReopenAction(
+          label: label,
+          busy: actionsState.isActionBusy(key),
+          onHoldComplete: onReopen ?? () {},
+          compact: compact,
+        );
+      }
+
+      return _ActionStateLabel(label: label, compact: compact);
     }
 
     if (!_directActionsEnabled || ticket.isLocked) {
@@ -68,6 +74,12 @@ class KitchenTicketActions extends StatelessWidget {
 
   bool get _directActionsEnabled {
     return profile.interactionMode == KitchenInteractionMode.touch;
+  }
+
+  bool get _reopenGestureEnabled {
+    return _directActionsEnabled &&
+        (profile.mode == KitchenScreenMode.kitchen ||
+            profile.mode == KitchenScreenMode.counter);
   }
 }
 

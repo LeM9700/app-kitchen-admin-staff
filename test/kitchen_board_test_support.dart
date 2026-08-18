@@ -65,6 +65,7 @@ Future<void> pumpKitchenTicket(
   KitchenActionsState actionsState = const KitchenActionsState(),
   VoidCallback? onStart,
   VoidCallback? onReady,
+  VoidCallback? onReopen,
   Size size = const Size(720, 520),
 }) async {
   tester.view.physicalSize = size;
@@ -85,6 +86,7 @@ Future<void> pumpKitchenTicket(
               onTap: () {},
               onStart: onStart,
               onReady: onReady,
+              onReopen: onReopen,
             ),
           ),
         ),
@@ -241,10 +243,13 @@ class TestKitchenRepository extends OrdersRepository {
   Object? listError;
   Object? updateStatusError;
   Object? updateItemPreparationError;
+  Object? updateStationPreparationError;
   Completer<void>? updateStatusGate;
   Completer<void>? updateItemPreparationGate;
+  Completer<void>? updateStationPreparationGate;
   final List<TestStatusUpdate> statusUpdates = [];
   final List<TestPreparationUpdate> preparationUpdates = [];
+  final List<TestStationPreparationUpdate> stationPreparationUpdates = [];
   int listCalls = 0;
 
   void setOrders(
@@ -393,6 +398,74 @@ class TestKitchenRepository extends OrdersRepository {
 
     return updatedItem;
   }
+
+  /// Fake fidele a la logique backend LOT 12 : applique `status` a tous les
+  /// items de `station`, puis synchronise le statut global de la commande
+  /// (preparing -> ready quand tout est ready ; ready -> preparing en cas de
+  /// reouverture), exactement comme `update_station_preparation` cote API.
+  @override
+  Future<OrderDetail> updateStationPreparation({
+    required int orderId,
+    required String station,
+    required String status,
+    String? note,
+  }) async {
+    stationPreparationUpdates.add(
+      TestStationPreparationUpdate(
+        orderId: orderId,
+        station: station,
+        status: status,
+        note: note,
+      ),
+    );
+    final error = updateStationPreparationError;
+    if (error != null) {
+      throw error;
+    }
+
+    final gate = updateStationPreparationGate;
+    if (gate != null) {
+      await gate.future;
+    }
+
+    final detail = details[orderId];
+    if (detail == null) {
+      throw StateError('Order $orderId not found');
+    }
+
+    final updatedItems = [
+      for (final item in detail.items)
+        if (item.preparationStation == station)
+          _copyOrderItem(item, preparationStatus: status)
+        else
+          item,
+    ];
+
+    var nextStatus = detail.status;
+    if (status == 'ready' &&
+        detail.status == 'preparing' &&
+        updatedItems.isNotEmpty &&
+        updatedItems.every((item) => item.preparationStatus == 'ready')) {
+      nextStatus = 'ready';
+    } else if (status == 'preparing' && detail.status == 'ready') {
+      nextStatus = 'preparing';
+    }
+
+    final updatedDetail = _copyOrderDetail(
+      detail,
+      items: updatedItems,
+      status: nextStatus,
+    );
+    details = {...details, orderId: updatedDetail};
+    summaries = [
+      for (final summary in summaries)
+        summary.id == orderId
+            ? _copySummary(summary, status: nextStatus)
+            : summary,
+    ];
+
+    return updatedDetail;
+  }
 }
 
 class TestStatusUpdate {
@@ -417,6 +490,20 @@ class TestPreparationUpdate {
 
   final int orderId;
   final int itemId;
+  final String status;
+  final String? note;
+}
+
+class TestStationPreparationUpdate {
+  const TestStationPreparationUpdate({
+    required this.orderId,
+    required this.station,
+    required this.status,
+    this.note,
+  });
+
+  final int orderId;
+  final String station;
   final String status;
   final String? note;
 }

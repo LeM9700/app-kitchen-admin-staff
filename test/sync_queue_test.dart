@@ -39,6 +39,27 @@ void main() {
     expect(retried.retryCount, 1);
   });
 
+  test('bulk station action keeps endpoint, status and note', () {
+    final action = QueuedAction(
+      id: '1',
+      feature: 'kitchen',
+      label: 'Commande #101 poste kitchen -> EN PREPARATION',
+      endpoint: '/orders/101/stations/kitchen/preparation',
+      method: 'PATCH',
+      payload: const {
+        'status': 'preparing',
+        'note': 'Reouverture du poste depuis le KDS',
+      },
+      createdAt: DateTime.parse('2026-08-18T10:00:00Z'),
+    );
+
+    final restored = QueuedAction.fromJson(action.toJson());
+
+    expect(restored.endpoint, '/orders/101/stations/kitchen/preparation');
+    expect(restored.payload['status'], 'preparing');
+    expect(restored.payload['note'], 'Reouverture du poste depuis le KDS');
+  });
+
   test('pending count can be scoped by feature', () {
     final actions = [
       _action(id: '1', feature: 'kitchen'),

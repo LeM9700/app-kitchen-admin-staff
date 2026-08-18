@@ -127,6 +127,12 @@ class _KitchenBoard extends ConsumerWidget {
                       profile: state.profile,
                     );
                   },
+                  onReopen: (ticket) {
+                    actionsController.reopenStation(
+                      ticket: ticket,
+                      profile: state.profile,
+                    );
+                  },
                 ),
         ),
         KitchenPaginationBar(

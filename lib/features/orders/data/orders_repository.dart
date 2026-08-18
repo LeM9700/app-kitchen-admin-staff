@@ -94,6 +94,22 @@ class OrdersRepository {
     return OrderItem.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<OrderDetail> updateStationPreparation({
+    required int orderId,
+    required String station,
+    required String status,
+    String? note,
+  }) async {
+    final response = await _apiClient.patch(
+      ApiEndpoints.orderStationPreparation(orderId, station),
+      data: {
+        'status': status,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+    return OrderDetail.fromJson(response.data as Map<String, dynamic>);
+  }
+
   Future<ManualOrderResult> createManualOrder(ManualOrderDraft draft) async {
     final response = await _apiClient.post(
       ApiEndpoints.manualOrder,

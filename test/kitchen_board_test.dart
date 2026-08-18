@@ -171,10 +171,12 @@ void main() {
     await tester.tap(find.text('PRÊTE'));
     await _pumpAction(tester);
 
-    expect(repository.preparationUpdates.map((update) => update.itemId), [
-      1010,
-    ]);
-    expect(repository.statusUpdates.map((update) => update.status), ['ready']);
+    expect(repository.stationPreparationUpdates.length, 1);
+    expect(repository.stationPreparationUpdates.single.station, 'kitchen');
+    expect(repository.stationPreparationUpdates.single.status, 'ready');
+    // LOT 12 : plus de PATCH item ni de second PATCH statut global cote client.
+    expect(repository.preparationUpdates, isEmpty);
+    expect(repository.statusUpdates, isEmpty);
     expect(
       container.read(kitchenQueueProvider).valueOrNull!.focusedOrderId,
       isNull,

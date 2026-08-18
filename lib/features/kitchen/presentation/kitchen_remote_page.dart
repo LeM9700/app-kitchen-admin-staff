@@ -11,6 +11,7 @@ import 'package:app_admin_staff/features/kitchen/application/kitchen_time.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_remote_session.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_hold_to_reopen_action.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_offline_banner.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_station_status.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_header.dart';
@@ -502,6 +503,12 @@ class _KitchenRemoteTicketPanel extends ConsumerWidget {
                   profile: profile,
                 );
               },
+              onReopen: () {
+                actionsController.reopenStation(
+                  ticket: ticket,
+                  profile: profile,
+                );
+              },
             ),
           ],
         ),
@@ -518,6 +525,7 @@ class KitchenRemoteActions extends StatelessWidget {
     required this.actionsState,
     this.onStart,
     this.onReady,
+    this.onReopen,
     super.key,
   });
 
@@ -526,6 +534,7 @@ class KitchenRemoteActions extends StatelessWidget {
   final KitchenActionsState actionsState;
   final VoidCallback? onStart;
   final VoidCallback? onReady;
+  final VoidCallback? onReopen;
 
   @override
   Widget build(BuildContext context) {
@@ -533,12 +542,16 @@ class KitchenRemoteActions extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    if (ticket.state == KitchenTicketState.ready) {
-      return const _RemoteActionStateLabel(label: '✓ PRÊTE');
-    }
-
-    if (ticket.stationReady) {
-      return const _RemoteActionStateLabel(label: '✓ POSTE PRÊT');
+    if (ticket.state == KitchenTicketState.ready || ticket.stationReady) {
+      final label =
+          ticket.state == KitchenTicketState.ready ? '✓ PRÊTE' : '✓ POSTE PRÊT';
+      final key = kitchenReopenStationActionKey(ticket.order.id, profile);
+      return KitchenHoldToReopenAction(
+        key: const Key('kitchen-remote-reopen'),
+        label: label,
+        busy: actionsState.isActionBusy(key),
+        onHoldComplete: onReopen ?? () {},
+      );
     }
 
     if (ticket.canStart) {
@@ -608,41 +621,6 @@ class _RemoteActionButton extends StatelessWidget {
                 )
               : Icon(icon),
           label: Text(label),
-        ),
-      ),
-    );
-  }
-}
-
-class _RemoteActionStateLabel extends StatelessWidget {
-  const _RemoteActionStateLabel({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          border: Border.all(color: scheme.primary),
-        ),
-        child: SizedBox(
-          height: 46,
-          child: Center(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: KitchenTypography.meta(context).copyWith(
-                color: scheme.onPrimaryContainer,
-              ),
-            ),
-          ),
         ),
       ),
     );

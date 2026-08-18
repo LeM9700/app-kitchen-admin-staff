@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_hold_to_reopen_action.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_items.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_header.dart';
@@ -281,6 +282,175 @@ void main() {
     );
 
     expect(find.text('✓ PRÊTE'), findsOneWidget);
+  });
+
+  testWidgets('poste pret en touch affiche le maintien 2 secondes',
+      (tester) async {
+    addTearDown(tester.view.reset);
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        items: [testKitchenItem(preparationStatus: 'ready')],
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+    );
+
+    expect(find.byType(KitchenHoldToReopenAction), findsOneWidget);
+    expect(
+      find.text('MAINTENIR 2 S POUR REPASSER EN PRÉPARATION'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('maintien relache avant 2s n appelle pas la mutation',
+      (tester) async {
+    addTearDown(tester.view.reset);
+    var called = false;
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        items: [testKitchenItem(preparationStatus: 'ready')],
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+      onReopen: () => called = true,
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(KitchenHoldToReopenAction)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(seconds: 1));
+    expect(called, isFalse);
+
+    await gesture.up();
+    await tester.pump(const Duration(seconds: 2));
+    expect(called, isFalse);
+  });
+
+  testWidgets('maintien 2 secondes declenche reopenStation une seule fois',
+      (tester) async {
+    addTearDown(tester.view.reset);
+    var callCount = 0;
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        items: [testKitchenItem(preparationStatus: 'ready')],
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+      onReopen: () => callCount++,
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(KitchenHoldToReopenAction)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester
+        .pump(kitchenReopenHoldDuration + const Duration(milliseconds: 50));
+
+    expect(callCount, 1);
+
+    // Maintenir 1s de plus (au-dela des 2s) ne redeclenche pas l'action.
+    await tester.pump(const Duration(seconds: 1));
+    expect(callCount, 1);
+
+    await gesture.up();
+    await tester.pump();
+    expect(callCount, 1);
+  });
+
+  testWidgets('busy empeche le declenchement du maintien', (tester) async {
+    addTearDown(tester.view.reset);
+    var called = false;
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        items: [testKitchenItem(preparationStatus: 'ready')],
+        profile: touchKitchenProfile,
+      ),
+      profile: touchKitchenProfile,
+      actionsState: KitchenActionsState(
+        busyKeys: {
+          kitchenReopenStationActionKey(101, touchKitchenProfile),
+        },
+      ),
+      onReopen: () => called = true,
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(KitchenHoldToReopenAction)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester
+        .pump(kitchenReopenHoldDuration + const Duration(milliseconds: 50));
+    await gesture.up();
+
+    expect(called, isFalse);
+  });
+
+  testWidgets('mode wall n affiche aucun geste de reouverture', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    const wallProfile = KitchenScreenProfile(
+      mode: KitchenScreenMode.kitchen,
+      station: 'kitchen',
+    );
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        items: [testKitchenItem(preparationStatus: 'ready')],
+        profile: wallProfile,
+      ),
+      profile: wallProfile,
+    );
+
+    expect(find.byType(KitchenHoldToReopenAction), findsNothing);
+    expect(find.text('✓ POSTE PRÊT'), findsOneWidget);
+  });
+
+  testWidgets('mode service n affiche aucun geste de reouverture', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    const serviceProfile = KitchenScreenProfile(
+      mode: KitchenScreenMode.service,
+      station: 'service',
+      interactionMode: KitchenInteractionMode.touch,
+    );
+
+    await pumpKitchenTicket(
+      tester,
+      testKitchenTicket(
+        status: 'preparing',
+        confirmedAt: confirmedAt,
+        items: [testKitchenItem(preparationStatus: 'ready')],
+        profile: serviceProfile,
+      ),
+      profile: serviceProfile,
+    );
+
+    expect(find.byType(KitchenHoldToReopenAction), findsNothing);
+    expect(find.text('✓ POSTE PRÊT'), findsOneWidget);
   });
 
   testWidgets('busy desactive le bouton et affiche un progress indicator',

@@ -78,6 +78,10 @@ class KitchenActionsController extends Notifier<KitchenActionsState> {
     }
   }
 
+  /// Passe toute la station du profil courant a "ready", en un seul appel
+  /// bulk. Le backend est desormais la seule source de verite pour la
+  /// synchronisation du statut global (LOT 12) : plus de N PATCH item par
+  /// item ni de second PATCH `updateStatus(orderId, 'ready')` cote client.
   Future<void> markStationReady({
     required KitchenTicketViewModel ticket,
     required KitchenScreenProfile profile,
@@ -97,63 +101,92 @@ class KitchenActionsController extends Notifier<KitchenActionsState> {
 
     try {
       final repository = ref.read(ordersRepositoryProvider);
-      final itemsToPatch = ticket.visibleItems
-          .where((item) => item.preparationStatus != 'ready')
-          .toList(growable: false);
-
-      // Sequential PATCHes keep backend aggregate status recalculation
-      // coherent until the future bulk station endpoint exists.
-      for (var index = 0; index < itemsToPatch.length; index++) {
-        final item = itemsToPatch[index];
-        try {
-          await repository.updateItemPreparation(
-            orderId: orderId,
-            itemId: item.id,
-            status: 'ready',
-          );
-        } catch (error) {
-          if (_isOfflineCompatible(error)) {
-            _queueItemPreparationUpdates(
-              orderId: orderId,
-              items: itemsToPatch.skip(index),
-              status: 'ready',
-              lastError: error.toString(),
-            );
-            _storeOfflineQueuedMessage();
-          } else {
-            await _handleActionError(error, orderId: orderId);
-          }
-          return;
-        }
-      }
-
-      final reloadedOrder = await repository.getOrder(orderId);
-      if (reloadedOrder.status != 'ready' &&
-          _allOrderItemsReady(reloadedOrder)) {
-        try {
-          await repository.updateStatus(orderId, 'ready');
-        } catch (error) {
-          if (_isOfflineCompatible(error)) {
-            _queueOrderStatusUpdate(
-              orderId: orderId,
-              status: 'ready',
-              label: 'Commande #$orderId -> PRETE',
-              lastError: error.toString(),
-            );
-            _storeOfflineQueuedMessage();
-          } else {
-            await _handleActionError(error, orderId: orderId);
-          }
-          return;
-        }
-      }
-
+      await repository.updateStationPreparation(
+        orderId: orderId,
+        station: profile.station,
+        status: 'ready',
+      );
       await _refreshAfterSuccessfulMutation(orderId);
     } catch (error) {
-      await _handleActionError(error, orderId: orderId);
+      if (_isOfflineCompatible(error)) {
+        _queueStationPreparationUpdate(
+          orderId: orderId,
+          station: profile.station,
+          status: 'ready',
+          label: 'Commande #$orderId poste ${profile.station} -> PRETE',
+          lastError: error.toString(),
+        );
+        _storeOfflineQueuedMessage();
+      } else {
+        await _handleActionError(error, orderId: orderId);
+      }
     } finally {
       _finishAction(key);
     }
+  }
+
+  /// Repasse la station du profil courant en "preparing" (correction
+  /// operationnelle KDS, declenchee par un maintien de 2 secondes cote UI).
+  /// Si le statut global etait "ready", le backend le fait redescendre a
+  /// "preparing" atomiquement -- jamais via `updateStatus`, qui refuse
+  /// toujours ready -> preparing.
+  Future<void> reopenStation({
+    required KitchenTicketViewModel ticket,
+    required KitchenScreenProfile profile,
+  }) async {
+    if (!_isPreparationScreen(profile)) {
+      state = state.copyWith(
+        lastError: 'Action indisponible sur cet ecran.',
+      );
+      return;
+    }
+    if (!_canReopenStation(ticket)) {
+      return;
+    }
+
+    final orderId = ticket.order.id;
+    final key = kitchenReopenStationActionKey(orderId, profile);
+    if (!_startAction(key)) {
+      return;
+    }
+
+    const note = 'Reouverture du poste depuis le KDS';
+    try {
+      final repository = ref.read(ordersRepositoryProvider);
+      await repository.updateStationPreparation(
+        orderId: orderId,
+        station: profile.station,
+        status: 'preparing',
+        note: note,
+      );
+      await _refreshAfterSuccessfulMutation(orderId);
+      state = state.copyWith(lastError: 'POSTE REPASSE EN PREPARATION');
+    } catch (error) {
+      if (_isOfflineCompatible(error)) {
+        _queueStationPreparationUpdate(
+          orderId: orderId,
+          station: profile.station,
+          status: 'preparing',
+          note: note,
+          label:
+              'Commande #$orderId poste ${profile.station} -> EN PREPARATION',
+          lastError: error.toString(),
+        );
+        _storeOfflineQueuedMessage();
+      } else {
+        await _handleActionError(error, orderId: orderId);
+      }
+    } finally {
+      _finishAction(key);
+    }
+  }
+
+  bool _canReopenStation(KitchenTicketViewModel ticket) {
+    if (!ticket.stationReady || ticket.visibleItems.isEmpty) {
+      return false;
+    }
+    return ticket.state == KitchenTicketState.preparing ||
+        ticket.state == KitchenTicketState.ready;
   }
 
   void clearError() {
@@ -232,22 +265,25 @@ class KitchenActionsController extends Notifier<KitchenActionsState> {
         );
   }
 
-  void _queueItemPreparationUpdates({
+  void _queueStationPreparationUpdate({
     required int orderId,
-    required Iterable<OrderItem> items,
+    required String station,
     required String status,
+    required String label,
     required String lastError,
+    String? note,
   }) {
-    for (final item in items) {
-      ref.read(syncQueueProvider.notifier).add(
-            feature: 'kitchen',
-            label: 'Commande #$orderId item #${item.id} -> PRETE',
-            endpoint: ApiEndpoints.orderItemPreparation(orderId, item.id),
-            method: 'PATCH',
-            payload: {'status': status},
-            lastError: lastError,
-          );
-    }
+    ref.read(syncQueueProvider.notifier).add(
+          feature: 'kitchen',
+          label: label,
+          endpoint: ApiEndpoints.orderStationPreparation(orderId, station),
+          method: 'PATCH',
+          payload: {
+            'status': status,
+            if (note != null) 'note': note,
+          },
+          lastError: lastError,
+        );
   }
 
   void _storeOfflineQueuedMessage() {
@@ -267,20 +303,25 @@ String kitchenReadyStationActionKey(
   int orderId,
   KitchenScreenProfile profile,
 ) {
-  final station = profile.station.trim().isEmpty
+  return 'order:$orderId:ready:${_stationKey(profile)}';
+}
+
+String kitchenReopenStationActionKey(
+  int orderId,
+  KitchenScreenProfile profile,
+) {
+  return 'order:$orderId:reopen:${_stationKey(profile)}';
+}
+
+String _stationKey(KitchenScreenProfile profile) {
+  return profile.station.trim().isEmpty
       ? _screenModeKey(profile.mode)
       : profile.station.trim();
-  return 'order:$orderId:ready:$station';
 }
 
 bool _isPreparationScreen(KitchenScreenProfile profile) {
   return profile.mode == KitchenScreenMode.kitchen ||
       profile.mode == KitchenScreenMode.counter;
-}
-
-bool _allOrderItemsReady(OrderDetail order) {
-  return order.items.isNotEmpty &&
-      order.items.every((item) => item.preparationStatus == 'ready');
 }
 
 String _actionErrorMessage(Object error) {

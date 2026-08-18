@@ -8,6 +8,7 @@ import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/auth/session_models.dart';
 import 'package:app_admin_staff/core/auth/token_store.dart';
 import 'package:app_admin_staff/features/auth/data/auth_repository.dart';
+import 'package:app_admin_staff/features/kitchen/data/kitchen_remote_session_store.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -182,18 +183,65 @@ void main() {
     expect(state.status, SessionStatus.sessionExpired);
     expect(store.tokens, isNull);
   });
+
+  test('logout clears auth tokens and KDS remote token', () async {
+    final store = _MemoryTokenStore(
+      StoredTokens(
+        accessToken: _jwt({'sub': 1, 'role': 'admin', 'tenant_slug': 'pizza'}),
+        refreshToken: 'refresh',
+        tenantSlug: 'pizza',
+        sessionId: 1,
+      ),
+    );
+    final remoteStore = _MemoryRemoteSessionStore('kds-token');
+    final container = _container(
+      store,
+      _FakeAdapter((options) {
+        if (options.path == ApiEndpoints.authLogout) {
+          return _jsonResponse({'ok': true});
+        }
+        return _jsonResponse({
+          'id': 1,
+          'email': 'admin@test.com',
+          'full_name': 'Admin',
+          'phone': null,
+          'role': 'admin',
+          'permissions': null,
+          'is_active': true,
+          'email_verified': true,
+          'must_change_password': false,
+        });
+      }),
+      remoteStore: remoteStore,
+    );
+    addTearDown(container.dispose);
+    await container.read(sessionControllerProvider.future);
+
+    await container.read(sessionControllerProvider.notifier).logout();
+
+    expect(store.tokens, isNull);
+    expect(remoteStore.token, isNull);
+    expect(
+      container.read(sessionControllerProvider).valueOrNull?.status,
+      SessionStatus.unauthenticated,
+    );
+  });
 }
 
 ProviderContainer _container(
   _MemoryTokenStore tokenStore,
-  HttpClientAdapter adapter,
-) {
+  HttpClientAdapter adapter, {
+  _MemoryRemoteSessionStore? remoteStore,
+}) {
   final dio = Dio(BaseOptions(baseUrl: 'http://api.test'));
   dio.httpClientAdapter = adapter;
   final apiClient = ApiClient(dio, tokenStore);
   return ProviderContainer(
     overrides: [
       tokenStoreProvider.overrideWithValue(tokenStore),
+      kitchenRemoteSessionStoreProvider.overrideWithValue(
+        remoteStore ?? _MemoryRemoteSessionStore(),
+      ),
       apiClientProvider.overrideWithValue(apiClient),
       authRepositoryProvider.overrideWithValue(AuthRepository(apiClient)),
     ],
@@ -264,5 +312,24 @@ class _MemoryTokenStore extends TokenStore {
   @override
   Future<void> clear() async {
     tokens = null;
+  }
+}
+
+class _MemoryRemoteSessionStore extends KitchenRemoteSessionStore {
+  _MemoryRemoteSessionStore([this.token]) : super(const FlutterSecureStorage());
+
+  String? token;
+
+  @override
+  Future<String?> readToken() async => token;
+
+  @override
+  Future<void> saveToken(String token) async {
+    this.token = token;
+  }
+
+  @override
+  Future<void> clearToken() async {
+    token = null;
   }
 }

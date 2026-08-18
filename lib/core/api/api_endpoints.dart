@@ -18,6 +18,18 @@ class ApiEndpoints {
     return '/orders/$orderId/items/$itemId/preparation';
   }
 
+  static const kdsScreens = '/kds/screens';
+  static const kdsPair = '/kds/pair';
+  static const kdsRemoteSession = '/kds/remote/session';
+  static const kdsRemoteSessionRevoke = '/kds/remote/session/revoke';
+  static String kdsScreenPairingCode(int screenId) {
+    return '/kds/screens/$screenId/pairing-code';
+  }
+
+  static String kdsScreenRevokeSessions(int screenId) {
+    return '/kds/screens/$screenId/revoke-sessions';
+  }
+
   static const catalogProducts = '/catalog/products';
   static const catalogCategories = '/catalog/categories';
   static const catalogExtras = '/catalog/extras';

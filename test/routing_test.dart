@@ -5,9 +5,11 @@ import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/auth/session_models.dart';
 import 'package:app_admin_staff/core/widgets/admin_shell.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_connection.dart';
+import 'package:app_admin_staff/features/kitchen/data/kitchen_remote_session_store.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -283,6 +285,9 @@ Future<void> _pumpRouterAt(
       ),
       activeOrdersProvider.overrideWith((ref) async => const []),
       tenantConfigProvider.overrideWith((ref) async => _tenantConfig()),
+      kitchenRemoteSessionStoreProvider.overrideWithValue(
+        _EmptyKitchenRemoteSessionStore(),
+      ),
       kitchenConnectionStateProvider.overrideWithValue(
         const KitchenConnectionState(
           status: KitchenConnectionStatus.online,
@@ -307,6 +312,19 @@ Future<void> _pumpRouterAt(
   await tester.pump();
   router.go(location);
   await tester.pumpAndSettle();
+}
+
+class _EmptyKitchenRemoteSessionStore extends KitchenRemoteSessionStore {
+  _EmptyKitchenRemoteSessionStore() : super(const FlutterSecureStorage());
+
+  @override
+  Future<String?> readToken() async => null;
+
+  @override
+  Future<void> saveToken(String token) async {}
+
+  @override
+  Future<void> clearToken() async {}
 }
 
 class _PreparationStaffSessionController extends SessionController {

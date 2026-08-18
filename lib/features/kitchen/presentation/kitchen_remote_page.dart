@@ -18,29 +18,69 @@ import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ti
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 class KitchenRemotePage extends ConsumerWidget {
   const KitchenRemotePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(kitchenRemoteSessionProvider);
+    final remote = ref.watch(kitchenRemoteSessionProvider);
 
-    return ColoredBox(
+    return Material(
       color: Theme.of(context).colorScheme.surface,
-      child: session == null
-          ? const _KitchenRemoteAssociationView()
-          : _KitchenRemoteSessionView(session: session),
+      child: remote.when(
+        loading: () => const _KitchenRemoteRestoringView(),
+        error: (_, __) {
+          return const _KitchenRemoteControllerErrorView();
+        },
+        data: (state) {
+          final session = state.session;
+          if (state.phase == KitchenRemotePhase.connected && session != null) {
+            return _KitchenRemoteSessionView(session: session);
+          }
+          if (state.phase == KitchenRemotePhase.unavailable) {
+            if (session != null) {
+              return _KitchenRemoteUnavailableView(
+                session: session,
+                message: state.message,
+              );
+            }
+            return _KitchenRemoteRestoreUnavailableView(message: state.message);
+          }
+          return _KitchenRemoteAssociationView(state: state);
+        },
+      ),
     );
   }
 }
 
-class _KitchenRemoteAssociationView extends ConsumerWidget {
-  const _KitchenRemoteAssociationView();
+class _KitchenRemoteAssociationView extends ConsumerStatefulWidget {
+  const _KitchenRemoteAssociationView({required this.state});
+
+  final KitchenRemoteState state;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_KitchenRemoteAssociationView> createState() {
+    return _KitchenRemoteAssociationViewState();
+  }
+}
+
+class _KitchenRemoteAssociationViewState
+    extends ConsumerState<_KitchenRemoteAssociationView> {
+  final _codeController = TextEditingController();
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final codeReady = RegExp(r'^\d{6}$').hasMatch(_codeController.text);
+    final isPairing = widget.state.isPairing;
 
     return SafeArea(
       child: ListView(
@@ -61,73 +101,65 @@ class _KitchenRemoteAssociationView extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'MODE DÉMONSTRATION',
+            'ENTREZ LE CODE AFFICHÉ SUR L’ÉCRAN KDS',
             style: KitchenTypography.meta(context).copyWith(
               color: scheme.onSurface.withValues(alpha: 0.64),
             ),
           ),
-          const SizedBox(height: 22),
-          for (final screen in demoKitchenScreens) ...[
-            _DemoScreenTile(
-              screen: screen,
-              onPressed: () {
-                ref
-                    .read(kitchenRemoteSessionProvider.notifier)
-                    .connectToScreen(screen);
-              },
-            ),
-            const SizedBox(height: 10),
+          if (widget.state.message != null) ...[
+            const SizedBox(height: 16),
+            _RemoteMessageBanner(message: widget.state.message!),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DemoScreenTile extends StatelessWidget {
-  const _DemoScreenTile({
-    required this.screen,
-    required this.onPressed,
-  });
-
-  final DemoKitchenScreen screen;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Material(
-      color: scheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onPressed,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-          child: Row(
-            children: [
-              Icon(_screenIcon(screen.profile.mode), color: scheme.primary),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  screen.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0,
-                      ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Icon(Icons.chevron_right),
+          const SizedBox(height: 22),
+          TextField(
+            key: const Key('kitchen-remote-pairing-code'),
+            controller: _codeController,
+            enabled: !isPairing,
+            keyboardType: TextInputType.number,
+            autofillHints: const [AutofillHints.oneTimeCode],
+            textAlign: TextAlign.center,
+            maxLength: 6,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
             ],
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+            decoration: const InputDecoration(
+              counterText: '',
+              hintText: '_ _ _ _ _ _',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
           ),
-        ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton.icon(
+              key: const Key('kitchen-remote-pair-submit'),
+              onPressed: codeReady && !isPairing
+                  ? () {
+                      ref
+                          .read(kitchenRemoteSessionProvider.notifier)
+                          .pairWithCode(code: _codeController.text);
+                    }
+                  : null,
+              icon: isPairing
+                  ? SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: scheme.onPrimaryContainer,
+                      ),
+                    )
+                  : const Icon(Icons.link),
+              label: const Text('ASSOCIER'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -145,7 +177,7 @@ class _KitchenRemoteSessionView extends StatelessWidget {
     }
 
     return ProviderScope(
-      key: ValueKey(session.sessionId),
+      key: ValueKey(session.providerScopeKey),
       overrides: [
         kitchenScreenProfileProvider.overrideWith(
           () => _LockedKitchenScreenProfileController(session.profile),
@@ -154,6 +186,148 @@ class _KitchenRemoteSessionView extends StatelessWidget {
         kitchenActionsProvider.overrideWith(KitchenActionsController.new),
       ],
       child: _KitchenRemoteConnectedView(session: session),
+    );
+  }
+}
+
+class _KitchenRemoteRestoringView extends StatelessWidget {
+  const _KitchenRemoteRestoringView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: CircularProgressIndicator());
+  }
+}
+
+class _KitchenRemoteControllerErrorView extends ConsumerWidget {
+  const _KitchenRemoteControllerErrorView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 44,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'SESSION À VÉRIFIER',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.tonalIcon(
+              onPressed: () {
+                ref.read(kitchenRemoteSessionProvider.notifier).retry();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('RÉESSAYER'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KitchenRemoteRestoreUnavailableView extends ConsumerWidget {
+  const _KitchenRemoteRestoreUnavailableView({this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final label = message ?? 'SESSION À VÉRIFIER';
+
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.wifi_off_outlined,
+                size: 46,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                    ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('kitchen-remote-retry'),
+                  onPressed: () {
+                    ref.read(kitchenRemoteSessionProvider.notifier).retry();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('RÉESSAYER'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    ref
+                        .read(kitchenRemoteSessionProvider.notifier)
+                        .disconnect();
+                  },
+                  icon: const Icon(Icons.link_off),
+                  label: const Text('ASSOCIER UN ÉCRAN'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RemoteMessageBanner extends StatelessWidget {
+  const _RemoteMessageBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: scheme.error),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: KitchenTypography.meta(context).copyWith(
+            color: scheme.onErrorContainer,
+            fontSize: 12,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -802,9 +976,13 @@ class _RemoteTicketMeta extends StatelessWidget {
 }
 
 class _KitchenRemoteUnavailableView extends ConsumerWidget {
-  const _KitchenRemoteUnavailableView({required this.session});
+  const _KitchenRemoteUnavailableView({
+    required this.session,
+    this.message,
+  });
 
   final KitchenRemoteSession session;
+  final String? message;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -832,7 +1010,7 @@ class _KitchenRemoteUnavailableView extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'SESSION INDISPONIBLE',
+                    message ?? 'SESSION INDISPONIBLE',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w900,
@@ -998,14 +1176,6 @@ _ConnectionColors _connectionColors(KitchenConnectionStatus status) {
         foreground: AppColors.dangerAlt,
         icon: Icons.wifi_off_outlined,
       ),
-  };
-}
-
-IconData _screenIcon(KitchenScreenMode mode) {
-  return switch (mode) {
-    KitchenScreenMode.kitchen => Icons.restaurant_outlined,
-    KitchenScreenMode.counter => Icons.room_service_outlined,
-    KitchenScreenMode.service => Icons.table_restaurant_outlined,
   };
 }
 

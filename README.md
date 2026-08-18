@@ -19,6 +19,7 @@ Current scope:
 - promotions admin list/create/toggle/delete;
 - tenant status, manual closure and shared print config;
 - WebSocket realtime notifications with order refresh and alert sound;
+- persistent KDS remote pairing against the backend 6-digit code API;
 - local offline action queue and print job queue.
 
 ## Run
@@ -47,3 +48,4 @@ KDS_INTERACTION_MODE=touch # demo-only, default: wall
 ```
 
 The app keeps the API as source of truth. Offline support queues allowed service actions locally and exposes manual sync from settings.
+The KDS phone remote requires a backend exposing `/api/v1/kds/*` persistent pairing endpoints; it stores only the temporary remote session token in secure local storage and validates it on startup.

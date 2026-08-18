@@ -3,6 +3,7 @@ import 'package:app_admin_staff/core/auth/session_events.dart';
 import 'package:app_admin_staff/core/auth/session_models.dart';
 import 'package:app_admin_staff/core/auth/token_store.dart';
 import 'package:app_admin_staff/features/auth/data/auth_repository.dart';
+import 'package:app_admin_staff/features/kitchen/data/kitchen_remote_session_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,6 +18,9 @@ class SessionController extends AsyncNotifier<SessionState> {
     final invalidationCount = ref.watch(sessionInvalidationProvider);
     final stored = await ref.watch(tokenStoreProvider).read();
     if (stored == null) {
+      if (invalidationCount > 0) {
+        await ref.watch(kitchenRemoteSessionStoreProvider).clearToken();
+      }
       return invalidationCount > 0
           ? const SessionState.sessionExpired()
           : const SessionState.unauthenticated();
@@ -39,6 +43,7 @@ class SessionController extends AsyncNotifier<SessionState> {
             password: password,
             mfaCode: mfaCode,
           );
+      await ref.watch(kitchenRemoteSessionStoreProvider).clearToken();
       await _storeTokens(tokens, tenantSlug);
       state = AsyncValue.data(
         await _hydrate(
@@ -112,11 +117,13 @@ class SessionController extends AsyncNotifier<SessionState> {
       final refreshed =
           await ref.watch(authRepositoryProvider).refreshSession();
       if (!refreshed) {
+        await _clearStoredSession();
         state = const AsyncValue.data(SessionState.sessionExpired());
         return;
       }
       final stored = await ref.watch(tokenStoreProvider).read();
       if (stored == null) {
+        await _clearStoredSession();
         state = const AsyncValue.data(SessionState.sessionExpired());
         return;
       }
@@ -132,12 +139,12 @@ class SessionController extends AsyncNotifier<SessionState> {
     } catch (_) {
       // Local logout still wins if the server is unreachable.
     }
-    await ref.watch(tokenStoreProvider).clear();
+    await _clearStoredSession();
     state = const AsyncValue.data(SessionState.unauthenticated());
   }
 
   Future<void> acknowledgeSessionExpired() async {
-    await ref.watch(tokenStoreProvider).clear();
+    await _clearStoredSession();
     state = const AsyncValue.data(SessionState.unauthenticated());
   }
 
@@ -158,16 +165,16 @@ class SessionController extends AsyncNotifier<SessionState> {
             error: error.message,
           );
         } on FormatException {
-          await ref.watch(tokenStoreProvider).clear();
+          await _clearStoredSession();
           return const SessionState.sessionExpired();
         }
       }
       rethrow;
     } on UnauthorizedException {
-      await ref.watch(tokenStoreProvider).clear();
+      await _clearStoredSession();
       return const SessionState.sessionExpired();
     } on FormatException {
-      await ref.watch(tokenStoreProvider).clear();
+      await _clearStoredSession();
       return const SessionState.unauthenticated();
     }
   }
@@ -199,6 +206,11 @@ class SessionController extends AsyncNotifier<SessionState> {
             sessionId: tokens.sessionId,
           ),
         );
+  }
+
+  Future<void> _clearStoredSession() async {
+    await ref.watch(tokenStoreProvider).clear();
+    await ref.watch(kitchenRemoteSessionStoreProvider).clearToken();
   }
 
   bool _isMustChangePassword(String? code) {

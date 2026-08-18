@@ -53,6 +53,26 @@ class KdsPairResult {
   }
 }
 
+class KdsPairingCode {
+  const KdsPairingCode({
+    required this.screenId,
+    required this.code,
+    required this.expiresAt,
+  });
+
+  final int screenId;
+  final String code;
+  final DateTime expiresAt;
+
+  factory KdsPairingCode.fromJson(Map<String, dynamic> json) {
+    return KdsPairingCode(
+      screenId: _readRequiredInt(json, 'screen_id'),
+      code: _readRequiredString(json, 'code'),
+      expiresAt: _readRequiredDateTime(json, 'expires_at'),
+    );
+  }
+}
+
 class KdsRemoteSessionStatus {
   const KdsRemoteSessionStatus({
     required this.id,

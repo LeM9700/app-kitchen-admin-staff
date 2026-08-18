@@ -296,7 +296,8 @@ class _FakeKdsRepository extends KdsRepository {
   final List<String> revokedTokens = [];
 
   @override
-  Future<List<KdsScreen>> listScreens() async => const [];
+  Future<List<KdsScreen>> listScreens({bool includeInactive = false}) async =>
+      const [];
 
   @override
   Future<KdsPairResult> pair({

@@ -103,6 +103,165 @@ void main() {
     expect(seenOptions.queryParameters.values, isNot(contains('secret-token')));
     expect(seenOptions.uri.toString(), isNot(contains('secret-token')));
   });
+
+  test('createScreen envoie POST sur kdsScreens avec bon body', () async {
+    late RequestOptions seenOptions;
+    late Map<String, dynamic> body;
+    final repository = _repository((options) {
+      seenOptions = options;
+      body = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse(
+        _screenJson(
+          id: 99,
+          name: 'Nouvelle cuisine',
+          screenKey: 'new-kitchen',
+          mode: 'kitchen',
+          station: 'cold',
+          interactionMode: 'tablet',
+          ticketsPerPage: 8,
+        ),
+      );
+    });
+
+    final screen = await repository.createScreen(
+      name: 'Nouvelle cuisine',
+      screenKey: 'new-kitchen',
+      mode: 'kitchen',
+      station: 'cold',
+      interactionMode: 'tablet',
+      ticketsPerPage: 8,
+    );
+
+    expect(seenOptions.method, 'POST');
+    expect(seenOptions.path, ApiEndpoints.kdsScreens);
+    expect(body['name'], 'Nouvelle cuisine');
+    expect(body['screen_key'], 'new-kitchen');
+    expect(body['mode'], 'kitchen');
+    expect(body['station'], 'cold');
+    expect(body['interaction_mode'], 'tablet');
+    expect(body['tickets_per_page'], 8);
+    expect(body.length, 6); // exactement 6 clés, aucune en plus
+    expect(screen.id, 99);
+    expect(screen.name, 'Nouvelle cuisine');
+  });
+
+  test('updateScreen envoie PATCH avec un seul champ modifié', () async {
+    late RequestOptions seenOptions;
+    late Map<String, dynamic> body;
+    final repository = _repository((options) {
+      seenOptions = options;
+      body = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse(_screenJson(id: 12, name: 'Cuisine modifiée'));
+    });
+
+    final screen = await repository.updateScreen(
+      screenId: 12,
+      name: 'Cuisine modifiée',
+    );
+
+    expect(seenOptions.method, 'PATCH');
+    expect(seenOptions.path, ApiEndpoints.kdsScreen(12));
+    expect(body.length, 1); // une seule clé
+    expect(body['name'], 'Cuisine modifiée');
+    expect(screen.name, 'Cuisine modifiée');
+  });
+
+  test('updateScreen envoie PATCH avec deux champs dont isActive:false',
+      () async {
+    late RequestOptions seenOptions;
+    late Map<String, dynamic> body;
+    final repository = _repository((options) {
+      seenOptions = options;
+      body = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse(
+        _screenJson(
+          id: 12,
+          name: 'Cuisine maj',
+          isActive: false,
+        ),
+      );
+    });
+
+    final screen = await repository.updateScreen(
+      screenId: 12,
+      name: 'Cuisine maj',
+      isActive: false,
+    );
+
+    expect(seenOptions.method, 'PATCH');
+    expect(seenOptions.path, ApiEndpoints.kdsScreen(12));
+    expect(body.length, 2); // deux clés
+    expect(body['name'], 'Cuisine maj');
+    expect(body['is_active'], false); // pas null, false
+    expect(body.values, isNot(contains(null))); // aucune valeur null
+    expect(screen.isActive, false);
+  });
+
+  test('generatePairingCode POST sur kdsScreenPairingCode avec code 6 digits',
+      () async {
+    late RequestOptions seenOptions;
+    final repository = _repository((options) {
+      seenOptions = options;
+      return _jsonResponse({
+        'screen_id': 12,
+        'code': '004281',
+        'expires_at': '2026-08-18T18:00:00Z',
+      });
+    });
+
+    final result = await repository.generatePairingCode(screenId: 12);
+
+    expect(seenOptions.method, 'POST');
+    expect(seenOptions.path, ApiEndpoints.kdsScreenPairingCode(12));
+    expect(result.screenId, 12);
+    expect(result.code, '004281'); // string, zéros initiaux conservés
+    expect(result.code.runtimeType, String);
+  });
+
+  test(
+      'revokeScreenSessions POST sur kdsScreenRevokeSessions et parse revoked_count',
+      () async {
+    late RequestOptions seenOptions;
+    final repository = _repository((options) {
+      seenOptions = options;
+      return _jsonResponse({'revoked_count': 3});
+    });
+
+    final count = await repository.revokeScreenSessions(screenId: 12);
+
+    expect(seenOptions.method, 'POST');
+    expect(seenOptions.path, ApiEndpoints.kdsScreenRevokeSessions(12));
+    expect(count, 3);
+  });
+
+  test('listScreens() sans argument ne passe pas include_inactive en query',
+      () async {
+    late RequestOptions seenOptions;
+    final repository = _repository((options) {
+      seenOptions = options;
+      return _jsonResponse([_screenJson()]);
+    });
+
+    await repository.listScreens();
+
+    expect(seenOptions.path, ApiEndpoints.kdsScreens);
+    expect(seenOptions.queryParameters.containsKey('include_inactive'), false);
+  });
+
+  test(
+      'listScreens(includeInactive: true) passe include_inactive=true en query',
+      () async {
+    late RequestOptions seenOptions;
+    final repository = _repository((options) {
+      seenOptions = options;
+      return _jsonResponse([_screenJson()]);
+    });
+
+    await repository.listScreens(includeInactive: true);
+
+    expect(seenOptions.path, ApiEndpoints.kdsScreens);
+    expect(seenOptions.queryParameters['include_inactive'], true);
+  });
 }
 
 KdsRepository _repository(

@@ -13,6 +13,8 @@ import 'package:app_admin_staff/design_system/tokens/app_breakpoints.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/auth/data/auth_repository.dart';
+import 'package:app_admin_staff/features/kitchen/application/kds_screen_management_controller.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/settings/kds_settings_section.dart';
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,6 +34,7 @@ class SettingsPage extends ConsumerWidget {
       permissions: user?.permissions,
     );
     final canReadPrint = permissions.can(AppPermission.printRead);
+    final canPrepareOrders = permissions.can(AppPermission.ordersPreparation);
     final sessions = ref.watch(authSessionsProvider);
     final queuedActions = ref.watch(syncQueueProvider);
     final printJobs = ref.watch(printJobsProvider);
@@ -55,6 +58,9 @@ class SettingsPage extends ConsumerWidget {
           ref.invalidate(tenantBusinessHoursProvider);
           ref.invalidate(tenantClosuresProvider);
           ref.invalidate(tenantAuditProvider);
+          if (isAdmin || canPrepareOrders) {
+            ref.invalidate(kdsScreenManagementProvider);
+          }
         },
         child: ListView(
           padding: EdgeInsets.all(
@@ -392,6 +398,10 @@ class SettingsPage extends ConsumerWidget {
                 loading: () => const LinearProgressIndicator(),
                 error: (error, stackTrace) => Text(error.toString()),
               ),
+            ],
+            if (isAdmin || canPrepareOrders) ...[
+              const SizedBox(height: AppSpacing.xl),
+              KdsSettingsSection(isAdmin: isAdmin),
             ],
             const SizedBox(height: 24),
             Text(

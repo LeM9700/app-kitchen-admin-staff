@@ -108,6 +108,7 @@ class RealtimeEventRouter {
     return event.startsWith('order.') ||
         event == 'stock.low_alert' ||
         event.startsWith('hr.') ||
+        event.startsWith('haccp.') ||
         event == 'loyalty.points_expiring' ||
         event == 'allergen_update' ||
         event == 'security_alert';

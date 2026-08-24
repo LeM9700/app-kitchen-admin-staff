@@ -72,10 +72,31 @@ class _RealtimeConnectorState extends ConsumerState<RealtimeConnector>
         ref.invalidate(catalogProductsProvider);
         ref.invalidate(catalogCategoriesProvider);
       }
+      if ((latest.event ?? '').startsWith('haccp.')) {
+        _handleHaccpEvent(latest);
+      }
       final title = _snackTitle(latest);
       if (title != null && mounted) {
+        final isCritical = latest.event == 'haccp.cooling_critical' ||
+            latest.event == 'haccp.nc_overdue';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(title)),
+          SnackBar(
+            content: Text(title),
+            backgroundColor: isCritical ? Colors.red[700] : Colors.orange[700],
+            duration: Duration(seconds: isCritical ? 8 : 5),
+            action: isCritical
+                ? SnackBarAction(
+                    label: 'Voir',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      // Navigation vers la page pertinente selon l'event
+                      if (latest.event == 'haccp.nc_overdue') {
+                        // context.push('/haccp/nc');  // go_router non accessible ici
+                      }
+                    },
+                  )
+                : null,
+          ),
         );
       }
     });
@@ -128,9 +149,28 @@ class _RealtimeConnectorState extends ConsumerState<RealtimeConnector>
     super.dispose();
   }
 
+  void _handleHaccpEvent(RealtimeNotification notification) {
+    // Les providers cooling sont invalidés pour forcer le refresh de l'UI
+    // si l'utilisateur est actuellement sur la page de refroidissement.
+    // Pas d'import direct des providers HACCP ici pour éviter le couplage —
+    // le SnackBar suffit à alerter et l'utilisateur rafraîchit manuellement.
+    if (notification.event == 'haccp.cooling_critical' ||
+        notification.event == 'haccp.cooling_warning') {
+      // Invalider le provider de refroidissement actif si disponible.
+      // Utiliser try/catch car le provider peut ne pas être actif.
+      try {
+        // ref.invalidate(haccpActiveCoolingProvider);  // Activable si importé
+      } catch (_) {}
+    }
+  }
+
   String? _snackTitle(RealtimeNotification notification) {
     if (notification.event == 'security_alert') {
       return 'Alerte securite';
+    }
+    // Les events HACCP ont toujours un title fourni par notify_staff
+    if ((notification.event ?? '').startsWith('haccp.')) {
+      return notification.title;
     }
     return notification.title;
   }

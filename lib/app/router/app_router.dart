@@ -18,6 +18,13 @@ import 'package:app_admin_staff/features/payments/presentation/payments_page.dar
 import 'package:app_admin_staff/features/promotions/presentation/promotions_page.dart';
 import 'package:app_admin_staff/features/settings/presentation/settings_page.dart';
 import 'package:app_admin_staff/features/stock/presentation/stock_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_check_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_cooling_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_export_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_nc_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_reception_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_stats_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_training_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -129,6 +136,36 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const PromotionsPage(),
           ),
           GoRoute(
+            path: '/haccp',
+            builder: (context, state) => const HaccpCheckPage(),
+            routes: [
+              GoRoute(
+                path: 'nc',
+                builder: (context, state) => const HaccpNonConformityPage(),
+              ),
+              GoRoute(
+                path: 'reception',
+                builder: (context, state) => const HaccpReceptionPage(),
+              ),
+              GoRoute(
+                path: 'cooling',
+                builder: (context, state) => const HaccpCoolingPage(),
+              ),
+              GoRoute(
+                path: 'training',
+                builder: (context, state) => const HaccpTrainingPage(),
+              ),
+              GoRoute(
+                path: 'export',
+                builder: (context, state) => const HaccpExportPage(),
+              ),
+              GoRoute(
+                path: 'stats',
+                builder: (context, state) => const HaccpStatsPage(),
+              ),
+            ],
+          ),
+          GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsPage(),
           ),
@@ -238,6 +275,7 @@ const _adminDefaultRoutes = [
   '/checkout',
   '/catalog',
   '/stock',
+  '/haccp',
   '/hr',
   '/payments',
   '/delivery',
@@ -262,6 +300,7 @@ const _routePermissions = {
   '/checkout': AppPermission.ordersManual,
   '/catalog': AppPermission.catalogRead,
   '/stock': AppPermission.stockRead,
+  '/haccp': AppPermission.haccpRead,
   '/payments': AppPermission.paymentsRead,
   '/delivery': AppPermission.deliveryRead,
   '/loyalty': AppPermission.loyaltyRead,

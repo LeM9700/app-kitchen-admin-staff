@@ -67,13 +67,20 @@ class _KitchenHoldToReopenActionState extends State<KitchenHoldToReopenAction>
   }
 
   void _startHold() {
-    if (widget.busy || _triggered) {
+    if (!mounted || widget.busy || _triggered) {
       return;
     }
     _progress.forward(from: 0);
   }
 
   void _cancelHold() {
+    // A successful hold can trigger a rebuild that unmounts this widget
+    // (the ticket moves out of "ready") before the pointer-up/cancel event
+    // for that same gesture is delivered -- touching the now-disposed
+    // AnimationController would crash.
+    if (!mounted) {
+      return;
+    }
     if (_progress.isAnimating) {
       _progress.stop();
     }
@@ -93,10 +100,16 @@ class _KitchenHoldToReopenActionState extends State<KitchenHoldToReopenAction>
         widget.compact ? 12 : 16,
         widget.compact ? 8 : 10,
       ),
-      child: GestureDetector(
-        onLongPressStart: (_) => _startHold(),
-        onLongPressEnd: (_) => _cancelHold(),
-        onLongPressCancel: _cancelHold,
+      child: Listener(
+        // Pointer events plutot que GestureDetector.onLongPress* : ce dernier
+        // attend ~500ms avant de reconnaitre le maintien (delai cache qui
+        // allongeait le maintien reel a ~2.5s) et annule silencieusement sur
+        // un micro-mouvement de souris pendant cette fenetre de
+        // reconnaissance. Listener demarre le minuteur des le pointer down,
+        // sans ambiguite avec un tap/drag.
+        onPointerDown: (_) => _startHold(),
+        onPointerUp: (_) => _cancelHold(),
+        onPointerCancel: (_) => _cancelHold(),
         child: AnimatedBuilder(
           animation: _progress,
           builder: (context, _) {

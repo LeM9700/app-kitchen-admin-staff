@@ -88,6 +88,7 @@ void main() {
           });
         },
       ),
+      _MemoryTokenStore(),
     );
 
     final products = await repository.listProducts(
@@ -104,6 +105,7 @@ void main() {
     expect(seen.first.path, ApiEndpoints.catalogProducts);
     expect(seen.first.queryParameters['q'], 'marg');
     expect(seen.first.queryParameters['category_id'], 1);
+    expect(seen.first.headers['X-Tenant-Slug'], 'pizza');
     expect(products.single.name, 'Margherita');
     expect(seen.last.path, ApiEndpoints.productAvailabilityOverride(11));
     expect((seen.last.data as Map)['available'], false);

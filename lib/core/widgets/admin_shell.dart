@@ -4,6 +4,7 @@ import 'package:app_admin_staff/app/service_mode.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/connectivity/connectivity_status.dart';
 import 'package:app_admin_staff/core/offline/sync_queue.dart';
+import 'package:app_admin_staff/core/offline/sync_worker.dart';
 import 'package:app_admin_staff/core/realtime/notification_bus.dart';
 import 'package:app_admin_staff/design_system/theme/api_kitchen_theme.dart';
 import 'package:app_admin_staff/design_system/tokens/app_breakpoints.dart';
@@ -44,6 +45,20 @@ class AdminShell extends ConsumerWidget {
       },
     ).toList();
     final selectedIndex = _selectedIndex(destinations, location);
+
+    // ── Auto-flush : déclenche la synchronisation au retour réseau ────────────
+    // [⚡ PERF] Le flush ne se déclenche que lors d'une transition offline→online,
+    // pas à chaque rebuild. Si la queue est vide, aucun appel réseau n'est émis.
+    ref.listen<AsyncValue<bool>>(onlineStatusProvider, (previous, next) {
+      final wasOffline = !(previous?.valueOrNull ?? true);
+      final isNowOnline = next.valueOrNull ?? false;
+      if (wasOffline && isNowOnline) {
+        final queue = ref.read(syncQueueProvider);
+        if (queue.isNotEmpty) {
+          ref.read(syncWorkerProvider).flush(queue);
+        }
+      }
+    });
 
     if (Breakpoints.isMobile(context)) {
       if (!isAdmin) {
@@ -719,6 +734,12 @@ const _destinations = [
     label: 'Stock',
     icon: Icons.warehouse_outlined,
     permission: AppPermission.stockRead,
+  ),
+  _ShellDestination(
+    path: '/haccp',
+    label: 'HACCP',
+    icon: Icons.health_and_safety_outlined,
+    permission: AppPermission.haccpRead,
   ),
   _ShellDestination(
     path: '/team',

@@ -264,6 +264,7 @@ class TenantConfig {
     required this.largeStockAdjustmentThreshold,
     required this.printEnabled,
     required this.printConfig,
+    this.haccpFryingOilEnabled = false,
     this.temporaryClosureMessage,
     this.updatedAt,
     this.scheduledCloseAt,
@@ -282,6 +283,7 @@ class TenantConfig {
   final double largeStockAdjustmentThreshold;
   final bool printEnabled;
   final Map<String, dynamic> printConfig;
+  final bool haccpFryingOilEnabled;
   final DateTime? updatedAt;
   final DateTime? scheduledCloseAt;
 
@@ -301,6 +303,7 @@ class TenantConfig {
           readDouble(json['large_stock_adjustment_threshold']),
       printEnabled: readBool(json['print_enabled']),
       printConfig: readMap(json['print_config']),
+      haccpFryingOilEnabled: readBool(json['haccp_frying_oil_enabled']),
       updatedAt: readDateTime(json['updated_at']),
       scheduledCloseAt: readDateTime(json['scheduled_close_at']),
     );

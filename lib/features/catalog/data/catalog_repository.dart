@@ -1,12 +1,17 @@
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
 import 'package:app_admin_staff/core/api/paginated.dart';
+import 'package:app_admin_staff/core/auth/token_store.dart';
+import 'package:app_admin_staff/core/config/env.dart';
 import 'package:app_admin_staff/core/utils/json.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
-  return CatalogRepository(ref.watch(apiClientProvider));
+  return CatalogRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(tokenStoreProvider),
+  );
 });
 
 final catalogProductsProvider =
@@ -35,9 +40,10 @@ final catalogAvailabilityFilterProvider =
 enum CatalogAvailabilityFilter { all, available, unavailable }
 
 class CatalogRepository {
-  const CatalogRepository(this._apiClient);
+  const CatalogRepository(this._apiClient, this._tokenStore);
 
   final ApiClient _apiClient;
+  final TokenStore _tokenStore;
 
   Future<List<CatalogProduct>> listProducts({
     int page = 1,
@@ -45,6 +51,12 @@ class CatalogRepository {
     String? query,
     int? categoryId,
   }) async {
+    // GET /catalog/products is the public catalog listing (shared with
+    // guest browsing) -- it reads the tenant from X-Tenant-Slug, not the
+    // staff JWT, so this header is required even though the request is
+    // otherwise authenticated.
+    final tenantSlug =
+        await _tokenStore.readTenantSlug() ?? Env.defaultTenantSlug;
     final response = await _apiClient.get(
       ApiEndpoints.catalogProducts,
       queryParameters: {
@@ -53,6 +65,7 @@ class CatalogRepository {
         if (query != null && query.trim().length >= 2) 'q': query.trim(),
         if (categoryId != null) 'category_id': categoryId,
       },
+      headers: {'X-Tenant-Slug': tenantSlug},
     );
     final result = PaginatedResult.fromJson(
       response.data as Map<String, dynamic>,
@@ -65,9 +78,13 @@ class CatalogRepository {
     int page = 1,
     int pageSize = 100,
   }) async {
+    // Same public listing endpoint as listProducts -- see its comment.
+    final tenantSlug =
+        await _tokenStore.readTenantSlug() ?? Env.defaultTenantSlug;
     final response = await _apiClient.get(
       ApiEndpoints.catalogCategories,
       queryParameters: {'page': page, 'page_size': pageSize},
+      headers: {'X-Tenant-Slug': tenantSlug},
     );
     final result = PaginatedResult.fromJson(
       response.data as Map<String, dynamic>,

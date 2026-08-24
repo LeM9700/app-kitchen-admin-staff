@@ -241,4 +241,27 @@ class ApiEndpoints {
   static String hrAlertResolve(int alertId) => '/hr/alerts/$alertId/resolve';
 
   static const notificationsWs = '/ws/notifications';
+
+  // ── HACCP ──────────────────────────────────────────────────────────────────
+  static const haccpStatusToday = '/haccp/status/today';
+  static const haccpSessions = '/haccp/sessions';
+  static const haccpSessionsToday = '/haccp/sessions/today';
+  static String haccpSessionComplete(int id) => '/haccp/sessions/$id/complete';
+  static String haccpSessionTemperatures(int id) => '/haccp/sessions/$id/temperatures';
+  static String haccpSessionDlc(int id) => '/haccp/sessions/$id/dlc';
+  static String haccpSessionCleaning(int id) => '/haccp/sessions/$id/cleaning';
+  static String haccpSessionOil(int id) => '/haccp/sessions/$id/oil';
+  static const haccpEquipment = '/haccp/equipment';
+  static String haccpEquipmentItem(int id) => '/haccp/equipment/$id';
+  static const haccpCleaningTasks = '/haccp/cleaning-tasks';
+  static String haccpCleaningTask(int id) => '/haccp/cleaning-tasks/$id';
+  static const haccpNonConformities = '/haccp/non-conformities';
+  static String haccpNonConformity(int id) => '/haccp/non-conformities/$id';
+  static const haccpReceptionControls = '/haccp/reception-controls';
+  static const haccpCooling = '/haccp/cooling';
+  static String haccpCoolingItem(int id) => '/haccp/cooling/$id';
+  static const haccpTraining = '/haccp/training';
+  static const haccpExportPdf = '/haccp/export/pdf';
+  static const haccpExportCsv = '/haccp/export/csv';
+  static const haccpStats = '/haccp/stats';
 }

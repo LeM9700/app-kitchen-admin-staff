@@ -27,6 +27,8 @@ class AppPermission {
   static const deliveryRead = 'delivery:read';
   static const promotionsRead = 'promotions:read';
   static const loyaltyRead = 'loyalty:read';
+  static const haccpRead = 'haccp:read';
+  static const haccpWrite = 'haccp:write';
 
   static const staffDefaults = <String>{
     ordersRead,
@@ -44,6 +46,8 @@ class AppPermission {
     deliveryRead,
     promotionsRead,
     loyaltyRead,
+    haccpRead,
+    haccpWrite,
   };
 }
 

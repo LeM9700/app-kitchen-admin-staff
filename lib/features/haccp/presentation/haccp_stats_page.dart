@@ -120,8 +120,7 @@ class _HaccpStatsPageState extends ConsumerState<HaccpStatsPage> {
 
           Expanded(
             child: statsAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -175,20 +174,19 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // Températures
-        _SectionHeader(
-            icon: Icons.thermostat_outlined, label: 'Températures'),
+        _SectionHeader(icon: Icons.thermostat_outlined, label: 'Températures'),
         const SizedBox(height: AppSpacing.xs),
         _StatCard(
           section: stats.temperature,
           color: _colorForRate(stats.temperature.complianceRate),
-          subtitle: '${stats.temperature.compliant}/${stats.temperature.total} relevés conformes',
+          subtitle:
+              '${stats.temperature.compliant}/${stats.temperature.total} relevés conformes',
         ),
         const SizedBox(height: AppSpacing.md),
 
         // DLC
         _SectionHeader(
-            icon: Icons.calendar_today_outlined,
-            label: 'Vérifications DLC'),
+            icon: Icons.calendar_today_outlined, label: 'Vérifications DLC'),
         const SizedBox(height: AppSpacing.xs),
         _StatCard(
           section: stats.dlc,
@@ -212,8 +210,7 @@ class _StatsBody extends StatelessWidget {
 
         // Non-conformités
         _SectionHeader(
-            icon: Icons.report_problem_outlined,
-            label: 'Non-conformités'),
+            icon: Icons.report_problem_outlined, label: 'Non-conformités'),
         const SizedBox(height: AppSpacing.xs),
         _NcCard(nc: stats.nonConformities),
         const SizedBox(height: AppSpacing.md),
@@ -338,8 +335,8 @@ class _ScoreGauge extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: _color.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(20),
@@ -536,8 +533,7 @@ class _SessionRow extends StatelessWidget {
         Icon(icon, size: 18, color: Colors.grey),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: Text(label,
-              style: const TextStyle(fontSize: 13)),
+          child: Text(label, style: const TextStyle(fontSize: 13)),
         ),
         Text(
           '$done / $total',
@@ -570,8 +566,7 @@ class _NcCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _NcPill(
-                    label: 'Ouvertes', count: nc.open, color: Colors.red),
+                _NcPill(label: 'Ouvertes', count: nc.open, color: Colors.red),
                 const SizedBox(width: AppSpacing.xs),
                 _NcPill(
                     label: 'En cours',
@@ -579,9 +574,7 @@ class _NcCard extends StatelessWidget {
                     color: Colors.orange),
                 const SizedBox(width: AppSpacing.xs),
                 _NcPill(
-                    label: 'Clôturées',
-                    count: nc.closed,
-                    color: Colors.green),
+                    label: 'Clôturées', count: nc.closed, color: Colors.green),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -600,9 +593,8 @@ class _NcCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: nc.resolutionRate >= 80
-                        ? Colors.green
-                        : Colors.orange,
+                    color:
+                        nc.resolutionRate >= 80 ? Colors.green : Colors.orange,
                   ),
                 ),
               ],

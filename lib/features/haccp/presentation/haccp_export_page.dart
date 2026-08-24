@@ -102,18 +102,19 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
   Future<void> _exportPdf() async {
     setState(() => _exportingPdf = true);
     try {
-      final dio = ref.read(apiClientProvider).dio;
+      final api = ref.read(apiClientProvider);
       final from = _isoDate(_fromDate);
       final to = _isoDate(_toDate);
 
-      final response = await dio.get<List<int>>(
+      final response = await api.get(
         ApiEndpoints.haccpExportPdf,
         queryParameters: {'from': from, 'to': to},
-        options: Options(responseType: ResponseType.bytes),
+        responseType: ResponseType.bytes,
       );
 
-      final bytes = response.data;
-      if (bytes == null || bytes.isEmpty) throw Exception('PDF vide reçu du serveur');
+      final bytes = response.data as List<int>?;
+      if (bytes == null || bytes.isEmpty)
+        throw Exception('PDF vide reçu du serveur');
 
       final tmpDir = await getTemporaryDirectory();
       final file = File('${tmpDir.path}/haccp_${from}_$to.pdf');
@@ -142,18 +143,19 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
       _csvType = type;
     });
     try {
-      final dio = ref.read(apiClientProvider).dio;
+      final api = ref.read(apiClientProvider);
       final from = _isoDate(_fromDate);
       final to = _isoDate(_toDate);
 
-      final response = await dio.get<List<int>>(
+      final response = await api.get(
         ApiEndpoints.haccpExportCsv,
         queryParameters: {'from': from, 'to': to, 'data_type': type},
-        options: Options(responseType: ResponseType.bytes),
+        responseType: ResponseType.bytes,
       );
 
-      final bytes = response.data;
-      if (bytes == null || bytes.isEmpty) throw Exception('CSV vide reçu du serveur');
+      final bytes = response.data as List<int>?;
+      if (bytes == null || bytes.isEmpty)
+        throw Exception('CSV vide reçu du serveur');
 
       final tmpDir = await getTemporaryDirectory();
       final file = File('${tmpDir.path}/haccp_${from}_${to}_$type.csv');
@@ -172,10 +174,11 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
         );
       }
     } finally {
-      if (mounted) setState(() {
-        _exportingCsv = false;
-        _csvType = null;
-      });
+      if (mounted)
+        setState(() {
+          _exportingCsv = false;
+          _csvType = null;
+        });
     }
   }
 
@@ -227,8 +230,8 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
                         ),
                         Text(
                           '${_toDate.difference(_fromDate).inDays + 1} jour(s)',
-                          style: const TextStyle(
-                              color: Colors.grey, fontSize: 12),
+                          style:
+                              const TextStyle(color: Colors.grey, fontSize: 12),
                         ),
                       ],
                     ),
@@ -244,17 +247,24 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
           Wrap(
             spacing: AppSpacing.xs,
             children: [
-              ActionChip(label: const Text('7 jours'), onPressed: () => _setLastN(7)),
-              ActionChip(label: const Text('30 jours'), onPressed: () => _setLastN(30)),
-              ActionChip(label: const Text('Ce mois'), onPressed: _setCurrentMonth),
-              ActionChip(label: const Text('Mois précédent'), onPressed: _setLastMonth),
+              ActionChip(
+                  label: const Text('7 jours'), onPressed: () => _setLastN(7)),
+              ActionChip(
+                  label: const Text('30 jours'),
+                  onPressed: () => _setLastN(30)),
+              ActionChip(
+                  label: const Text('Ce mois'), onPressed: _setCurrentMonth),
+              ActionChip(
+                  label: const Text('Mois précédent'),
+                  onPressed: _setLastMonth),
             ],
           ),
 
           const SizedBox(height: AppSpacing.xl),
 
           // Export PDF
-          Text('Rapport complet', style: Theme.of(context).textTheme.titleMedium),
+          Text('Rapport complet',
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xs),
           const Text(
             'PDF multi-sections : sessions, températures, DLC, nettoyage, NC, '
@@ -406,8 +416,8 @@ class _CsvExportTile extends StatelessWidget {
           child: loading
               ? const Padding(
                   padding: EdgeInsets.all(10),
-                  child:
-                      CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.green),
                 )
               : Icon(icon, color: Colors.green[700], size: 20),
         ),
@@ -448,8 +458,7 @@ class _InfoBanner extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(text,
-                style:
-                    TextStyle(color: color, fontSize: 12, height: 1.4)),
+                style: TextStyle(color: color, fontSize: 12, height: 1.4)),
           ),
         ],
       ),

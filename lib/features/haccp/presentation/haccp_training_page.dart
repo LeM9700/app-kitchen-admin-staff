@@ -60,7 +60,8 @@ class HaccpTrainingPage extends ConsumerWidget {
             children: [
               // Bannière alerte
               if (expired.isNotEmpty || expiring.isNotEmpty)
-                _AlertBanner(expired: expired.length, expiring: expiring.length),
+                _AlertBanner(
+                    expired: expired.length, expiring: expiring.length),
 
               // Info légale
               Container(
@@ -107,10 +108,7 @@ class HaccpTrainingPage extends ConsumerWidget {
                             ref.invalidate(haccpTrainingProvider),
                         child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.md,
-                              AppSpacing.sm,
-                              AppSpacing.md,
-                              100),
+                              AppSpacing.md, AppSpacing.sm, AppSpacing.md, 100),
                           itemCount: records.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: AppSpacing.sm),
@@ -285,9 +283,10 @@ class _TrainingCard extends StatelessWidget {
                                 ? Colors.orange
                                 : Colors.grey,
                         fontSize: 12,
-                        fontWeight: record.isExpired || record.expiresWithin30Days
-                            ? FontWeight.w600
-                            : FontWeight.normal),
+                        fontWeight:
+                            record.isExpired || record.expiresWithin30Days
+                                ? FontWeight.w600
+                                : FontWeight.normal),
                   ),
                 ],
               ],
@@ -369,8 +368,7 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
     final date = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate:
-          isExpiry ? DateTime.now() : DateTime(2000),
+      firstDate: isExpiry ? DateTime.now() : DateTime(2000),
       lastDate: DateTime(2100),
     );
     if (date == null) return;
@@ -402,8 +400,7 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
           'trainer_name': _trainerCtrl.text.trim(),
         if (_certCtrl.text.trim().isNotEmpty)
           'certificate_ref': _certCtrl.text.trim(),
-        if (_notesCtrl.text.trim().isNotEmpty)
-          'notes': _notesCtrl.text.trim(),
+        if (_notesCtrl.text.trim().isNotEmpty) 'notes': _notesCtrl.text.trim(),
       });
       widget.onSaved();
       if (mounted) Navigator.of(context).pop();
@@ -447,8 +444,8 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
                 items: _types
                     .map((t) => DropdownMenuItem(
                           value: t.$1,
-                          child: Text(t.$2,
-                              style: const TextStyle(fontSize: 13)),
+                          child:
+                              Text(t.$2, style: const TextStyle(fontSize: 13)),
                         ))
                     .toList(),
                 onChanged: (v) => setState(() => _type = v ?? _type),
@@ -465,8 +462,7 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
                         decoration: const InputDecoration(
                           labelText: 'Date formation *',
                           border: OutlineInputBorder(),
-                          suffixIcon:
-                              Icon(Icons.calendar_today, size: 16),
+                          suffixIcon: Icon(Icons.calendar_today, size: 16),
                         ),
                         child: Text(_fmt(_trainingDate),
                             style: const TextStyle(fontSize: 14)),
@@ -481,8 +477,7 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
                         decoration: const InputDecoration(
                           labelText: 'Date expiration',
                           border: OutlineInputBorder(),
-                          suffixIcon:
-                              Icon(Icons.calendar_today, size: 16),
+                          suffixIcon: Icon(Icons.calendar_today, size: 16),
                         ),
                         child: Text(
                           _expiryDate == null ? '—' : _fmt(_expiryDate!),
@@ -497,8 +492,7 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
               TextFormField(
                 controller: _trainerCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Formateur',
-                    border: OutlineInputBorder()),
+                    labelText: 'Formateur', border: OutlineInputBorder()),
               ),
               const SizedBox(height: AppSpacing.sm),
               TextFormField(

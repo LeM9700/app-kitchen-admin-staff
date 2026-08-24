@@ -123,8 +123,8 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
                 value: '/haccp/export',
                 child: ListTile(
                   dense: true,
-                  leading: Icon(Icons.picture_as_pdf_outlined,
-                      color: Colors.red),
+                  leading:
+                      Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
                   title: Text('Export PDF / CSV',
                       style: TextStyle(color: Colors.red)),
                   contentPadding: EdgeInsets.zero,
@@ -216,9 +216,7 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
   Future<void> _startSession() async {
     setState(() => _loading = true);
     try {
-      await ref
-          .read(haccpRepositoryProvider)
-          .startSession(widget.sessionType);
+      await ref.read(haccpRepositoryProvider).startSession(widget.sessionType);
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpTodaySessionsProvider);
     } catch (e) {
@@ -277,7 +275,8 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
           _completeSession(sessionId, force: true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur : $msg'), backgroundColor: Colors.red),
+            SnackBar(
+                content: Text('Erreur : $msg'), backgroundColor: Colors.red),
           );
         }
       }
@@ -310,7 +309,7 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
                 child: Column(
                   children: [
                     Icon(Icons.play_circle_outline,
-                        size: 48, color: AppColors.primary),
+                        size: 48, color: AppColors.infoAlt),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
                       'Check $_label non démarré',
@@ -385,8 +384,7 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
               Card(
                 color: Colors.green.withOpacity(0.1),
                 child: ListTile(
-                  leading:
-                      const Icon(Icons.check_circle, color: Colors.green),
+                  leading: const Icon(Icons.check_circle, color: Colors.green),
                   title: Text(
                     summary.status == 'incomplete_validated'
                         ? 'Validé avec réserves'
@@ -427,7 +425,7 @@ class _ProgressBanner extends StatelessWidget {
         ? Colors.green
         : summary.status == 'not_started'
             ? Colors.grey
-            : AppColors.primary;
+            : AppColors.infoAlt;
 
     return Card(
       child: Padding(
@@ -456,9 +454,9 @@ class _ProgressBanner extends StatelessWidget {
                 ),
                 const Spacer(),
                 if (summary.hasNonConformities)
-                  StatusBadge(
+                  const StatusBadge(
                     label: 'NC',
-                    color: Colors.orange,
+                    tone: StatusTone.warning,
                   ),
               ],
             ),
@@ -586,7 +584,8 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
       if (mounted && result['is_compliant'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('⚠️ Température hors limite — NC créée automatiquement'),
+            content:
+                Text('⚠️ Température hors limite — NC créée automatiquement'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -594,8 +593,7 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -604,8 +602,7 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
   @override
   Widget build(BuildContext context) {
     final equipmentAsync = ref.watch(haccpEquipmentProvider);
-    final logsAsync =
-        ref.watch(haccpTemperatureLogsProvider(widget.sessionId));
+    final logsAsync = ref.watch(haccpTemperatureLogsProvider(widget.sessionId));
 
     return _SectionCard(
       title: 'Températures',
@@ -639,8 +636,7 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
                 children: filtered.map((equipment) {
                   final done = loggedIds.contains(equipment.id);
                   final log = done
-                      ? logs.firstWhere(
-                          (l) => l.equipmentId == equipment.id)
+                      ? logs.firstWhere((l) => l.equipmentId == equipment.id)
                       : null;
                   return _EquipmentTile(
                     equipment: equipment,
@@ -774,8 +770,8 @@ class _TempInputDialogState extends State<_TempInputDialog> {
             const SizedBox(height: AppSpacing.sm),
             TextFormField(
               controller: widget.tempController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true, signed: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true, signed: true),
               decoration: const InputDecoration(
                 labelText: 'Température mesurée (°C)',
                 suffixText: '°C',
@@ -1080,9 +1076,8 @@ class _DlcInputDialogState extends State<_DlcInputDialog> {
               SwitchListTile(
                 dense: true,
                 value: _isCompliant && !isExpired,
-                onChanged: isExpired
-                    ? null
-                    : (v) => setState(() => _isCompliant = v),
+                onChanged:
+                    isExpired ? null : (v) => setState(() => _isCompliant = v),
                 title: const Text('Conforme', style: TextStyle(fontSize: 13)),
               ),
             ],
@@ -1152,8 +1147,7 @@ class _CleaningSectionState extends ConsumerState<_CleaningSection> {
   Widget build(BuildContext context) {
     final tasksAsync =
         ref.watch(haccpCleaningTasksProvider(widget.sessionType));
-    final logsAsync =
-        ref.watch(haccpCleaningLogsProvider(widget.sessionId));
+    final logsAsync = ref.watch(haccpCleaningLogsProvider(widget.sessionId));
 
     return _SectionCard(
       title: 'Nettoyage & Désinfection',
@@ -1316,8 +1310,7 @@ class _SectionCard extends StatelessWidget {
                 AppSpacing.md, AppSpacing.md, AppSpacing.sm, AppSpacing.xs),
             child: Row(
               children: [
-                Icon(icon,
-                    size: 18, color: iconColor ?? AppColors.primary),
+                Icon(icon, size: 18, color: iconColor ?? AppColors.infoAlt),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   title,
@@ -1371,12 +1364,11 @@ class _OilSection extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleSmall),
                 const Spacer(),
                 TextButton.icon(
-                  onPressed: () =>
-                      _showOilForm(context, ref, sessionId),
+                  onPressed: () => _showOilForm(context, ref, sessionId),
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Relever'),
-                  style: TextButton.styleFrom(
-                      foregroundColor: Colors.deepOrange),
+                  style:
+                      TextButton.styleFrom(foregroundColor: Colors.deepOrange),
                 ),
               ],
             ),
@@ -1564,7 +1556,8 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Requis';
                 final d = double.tryParse(v.replaceAll(',', '.'));
-                if (d == null || d < 0 || d > 100) return 'Valeur entre 0 et 100';
+                if (d == null || d < 0 || d > 100)
+                  return 'Valeur entre 0 et 100';
                 return null;
               },
             ),
@@ -1576,8 +1569,7 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                     value: _color,
                     hint: const Text('Couleur'),
                     decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Couleur'),
+                        border: OutlineInputBorder(), labelText: 'Couleur'),
                     items: _colorOptions
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
@@ -1610,10 +1602,10 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                   fillColor: Color(0xFFFFF3E0),
                   filled: true,
                 ),
-                validator: (v) => _nonCompliant &&
-                        (v == null || v.trim().isEmpty)
-                    ? 'Requis en cas de NC'
-                    : null,
+                validator: (v) =>
+                    _nonCompliant && (v == null || v.trim().isEmpty)
+                        ? 'Requis en cas de NC'
+                        : null,
               ),
             ],
             const SizedBox(height: AppSpacing.lg),

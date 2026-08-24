@@ -75,8 +75,7 @@ class HaccpReceptionPage extends ConsumerWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () async =>
-                ref.invalidate(haccpReceptionTodayProvider),
+            onRefresh: () async => ref.invalidate(haccpReceptionTodayProvider),
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md, AppSpacing.md, AppSpacing.md, 100),
@@ -166,12 +165,10 @@ class _ReceptionCard extends StatelessWidget {
                     ok: reception.tempOk,
                   ),
                 _CheckChip(label: '📦 Emballage', ok: reception.packagingOk),
-                _CheckChip(
-                    label: '🏷️ Étiquetage', ok: reception.labelingOk),
+                _CheckChip(label: '🏷️ Étiquetage', ok: reception.labelingOk),
                 if (reception.dlcDate != null)
                   _CheckChip(
-                    label:
-                        'DLC ${_dateLabel(reception.dlcDate!)}',
+                    label: 'DLC ${_dateLabel(reception.dlcDate!)}',
                     ok: reception.dlcDate!.isAfter(DateTime.now()),
                   ),
               ],
@@ -192,8 +189,8 @@ class _ReceptionCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         reception.correctiveAction!,
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.orange),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.orange),
                       ),
                     ),
                   ],
@@ -226,7 +223,8 @@ class _CheckChip extends StatelessWidget {
       backgroundColor:
           ok ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
       side: BorderSide(
-          color: ok ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3)),
+          color:
+              ok ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3)),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
     );
@@ -280,7 +278,8 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
       await ref.read(haccpRepositoryProvider).createReceptionControl({
         'supplier_name': _supplierCtrl.text.trim(),
         'product_name': _productCtrl.text.trim(),
-        if (_batchCtrl.text.trim().isNotEmpty) 'batch_ref': _batchCtrl.text.trim(),
+        if (_batchCtrl.text.trim().isNotEmpty)
+          'batch_ref': _batchCtrl.text.trim(),
         if (temp != null) 'delivery_temp': temp,
         if (_dlcDate != null)
           'dlc_date':
@@ -345,8 +344,7 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
               TextFormField(
                 controller: _batchCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Référence lot',
-                    border: OutlineInputBorder()),
+                    labelText: 'Référence lot', border: OutlineInputBorder()),
               ),
 
               const SizedBox(height: AppSpacing.md),
@@ -432,10 +430,10 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
                     fillColor: Color(0xFFFFF3E0),
                     filled: true,
                   ),
-                  validator: (v) => _hasNonCompliance &&
-                          (v == null || v.trim().isEmpty)
-                      ? 'Requis en cas de non-conformité'
-                      : null,
+                  validator: (v) =>
+                      _hasNonCompliance && (v == null || v.trim().isEmpty)
+                          ? 'Requis en cas de non-conformité'
+                          : null,
                 ),
               ],
 

@@ -1,4 +1,3 @@
-import 'package:app_admin_staff/app/permissions/permissions.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
@@ -63,8 +62,7 @@ class _HaccpNonConformityPageState
           ),
           Expanded(
             child: ncsAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -110,8 +108,8 @@ class _HaccpNonConformityPageState
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () async => ref
-                      .invalidate(haccpNcByStatusProvider(_statusFilter)),
+                  onRefresh: () async =>
+                      ref.invalidate(haccpNcByStatusProvider(_statusFilter)),
                   child: ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     itemCount: ncs.length,
@@ -121,8 +119,7 @@ class _HaccpNonConformityPageState
                       nc: ncs[i],
                       isAdmin: isAdmin,
                       onUpdated: () {
-                        ref.invalidate(
-                            haccpNcByStatusProvider(_statusFilter));
+                        ref.invalidate(haccpNcByStatusProvider(_statusFilter));
                         ref.invalidate(haccpStatusProvider);
                         ref.invalidate(haccpOpenNcProvider);
                       },
@@ -173,8 +170,8 @@ class _StatusFilterBar extends StatelessWidget {
                 label: Text(f.$2),
                 selected: selected,
                 onSelected: (_) => onChanged(f.$1),
-                selectedColor: AppColors.primary.withOpacity(0.15),
-                checkmarkColor: AppColors.primary,
+                selectedColor: AppColors.infoAlt.withOpacity(0.15),
+                checkmarkColor: AppColors.infoAlt,
               ),
             );
           }).toList(),
@@ -262,8 +259,8 @@ class _NcCardState extends ConsumerState<_NcCard> {
   }
 
   Future<void> _addCorrectiveAction() async {
-    final controller = TextEditingController(
-        text: widget.nc.correctiveAction ?? '');
+    final controller =
+        TextEditingController(text: widget.nc.correctiveAction ?? '');
 
     final action = await showDialog<String>(
       context: context,
@@ -323,8 +320,7 @@ class _NcCardState extends ConsumerState<_NcCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -385,8 +381,7 @@ class _NcCardState extends ConsumerState<_NcCard> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style:
-                FilledButton.styleFrom(backgroundColor: Colors.green),
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
             child: const Text('Clôturer'),
           ),
         ],
@@ -413,8 +408,7 @@ class _NcCardState extends ConsumerState<_NcCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -425,7 +419,6 @@ class _NcCardState extends ConsumerState<_NcCard> {
   @override
   Widget build(BuildContext context) {
     final nc = widget.nc;
-    final isOpen = nc.status == 'open';
     final isInProgress = nc.status == 'in_progress';
     final isClosed = nc.status == 'closed';
 
@@ -450,15 +443,13 @@ class _NcCardState extends ConsumerState<_NcCard> {
                 children: [
                   Icon(_statusIcon, color: _statusColor, size: 18),
                   const SizedBox(width: AppSpacing.xs),
-                  _StatusChip(
-                      label: _statusLabel, color: _statusColor),
+                  _StatusChip(label: _statusLabel, color: _statusColor),
                   const SizedBox(width: AppSpacing.xs),
                   _SourceChip(label: _sourceLabel),
                   const Spacer(),
                   Text(
                     _formatDate(nc.createdAt),
-                    style: const TextStyle(
-                        fontSize: 11, color: Colors.grey),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Icon(
@@ -476,8 +467,8 @@ class _NcCardState extends ConsumerState<_NcCard> {
               // Description
               Text(
                 nc.description,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w500, fontSize: 14),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
               ),
 
               // Détails étendus
@@ -492,9 +483,8 @@ class _NcCardState extends ConsumerState<_NcCard> {
                     icon: Icons.build_outlined,
                     label: 'Action corrective',
                     value: nc.correctiveAction!,
-                    valueColor: isInProgress
-                        ? Colors.orange[700]
-                        : Colors.green[700],
+                    valueColor:
+                        isInProgress ? Colors.orange[700] : Colors.green[700],
                   ),
                   const SizedBox(height: AppSpacing.xs),
                 ] else if (!isClosed) ...[
@@ -506,8 +496,7 @@ class _NcCardState extends ConsumerState<_NcCard> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.info_outline,
-                            size: 14, color: Colors.red),
+                        Icon(Icons.info_outline, size: 14, color: Colors.red),
                         SizedBox(width: 4),
                         Text(
                           'Action corrective requise',
@@ -556,16 +545,15 @@ class _NcCardState extends ConsumerState<_NcCard> {
                       // Clôturer
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: (_saving ||
-                                  nc.correctiveAction == null)
+                          onPressed: (_saving || nc.correctiveAction == null)
                               ? null
                               : _validate,
                           icon: _saving
                               ? const SizedBox(
                                   width: 14,
                                   height: 14,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.check, size: 16),
                           label: const Text('Clôturer'),
@@ -609,8 +597,8 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w600, color: color),
+        style:
+            TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
@@ -662,8 +650,7 @@ class _DetailRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style: const TextStyle(
-                      fontSize: 11, color: Colors.grey)),
+                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
               Text(
                 value,
                 style: TextStyle(

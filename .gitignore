@@ -15,6 +15,7 @@ build/
 .env.*
 *.tmp
 coverage/
+test/failures/
 
 android/.gradle/
 android/local.properties

@@ -96,8 +96,7 @@ class HaccpCoolingPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   ...active.map((l) => Padding(
-                        padding:
-                            const EdgeInsets.only(bottom: AppSpacing.sm),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                         child: _CoolingCard(
                           log: l,
                           onComplete: () {
@@ -115,8 +114,7 @@ class HaccpCoolingPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   ...done.map((l) => Padding(
-                        padding:
-                            const EdgeInsets.only(bottom: AppSpacing.sm),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                         child: _CoolingCard(log: l),
                       )),
                 ],
@@ -142,7 +140,8 @@ class HaccpCoolingPage extends ConsumerWidget {
     );
   }
 
-  void _showCompleteForm(BuildContext context, WidgetRef ref, HaccpCoolingLog log) {
+  void _showCompleteForm(
+      BuildContext context, WidgetRef ref, HaccpCoolingLog log) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -182,9 +181,8 @@ class _CoolingCard extends StatelessWidget {
       statusColor = Colors.red;
     }
 
-    final elapsed = isActive
-        ? DateTime.now().difference(log.startedAt).inMinutes
-        : null;
+    final elapsed =
+        isActive ? DateTime.now().difference(log.startedAt).inMinutes : null;
     final twoHoursWarning = elapsed != null && elapsed >= 90;
 
     return Card(
@@ -200,7 +198,9 @@ class _CoolingCard extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  isActive ? Icons.ac_unit : (compliant ? Icons.check_circle : Icons.cancel),
+                  isActive
+                      ? Icons.ac_unit
+                      : (compliant ? Icons.check_circle : Icons.cancel),
                   color: statusColor,
                   size: 18,
                 ),
@@ -208,13 +208,15 @@ class _CoolingCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     log.productName,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                 ),
                 if (isActive && elapsed != null) ...[
                   if (twoHoursWarning)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
@@ -222,7 +224,9 @@ class _CoolingCard extends StatelessWidget {
                       child: Text(
                         '⚠️ ${elapsed}min',
                         style: const TextStyle(
-                            fontSize: 11, color: Colors.red, fontWeight: FontWeight.w600),
+                            fontSize: 11,
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600),
                       ),
                     )
                   else
@@ -236,8 +240,7 @@ class _CoolingCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Row(
               children: [
-                _TempBadge(
-                    label: 'T° init.', temp: log.tempInitial, ok: true),
+                _TempBadge(label: 'T° init.', temp: log.tempInitial, ok: true),
                 if (!isActive && log.tempFinal != null) ...[
                   const SizedBox(width: AppSpacing.xs),
                   const Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
@@ -303,8 +306,7 @@ class _CoolingCard extends StatelessWidget {
 }
 
 class _TempBadge extends StatelessWidget {
-  const _TempBadge(
-      {required this.label, required this.temp, required this.ok});
+  const _TempBadge({required this.label, required this.temp, required this.ok});
 
   final String label;
   final double temp;
@@ -438,8 +440,7 @@ class _StartCoolingFormState extends ConsumerState<_StartCoolingForm> {
               decoration: const InputDecoration(
                   labelText: 'Produit / préparation *',
                   border: OutlineInputBorder()),
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Requis' : null,
+              validator: (v) => v == null || v.trim().isEmpty ? 'Requis' : null,
             ),
             const SizedBox(height: AppSpacing.sm),
             TextFormField(
@@ -599,10 +600,10 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
                   fillColor: Color(0xFFFFF3E0),
                   filled: true,
                 ),
-                validator: (v) => _nonCompliant &&
-                        (v == null || v.trim().isEmpty)
-                    ? 'Requis en cas de NC'
-                    : null,
+                validator: (v) =>
+                    _nonCompliant && (v == null || v.trim().isEmpty)
+                        ? 'Requis en cas de NC'
+                        : null,
               ),
             ],
             const SizedBox(height: AppSpacing.lg),

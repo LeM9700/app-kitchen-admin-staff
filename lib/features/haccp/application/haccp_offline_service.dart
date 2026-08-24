@@ -132,8 +132,7 @@ class HaccpOfflineService {
       endpoint: '/haccp/sessions/$sessionId/temperatures',
       method: 'POST',
       payload: payload,
-      idempotencyKey:
-          _ikey('temp', '${sessionId}_$equipmentId'),
+      idempotencyKey: _ikey('temp', '${sessionId}_$equipmentId'),
     );
     return const QueuedForSync('Relevé T° mis en queue');
   }
@@ -150,7 +149,8 @@ class HaccpOfflineService {
     }
     _enqueue(
       feature: 'haccp',
-      label: 'DLC ${body["ingredient_name"] ?? "produit"} (Niv. ${body["dlc_level"]})',
+      label:
+          'DLC ${body["ingredient_name"] ?? "produit"} (Niv. ${body["dlc_level"]})',
       endpoint: '/haccp/sessions/$sessionId/dlc',
       method: 'POST',
       payload: body,
@@ -236,7 +236,8 @@ class HaccpOfflineService {
       endpoint: '/haccp/reception-controls',
       method: 'POST',
       payload: body,
-      idempotencyKey: _ikey('reception', '${body["supplier_name"]}_${body["product_name"]}'),
+      idempotencyKey: _ikey(
+          'reception', '${body["supplier_name"]}_${body["product_name"]}'),
     );
     return const QueuedForSync('Contrôle réception mis en queue');
   }
@@ -251,7 +252,8 @@ class HaccpOfflineService {
     }
     _enqueue(
       feature: 'haccp',
-      label: 'Refroidissement ${body["product_name"]} (${body["temp_initial"]}°C)',
+      label:
+          'Refroidissement ${body["product_name"]} (${body["temp_initial"]}°C)',
       endpoint: '/haccp/cooling',
       method: 'POST',
       payload: body,
@@ -276,7 +278,8 @@ class HaccpOfflineService {
     }
     _enqueue(
       feature: 'haccp',
-      label: 'T° finale refroidissement #$id : ${tempFinal.toStringAsFixed(1)}°C',
+      label:
+          'T° finale refroidissement #$id : ${tempFinal.toStringAsFixed(1)}°C',
       endpoint: '/haccp/cooling/$id',
       method: 'PATCH',
       payload: payload,

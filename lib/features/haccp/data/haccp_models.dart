@@ -54,7 +54,12 @@ class HaccpEquipment {
 
 enum HaccpSessionType { opening, closing }
 
-enum HaccpSessionStatus { notStarted, inProgress, complete, incompleteValidated }
+enum HaccpSessionStatus {
+  notStarted,
+  inProgress,
+  complete,
+  incompleteValidated
+}
 
 class HaccpCheckSession {
   const HaccpCheckSession({
@@ -111,7 +116,8 @@ class HaccpSessionSummary {
   });
 
   final int? sessionId;
-  final String status; // not_started | in_progress | complete | incomplete_validated
+  final String
+      status; // not_started | in_progress | complete | incomplete_validated
   final int temperaturesDone;
   final int temperaturesTotal;
   final int dlcDone;
@@ -163,10 +169,10 @@ class HaccpStatus {
   factory HaccpStatus.fromJson(Map<String, dynamic> json) {
     return HaccpStatus(
       today: DateTime.parse(json['today'] as String),
-      opening: HaccpSessionSummary.fromJson(
-          json['opening'] as Map<String, dynamic>),
-      closing: HaccpSessionSummary.fromJson(
-          json['closing'] as Map<String, dynamic>),
+      opening:
+          HaccpSessionSummary.fromJson(json['opening'] as Map<String, dynamic>),
+      closing:
+          HaccpSessionSummary.fromJson(json['closing'] as Map<String, dynamic>),
       canOpen: json['can_open'] as bool,
       canClose: json['can_close'] as bool,
       openNonConformities: json['open_non_conformities'] as int? ?? 0,
@@ -755,8 +761,8 @@ class HaccpStatsData {
     return HaccpStatsData(
       fromDate: json['from_date'] as String,
       toDate: json['to_date'] as String,
-      sessions: HaccpSessionStats.fromJson(
-          json['sessions'] as Map<String, dynamic>),
+      sessions:
+          HaccpSessionStats.fromJson(json['sessions'] as Map<String, dynamic>),
       temperature: HaccpStatSection.fromJson(
           json['temperature'] as Map<String, dynamic>),
       dlc: HaccpStatSection.fromJson(json['dlc'] as Map<String, dynamic>),
@@ -766,8 +772,8 @@ class HaccpStatsData {
           json['non_conformities'] as Map<String, dynamic>),
       reception:
           HaccpStatSection.fromJson(json['reception'] as Map<String, dynamic>),
-      cooling: HaccpCoolingStats.fromJson(
-          json['cooling'] as Map<String, dynamic>),
+      cooling:
+          HaccpCoolingStats.fromJson(json['cooling'] as Map<String, dynamic>),
       overallScore: (json['overall_score'] as num).toDouble(),
     );
   }

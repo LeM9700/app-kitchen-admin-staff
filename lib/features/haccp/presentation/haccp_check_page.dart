@@ -1738,7 +1738,7 @@ class _HaccpOfflineBanner extends ConsumerWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             onPressed: () {
-              final queue = ref.read(currentSessionQueuedActionsProvider);
+              final queue = ref.read(syncQueueProvider);
               if (queue.isNotEmpty) {
                 ref.read(syncWorkerProvider).flush(queue);
               }

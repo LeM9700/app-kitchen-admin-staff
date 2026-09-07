@@ -20,10 +20,7 @@ class KitchenConnectionState {
 }
 
 final kitchenPendingActionsProvider = Provider<int>((ref) {
-  return pendingSyncCountForFeature(
-    ref.watch(currentSessionQueuedActionsProvider),
-    'kitchen',
-  );
+  return pendingSyncCountForFeature(ref.watch(syncQueueProvider), 'kitchen');
 });
 
 final kitchenConnectionStateProvider = Provider<KitchenConnectionState>((ref) {

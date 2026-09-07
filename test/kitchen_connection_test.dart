@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'kitchen_board_test_support.dart';
-import 'session_test_support.dart';
 
 void main() {
   test('resolves online, reconnecting, and offline states', () {
@@ -38,9 +37,6 @@ void main() {
   test('pendingActions counts only kitchen sync actions', () {
     final container = ProviderContainer(
       overrides: [
-        sessionControllerOverride(
-          testAuthenticatedSession(tenantSlug: 'pizza'),
-        ),
         syncQueueProvider.overrideWith(
           () => _SeededSyncQueue([
             _queuedAction(id: '1', feature: 'kitchen'),
@@ -59,9 +55,6 @@ void main() {
       () async {
     final container = ProviderContainer(
       overrides: [
-        sessionControllerOverride(
-          testAuthenticatedSession(tenantSlug: 'pizza'),
-        ),
         onlineStatusProvider.overrideWith((ref) => Stream.value(false)),
         realtimeConnectionStatusProvider.overrideWith(
           (ref) => Stream.value(RealtimeConnectionStatus.connected),
@@ -116,9 +109,6 @@ void main() {
     final container = createKitchenContainer(
       repository,
       overrides: [
-        sessionControllerOverride(
-          testAuthenticatedSession(tenantSlug: 'pizza'),
-        ),
         onlineStatusProvider.overrideWith((ref) => Stream.value(false)),
         realtimeConnectionStatusProvider.overrideWith(
           (ref) => Stream.value(RealtimeConnectionStatus.connected),
@@ -160,8 +150,5 @@ QueuedAction _queuedAction({
     method: 'PATCH',
     payload: const {},
     createdAt: DateTime.utc(2026, 8, 17, 10),
-    tenantSlug: 'pizza',
-    userId: 1,
-    sessionId: 1,
   );
 }

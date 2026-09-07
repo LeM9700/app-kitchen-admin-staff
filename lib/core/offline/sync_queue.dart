@@ -16,68 +16,6 @@ int pendingSyncCountForFeature(
   return actions.where((action) => action.feature == feature).length;
 }
 
-/// Queued actions that belong to whoever is signed in right now. Every
-/// badge/count/list shown in the UI should read from this provider (not
-/// [syncQueueProvider] directly) so another tenant's or user's leftover
-/// queue never bleeds into the current session's view.
-final currentSessionQueuedActionsProvider =
-    Provider<List<QueuedAction>>((ref) {
-  final session = ref.watch(sessionControllerProvider).valueOrNull;
-  final tenantSlug = session?.tenantSlug;
-  final userId = session?.user?.id;
-  final actions = ref.watch(syncQueueProvider);
-  if (tenantSlug == null || userId == null) {
-    return const [];
-  }
-  return actionsForSession(actions, tenantSlug: tenantSlug, userId: userId)
-      .toList();
-});
-
-/// Queued actions left behind by another tenant/user, or whose origin
-/// cannot be verified. Never flushed automatically — surfaced so the user
-/// can explicitly discard them.
-final foreignSessionQueuedActionsProvider =
-    Provider<List<QueuedAction>>((ref) {
-  final session = ref.watch(sessionControllerProvider).valueOrNull;
-  final tenantSlug = session?.tenantSlug;
-  final userId = session?.user?.id;
-  final actions = ref.watch(syncQueueProvider);
-  if (tenantSlug == null || userId == null) {
-    return actions;
-  }
-  return actionsForeignToSession(actions, tenantSlug: tenantSlug, userId: userId)
-      .toList();
-});
-
-/// Actions belonging to the tenant/user currently signed in.
-///
-/// [⚠️ PROD] Only this subset is safe to render or flush: an action left
-/// behind by another tenant or user on this device must never be mixed
-/// into the current session's queue or UI.
-Iterable<QueuedAction> actionsForSession(
-  Iterable<QueuedAction> actions, {
-  required String tenantSlug,
-  required int userId,
-}) {
-  return actions.where(
-    (action) => action.matchesIdentity(tenantSlug: tenantSlug, userId: userId),
-  );
-}
-
-/// Actions that were queued by a different tenant and/or user than the one
-/// currently signed in on this device, or whose origin cannot be verified
-/// (actions persisted before this format existed). These must never be
-/// replayed automatically — they are surfaced so the user can discard them.
-Iterable<QueuedAction> actionsForeignToSession(
-  Iterable<QueuedAction> actions, {
-  required String tenantSlug,
-  required int userId,
-}) {
-  return actions.where(
-    (action) => !action.matchesIdentity(tenantSlug: tenantSlug, userId: userId),
-  );
-}
-
 class QueuedAction {
   const QueuedAction({
     required this.id,
@@ -97,12 +35,19 @@ class QueuedAction {
     this.blockReason,
   });
 
-  /// Bumped whenever the on-disk shape of [QueuedAction] changes.
+  /// Bumped whenever the on-disk shape or storage model of [QueuedAction]
+  /// changes.
   ///
-  /// Version 1 (legacy) had no tenant/user/session identity at all — those
-  /// entries decode with [tenantSlug]/[userId]/[sessionId] left `null` and
-  /// are treated as unverifiable origin (see [hasKnownIdentity]).
-  static const currentFormatVersion = 2;
+  /// - Version 1 (legacy): a single global blob, no tenant/user identity.
+  /// - Version 2: single global blob, but each action tagged with its
+  ///   tenant/user/session.
+  /// - Version 3 (current): [SyncQueue] partitions storage physically, one
+  ///   secure-storage key per `tenantSlug`+`userId` — a session's process
+  ///   never even reads another identity's bytes off disk. Entries lacking
+  ///   [tenantSlug]/[userId] (version 1) or found under the wrong partition
+  ///   during the one-time migration are routed to a write-only quarantine
+  ///   bucket that no session ever reads back (see [SyncQueue]).
+  static const currentFormatVersion = 3;
 
   final String id;
   final String feature;
@@ -119,8 +64,17 @@ class QueuedAction {
   /// Staff user that initiated the action.
   final int? userId;
 
-  /// Non-sensitive session identifier (not a token) captured at queue time,
-  /// kept for audit/debugging — never used on its own to authorize replay.
+  /// Session identifier captured at queue time, kept purely as audit
+  /// metadata.
+  ///
+  /// [🔒 SÉCURITÉ] A refresh-token rotation issues a new backend session id
+  /// for the *same* tenant/user without ever changing [SessionState] in
+  /// memory (see `ApiClient._performRefresh`, which only rewrites the token
+  /// store — it never touches [SessionController]'s state). So a queued
+  /// action's [sessionId] can legitimately go stale relative to the current
+  /// backend session while the app is still running as the very same
+  /// person. It must never gate replay — only [tenantSlug] + [userId] do,
+  /// see [matchesIdentity].
   final int? sessionId;
 
   final int formatVersion;
@@ -128,13 +82,15 @@ class QueuedAction {
   final int retryCount;
   final String? lastError;
 
-  /// Set by [SyncWorker] when a replay attempt was blocked because the
-  /// action's tenant/user did not match the currently signed-in session.
-  /// Kept until the user explicitly discards the action.
+  /// Diagnostic metadata only, set right before an action is moved into the
+  /// write-only quarantine bucket during migration. Never rendered by any
+  /// UI and never read back by the app — see [SyncQueue].
   final String? blockReason;
 
   bool get hasKnownIdentity => tenantSlug != null && userId != null;
 
+  /// Whether this action was queued by the given tenant/user. Deliberately
+  /// ignores [sessionId] — see its doc comment.
   bool matchesIdentity({required String tenantSlug, required int userId}) {
     return hasKnownIdentity &&
         this.tenantSlug == tenantSlug &&
@@ -211,14 +167,87 @@ class QueuedAction {
 
 const _unset = Object();
 
+/// Minimal secure key/value contract [SyncQueue] depends on. Exists so
+/// tests can substitute a deterministic in-memory backend — one that also
+/// simulates several identities' partitions sharing the same "disk" — as a
+/// thin fake, instead of having to mock `FlutterSecureStorage`'s platform
+/// channel or guess at its exact method signatures.
+abstract class SecureKeyValueStore {
+  Future<String?> read(String key);
+  Future<void> write(String key, String value);
+  Future<void> delete(String key);
+}
+
+/// Production backend: wraps the real [FlutterSecureStorage].
+class FlutterSecureKeyValueStore implements SecureKeyValueStore {
+  const FlutterSecureKeyValueStore([
+    this._storage = const FlutterSecureStorage(),
+  ]);
+
+  final FlutterSecureStorage _storage;
+
+  @override
+  Future<String?> read(String key) => _storage.read(key: key);
+
+  @override
+  Future<void> write(String key, String value) =>
+      _storage.write(key: key, value: value);
+
+  @override
+  Future<void> delete(String key) => _storage.delete(key: key);
+}
+
+/// Offline action queue, physically partitioned by tenant + user on disk.
+///
+/// [🔒 SÉCURITÉ] There is no shared, cross-account storage bucket that this
+/// class (or any provider built on top of it) ever loads into an app-visible
+/// list. Each signed-in identity gets its own secure-storage key; a session
+/// only ever reads and writes the key matching *its own* tenant + user, so
+/// another account's queued labels, payloads, endpoints or order/HACCP data
+/// are never even deserialized into memory for a different session — not
+/// just filtered out of the UI. `state` on this notifier is therefore always
+/// exactly "my own pending actions", nothing more.
+///
+/// Entries that cannot be attributed to the signed-in identity (pre-tenant-
+/// tagging legacy actions, or actions found under the wrong identity during
+/// the one-time migration off the old single global key) are moved to a
+/// write-only quarantine bucket: the app appends to it but never reads it
+/// back, for any session. They are effectively unrecoverable through the
+/// app UI — a deliberate trade-off of recoverability for confidentiality.
 class SyncQueue extends Notifier<List<QueuedAction>> {
-  static const _storage = FlutterSecureStorage();
-  static const _storageKey = 'admin_staff_sync_queue';
+  /// Storage backend. Overridable (`@protected`) so tests can substitute an
+  /// in-memory fake — production always uses real secure storage.
+  @protected
+  SecureKeyValueStore get storage => const FlutterSecureKeyValueStore();
+
+  /// Pre-partitioning global key (format versions 1 and 2). Read at most
+  /// once per identity, to migrate any leftovers, then deleted for good.
+  static const _legacyGlobalKey = 'admin_staff_sync_queue';
+
+  /// Write-only: appended to during migration, never read back by the app.
+  static const _quarantineKey = 'admin_staff_sync_queue_quarantine';
+
+  String? _tenantSlug;
+  int? _userId;
+  int? _sessionId;
 
   @override
   List<QueuedAction> build() {
+    final session = ref.watch(sessionControllerProvider).valueOrNull;
+    _tenantSlug = session?.tenantSlug;
+    _userId = session?.user?.id;
+    _sessionId = session?.sessionId;
     load();
     return const [];
+  }
+
+  String? get _partitionKey {
+    final tenantSlug = _tenantSlug;
+    final userId = _userId;
+    if (tenantSlug == null || userId == null) {
+      return null;
+    }
+    return 'admin_staff_sync_queue::$tenantSlug::$userId';
   }
 
   /// Queues [payload] for later replay, stamped with the tenant, user and
@@ -236,10 +265,8 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
     String? idempotencyKey,
     String? lastError,
   }) {
-    final session = ref.read(sessionControllerProvider).valueOrNull;
-    final tenantSlug = session?.tenantSlug;
-    final userId = session?.user?.id;
-    final sessionId = session?.sessionId;
+    final tenantSlug = _tenantSlug;
+    final userId = _userId;
     if (tenantSlug == null || userId == null) {
       throw StateError(
         'Cannot queue an offline action without an authenticated session.',
@@ -256,7 +283,7 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
         createdAt: DateTime.now(),
         tenantSlug: tenantSlug,
         userId: userId,
-        sessionId: sessionId,
+        sessionId: _sessionId,
         lastError: lastError,
       ),
       ...state,
@@ -278,63 +305,114 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
     persist();
   }
 
-  /// Marks [id] as blocked from replay because it does not belong to the
-  /// currently signed-in tenant/user. The action is kept (never sent, never
-  /// silently dropped) until the user explicitly discards it.
-  void markBlocked(String id, String reason) {
-    state = [
-      for (final action in state)
-        if (action.id == id)
-          action.copyWith(blockReason: reason)
-        else
-          action,
-    ];
-    persist();
-  }
-
   void remove(String id) {
     state = state.where((action) => action.id != id).toList();
     persist();
   }
 
-  /// Discards every action foreign to [tenantSlug]/[userId]. Used when the
-  /// user explicitly chooses to abandon another session's leftover queue
-  /// (e.g. from the "blocked actions" panel in Settings).
-  void removeForeignTo({required String tenantSlug, required int userId}) {
-    state = state
-        .where((action) => action.matchesIdentity(
-              tenantSlug: tenantSlug,
-              userId: userId,
-            ))
-        .toList();
-    persist();
-  }
-
-  /// Loads the persisted queue from secure storage. Exposed as `@protected`
-  /// (rather than private) so tests can substitute an in-memory backend
-  /// without having to re-implement the tenant/session stamping logic in
-  /// [add].
+  /// Loads this identity's own partition from secure storage. Exposed as
+  /// `@protected` (rather than private) so tests can substitute an
+  /// in-memory backend without having to re-implement the tenant/session
+  /// stamping logic in [add].
   @protected
   Future<void> load() async {
-    final raw = await _storage.read(key: _storageKey);
-    if (raw == null || raw.isEmpty) {
+    final key = _partitionKey;
+    if (key == null) {
+      // No signed-in identity: nothing can be safely loaded or shown.
       return;
     }
+    final raw = await storage.read(key);
+    if (raw != null && raw.isNotEmpty) {
+      state = _decode(raw);
+      // Already on the partitioned layout: still sweep the legacy key once,
+      // in case it holds *other* identities' leftovers to quarantine.
+      await _migrateLegacyKey(mergeIntoOwnState: false);
+      return;
+    }
+    await _migrateLegacyKey(mergeIntoOwnState: true);
+  }
+
+  /// One-time migration off the pre-partitioning single global key.
+  ///
+  /// Every entry that matches the signed-in identity is adopted into this
+  /// partition (so a legitimate pending action survives the upgrade);
+  /// everything else — another identity's actions, or entries with no
+  /// identity at all — is moved to the write-only quarantine bucket. The
+  /// global key is deleted once fully redistributed, so this only ever runs
+  /// once across all identities that use this device.
+  ///
+  /// [⚠️ PROD] On a device whose legacy queue mixed several accounts, only
+  /// the first identity to load after this migration ships recovers its own
+  /// actions; the rest are quarantined (and therefore unrecoverable through
+  /// the app). This is intentional: confidentiality wins over convenience.
+  Future<void> _migrateLegacyKey({required bool mergeIntoOwnState}) async {
+    final tenantSlug = _tenantSlug;
+    final userId = _userId;
+    if (tenantSlug == null || userId == null) {
+      return;
+    }
+    final legacyRaw = await storage.read(_legacyGlobalKey);
+    if (legacyRaw == null || legacyRaw.isEmpty) {
+      return;
+    }
+    final legacyActions = _decode(legacyRaw);
+    final mine = <QueuedAction>[];
+    final quarantined = <QueuedAction>[];
+    for (final action in legacyActions) {
+      if (action.matchesIdentity(tenantSlug: tenantSlug, userId: userId)) {
+        mine.add(action);
+      } else {
+        quarantined.add(
+          action.copyWith(
+            blockReason: action.hasKnownIdentity
+                ? 'migrated_foreign_identity'
+                : 'migrated_unknown_origin',
+          ),
+        );
+      }
+    }
+    if (mergeIntoOwnState && mine.isNotEmpty) {
+      state = mine;
+      await persist();
+    }
+    if (quarantined.isNotEmpty) {
+      await _appendToQuarantine(quarantined);
+    }
+    await storage.delete(_legacyGlobalKey);
+  }
+
+  Future<void> _appendToQuarantine(List<QueuedAction> actions) async {
+    final raw = await storage.read(_quarantineKey);
+    final existing = raw != null && raw.isNotEmpty ? _decode(raw) : const <QueuedAction>[];
+    await storage.write(
+      _quarantineKey,
+      _encode([...existing, ...actions]),
+    );
+    // Nothing in the app ever reads _quarantineKey back: this bucket exists
+    // purely as a non-destructive record, not a recovery path.
+  }
+
+  @protected
+  Future<void> persist() async {
+    final key = _partitionKey;
+    if (key == null) {
+      return;
+    }
+    await storage.write(key, _encode(state));
+  }
+
+  static List<QueuedAction> _decode(String raw) {
     final decoded = json.decode(raw);
     if (decoded is! List) {
-      return;
+      return const [];
     }
-    state = decoded
+    return decoded
         .whereType<Map>()
         .map((value) => QueuedAction.fromJson(Map<String, dynamic>.from(value)))
         .toList();
   }
 
-  @protected
-  Future<void> persist() async {
-    await _storage.write(
-      key: _storageKey,
-      value: json.encode(state.map((action) => action.toJson()).toList()),
-    );
+  static String _encode(List<QueuedAction> actions) {
+    return json.encode(actions.map((action) => action.toJson()).toList());
   }
 }

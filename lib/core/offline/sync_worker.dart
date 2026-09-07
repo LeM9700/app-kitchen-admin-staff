@@ -3,29 +3,30 @@ import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final syncWorkerProvider = Provider<SyncWorker>((ref) {
-  return SyncWorker(
-    ref.watch(apiClientProvider),
-    ref.read(syncQueueProvider.notifier),
-    ref,
-  );
-});
+final syncWorkerProvider = Provider<SyncWorker>((ref) => SyncWorker(ref));
 
 class SyncWorker {
-  const SyncWorker(this._apiClient, this._queue, this._ref);
+  const SyncWorker(this._ref);
 
-  final ApiClient _apiClient;
-  final SyncQueue _queue;
   final Ref _ref;
 
   /// Replays [actions] against the API.
   ///
-  /// [🔒 SÉCURITÉ] Before sending anything, each action's tenant/user is
-  /// compared against whoever is signed in *right now* — read fresh on
-  /// every call, never cached — so an action queued under tenant A can
-  /// never be replayed under a tenant B (or a different user) session.
-  /// Mismatched actions are marked [QueuedAction.blockReason] and are never
-  /// sent to the API.
+  /// [🔒 SÉCURITÉ] The API client, the queue notifier and the signed-in
+  /// identity are all re-read fresh from [_ref] on every call — never
+  /// captured once and cached — because [SyncQueue] rebuilds (a brand new
+  /// notifier instance, bound to the new identity's own storage partition)
+  /// whenever the signed-in tenant/user changes. Holding on to a stale
+  /// queue instance across a tenant switch would let this worker write to
+  /// state nobody is looking at, or worse, to the wrong partition.
+  ///
+  /// Each action's tenant/user is also compared against whoever is signed
+  /// in *right now* before anything is sent: with [SyncQueue] partitioned
+  /// per identity this should never actually mismatch, but the check is
+  /// cheap defense-in-depth against races (e.g. [actions] was snapshotted
+  /// just before a tenant switch). A mismatched action is simply skipped —
+  /// never sent, never touched — since it cannot belong to the identity
+  /// this worker is currently allowed to act on.
   Future<void> flush(List<QueuedAction> actions) async {
     final session = _ref.read(sessionControllerProvider).valueOrNull;
     final currentTenantSlug = session?.tenantSlug;
@@ -35,50 +36,47 @@ class SyncWorker {
       return;
     }
 
+    final apiClient = _ref.read(apiClientProvider);
+    final queue = _ref.read(syncQueueProvider.notifier);
+
     for (final action in actions.reversed) {
       if (!action.matchesIdentity(
         tenantSlug: currentTenantSlug,
         userId: currentUserId,
       )) {
-        _queue.markBlocked(
-          action.id,
-          action.hasKnownIdentity
-              ? 'tenant_or_user_mismatch'
-              : 'unknown_origin',
-        );
         continue;
       }
 
       try {
         final method = action.method.toUpperCase();
         if (method == 'POST') {
-          await _apiClient.post(
+          await apiClient.post(
             action.endpoint,
             data: action.payload,
             idempotencyKey: action.idempotencyKey,
           );
         } else if (method == 'PUT') {
-          await _apiClient.put(
+          await apiClient.put(
             action.endpoint,
             data: action.payload,
             idempotencyKey: action.idempotencyKey,
           );
         } else if (method == 'DELETE') {
-          await _apiClient.delete(
+          await apiClient.delete(
             action.endpoint,
             data: action.payload,
             idempotencyKey: action.idempotencyKey,
           );
         } else {
-          await _apiClient.patch(
+          await apiClient.patch(
             action.endpoint,
             data: action.payload,
             idempotencyKey: action.idempotencyKey,
           );
         }
-        _queue.remove(action.id);
+        queue.remove(action.id);
       } catch (error) {
-        _queue.markFailed(action.id, error.toString());
+        queue.markFailed(action.id, error.toString());
       }
     }
   }

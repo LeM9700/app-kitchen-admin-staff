@@ -320,6 +320,6 @@ class HaccpOfflineService {
 
 /// Nombre d'actions HACCP dans la queue (badge dans l'AppBar).
 final haccpPendingSyncCountProvider = Provider<int>((ref) {
-  final actions = ref.watch(currentSessionQueuedActionsProvider);
+  final actions = ref.watch(syncQueueProvider);
   return pendingSyncCountForFeature(actions, 'haccp');
 });

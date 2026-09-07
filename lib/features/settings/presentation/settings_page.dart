@@ -36,7 +36,8 @@ class SettingsPage extends ConsumerWidget {
     final canReadPrint = permissions.can(AppPermission.printRead);
     final canPrepareOrders = permissions.can(AppPermission.ordersPreparation);
     final sessions = ref.watch(authSessionsProvider);
-    final queuedActions = ref.watch(syncQueueProvider);
+    final queuedActions = ref.watch(currentSessionQueuedActionsProvider);
+    final foreignQueuedActions = ref.watch(foreignSessionQueuedActionsProvider);
     final printJobs = ref.watch(printJobsProvider);
     final printConfig = canReadPrint
         ? ref.watch(tenantPrintConfigProvider)
@@ -440,6 +441,46 @@ class SettingsPage extends ConsumerWidget {
                       );
                     }).toList(),
             ),
+            if (foreignQueuedActions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ExpansionTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                leading: const Icon(Icons.block_outlined),
+                title: Text(
+                  'Actions bloquées (autre session) (${foreignQueuedActions.length})',
+                ),
+                subtitle: const Text(
+                  'Ces actions ont été créées avec un autre compte ou un '
+                  'autre établissement. [🔒 SÉCURITÉ] Elles ne seront '
+                  'jamais synchronisées depuis cette session : abandonnez-les '
+                  'ou reconnectez-vous avec le compte d\'origine.',
+                ),
+                children: foreignQueuedActions.map((action) {
+                  final reason = switch (action.blockReason) {
+                    'tenant_or_user_mismatch' =>
+                      'Bloquée : compte ou établissement différent',
+                    'unknown_origin' => 'Bloquée : origine non vérifiable',
+                    _ => 'En attente — appartient à une autre session',
+                  };
+                  return ListTile(
+                    title: Text(action.label),
+                    subtitle: Text(
+                      '${action.method} ${action.endpoint}\n$reason',
+                    ),
+                    isThreeLine: true,
+                    trailing: IconButton(
+                      tooltip: 'Abandonner',
+                      onPressed: () => ref
+                          .read(syncQueueProvider.notifier)
+                          .remove(action.id),
+                      icon: const Icon(Icons.delete_forever_outlined),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
             const SizedBox(height: 8),
             ExpansionTile(
               shape: RoundedRectangleBorder(

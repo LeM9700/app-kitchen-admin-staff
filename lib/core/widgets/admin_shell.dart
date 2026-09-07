@@ -53,7 +53,7 @@ class AdminShell extends ConsumerWidget {
       final wasOffline = !(previous?.valueOrNull ?? true);
       final isNowOnline = next.valueOrNull ?? false;
       if (wasOffline && isNowOnline) {
-        final queue = ref.read(syncQueueProvider);
+        final queue = ref.read(currentSessionQueuedActionsProvider);
         if (queue.isNotEmpty) {
           ref.read(syncWorkerProvider).flush(queue);
         }
@@ -603,7 +603,7 @@ class _ShellStatusActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final online = ref.watch(onlineStatusProvider).valueOrNull ?? true;
     final tenant = ref.watch(tenantStatusProvider).valueOrNull;
-    final queued = ref.watch(syncQueueProvider).length;
+    final queued = ref.watch(currentSessionQueuedActionsProvider).length;
     final notifications = ref.watch(notificationBusProvider).length;
 
     if (compact) {

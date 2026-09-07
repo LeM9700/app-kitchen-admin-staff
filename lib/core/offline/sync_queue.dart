@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app_admin_staff/core/auth/session_controller.dart';
+import 'package:app_admin_staff/core/auth/session_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -230,14 +231,19 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
   String? _tenantSlug;
   int? _userId;
   int? _sessionId;
+  int _loadGeneration = 0;
+  bool _sessionListenerAttached = false;
 
   @override
   List<QueuedAction> build() {
-    final session = ref.watch(sessionControllerProvider).valueOrNull;
-    _tenantSlug = session?.tenantSlug;
-    _userId = session?.user?.id;
-    _sessionId = session?.sessionId;
-    load();
+    if (!_sessionListenerAttached) {
+      _sessionListenerAttached = true;
+      ref.listen<AsyncValue<SessionState>>(
+        sessionControllerProvider,
+        (_, next) => _activateSession(next.valueOrNull),
+        fireImmediately: true,
+      );
+    }
     return const [];
   }
 
@@ -248,6 +254,19 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
       return null;
     }
     return 'admin_staff_sync_queue::$tenantSlug::$userId';
+  }
+
+  void _activateSession(SessionState? session) {
+    _tenantSlug = session?.tenantSlug;
+    _userId = session?.user?.id;
+    _sessionId = session?.sessionId;
+    _loadGeneration += 1;
+    state = const [];
+    load();
+  }
+
+  bool _isCurrentLoad(int generation, String key) {
+    return generation == _loadGeneration && key == _partitionKey;
   }
 
   /// Queues [payload] for later replay, stamped with the tenant, user and
@@ -317,19 +336,37 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
   @protected
   Future<void> load() async {
     final key = _partitionKey;
-    if (key == null) {
+    final tenantSlug = _tenantSlug;
+    final userId = _userId;
+    final generation = _loadGeneration;
+    if (key == null || tenantSlug == null || userId == null) {
       // No signed-in identity: nothing can be safely loaded or shown.
       return;
     }
     final raw = await storage.read(key);
+    if (!_isCurrentLoad(generation, key)) {
+      return;
+    }
     if (raw != null && raw.isNotEmpty) {
       state = _decode(raw);
       // Already on the partitioned layout: still sweep the legacy key once,
       // in case it holds *other* identities' leftovers to quarantine.
-      await _migrateLegacyKey(mergeIntoOwnState: false);
+      await _migrateLegacyKey(
+        mergeIntoOwnState: false,
+        tenantSlug: tenantSlug,
+        userId: userId,
+        generation: generation,
+        key: key,
+      );
       return;
     }
-    await _migrateLegacyKey(mergeIntoOwnState: true);
+    await _migrateLegacyKey(
+      mergeIntoOwnState: true,
+      tenantSlug: tenantSlug,
+      userId: userId,
+      generation: generation,
+      key: key,
+    );
   }
 
   /// One-time migration off the pre-partitioning single global key.
@@ -345,13 +382,17 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
   /// the first identity to load after this migration ships recovers its own
   /// actions; the rest are quarantined (and therefore unrecoverable through
   /// the app). This is intentional: confidentiality wins over convenience.
-  Future<void> _migrateLegacyKey({required bool mergeIntoOwnState}) async {
-    final tenantSlug = _tenantSlug;
-    final userId = _userId;
-    if (tenantSlug == null || userId == null) {
+  Future<void> _migrateLegacyKey({
+    required bool mergeIntoOwnState,
+    required String tenantSlug,
+    required int userId,
+    required int generation,
+    required String key,
+  }) async {
+    final legacyRaw = await storage.read(_legacyGlobalKey);
+    if (!_isCurrentLoad(generation, key)) {
       return;
     }
-    final legacyRaw = await storage.read(_legacyGlobalKey);
     if (legacyRaw == null || legacyRaw.isEmpty) {
       return;
     }
@@ -373,7 +414,10 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
     }
     if (mergeIntoOwnState && mine.isNotEmpty) {
       state = mine;
-      await persist();
+      await persist(keyOverride: key);
+    }
+    if (!_isCurrentLoad(generation, key)) {
+      return;
     }
     if (quarantined.isNotEmpty) {
       await _appendToQuarantine(quarantined);
@@ -393,8 +437,8 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
   }
 
   @protected
-  Future<void> persist() async {
-    final key = _partitionKey;
+  Future<void> persist({String? keyOverride}) async {
+    final key = keyOverride ?? _partitionKey;
     if (key == null) {
       return;
     }

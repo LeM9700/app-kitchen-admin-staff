@@ -3,6 +3,7 @@ import 'package:app_admin_staff/app/service_mode.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:app_admin_staff/core/offline/sync_worker.dart';
+import 'package:app_admin_staff/core/printing/network_printer_confirmation.dart';
 import 'package:app_admin_staff/core/printing/printer_registry.dart';
 import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/core/widgets/empty_state.dart';
@@ -604,61 +605,114 @@ class SettingsPage extends ConsumerWidget {
         current.config['kitchen_transport']?.toString() ?? 'pdf';
     var counterTransport =
         current.config['counter_transport']?.toString() ?? 'pdf';
+    // A confirmation only means something for the exact host/port it was
+    // given for: any config saved before this flag existed - or where the
+    // host/port has since been edited - must be treated as unconfirmed.
+    late StateSetter dialogSetState;
+    final kitchenConfirmation = NetworkPrinterConfirmationTracker(
+      hostController: kitchenHost,
+      portController: kitchenPort,
+      initiallyConfirmed: current.config['kitchen_host_confirmed'] == true,
+      onChanged: () => dialogSetState(() {}),
+    );
+    final counterConfirmation = NetworkPrinterConfirmationTracker(
+      hostController: counterHost,
+      portController: counterPort,
+      initiallyConfirmed: current.config['counter_host_confirmed'] == true,
+      onChanged: () => dialogSetState(() {}),
+    );
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Impression partagee'),
-          content: SizedBox(
-            width: 520,
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Activer impression'),
-                  value: enabled,
-                  onChanged: (value) => setState(() => enabled = value),
-                ),
-                _PrinterConfigFields(
-                  title: 'Cuisine',
-                  icon: Icons.restaurant_outlined,
-                  nameController: kitchenController,
-                  hostController: kitchenHost,
-                  portController: kitchenPort,
-                  transport: kitchenTransport,
-                  onTransportChanged: (value) {
-                    setState(() => kitchenTransport = value);
-                  },
-                ),
-                const Divider(),
-                _PrinterConfigFields(
-                  title: 'Comptoir',
-                  icon: Icons.point_of_sale_outlined,
-                  nameController: counterController,
-                  hostController: counterHost,
-                  portController: counterPort,
-                  transport: counterTransport,
-                  onTransportChanged: (value) {
-                    setState(() => counterTransport = value);
-                  },
-                ),
-              ],
+        builder: (context, setState) {
+          dialogSetState = setState;
+          return AlertDialog(
+            title: const Text('Impression partagee'),
+            content: SizedBox(
+              width: 520,
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Activer impression'),
+                    value: enabled,
+                    onChanged: (value) => setState(() => enabled = value),
+                  ),
+                  _PrinterConfigFields(
+                    title: 'Cuisine',
+                    icon: Icons.restaurant_outlined,
+                    nameController: kitchenController,
+                    hostController: kitchenHost,
+                    portController: kitchenPort,
+                    transport: kitchenTransport,
+                    onTransportChanged: (value) {
+                      setState(() => kitchenTransport = value);
+                    },
+                    hostConfirmed: kitchenConfirmation.confirmed,
+                    onHostConfirmedChanged: (value) {
+                      setState(() => kitchenConfirmation.confirmed = value);
+                    },
+                  ),
+                  const Divider(),
+                  _PrinterConfigFields(
+                    title: 'Comptoir',
+                    icon: Icons.point_of_sale_outlined,
+                    nameController: counterController,
+                    hostController: counterHost,
+                    portController: counterPort,
+                    transport: counterTransport,
+                    onTransportChanged: (value) {
+                      setState(() => counterTransport = value);
+                    },
+                    hostConfirmed: counterConfirmation.confirmed,
+                    onHostConfirmedChanged: (value) {
+                      setState(() => counterConfirmation.confirmed = value);
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Enregistrer'),
-            ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Annuler'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final missingConfirmation = <String>[];
+                  if (kitchenTransport == 'network' &&
+                      kitchenHost.text.trim().isNotEmpty &&
+                      !kitchenConfirmation.confirmed) {
+                    missingConfirmation.add('Cuisine');
+                  }
+                  if (counterTransport == 'network' &&
+                      counterHost.text.trim().isNotEmpty &&
+                      !counterConfirmation.confirmed) {
+                    missingConfirmation.add('Comptoir');
+                  }
+                  if (missingConfirmation.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Confirmez l\'imprimante cible pour : '
+                          '${missingConfirmation.join(', ')}',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.pop(context, true);
+                },
+                child: const Text('Enregistrer'),
+              ),
+            ],
+          );
+        },
       ),
     );
+    kitchenConfirmation.dispose();
+    counterConfirmation.dispose();
     if (confirmed != true) {
       return;
     }
@@ -674,6 +728,8 @@ class SettingsPage extends ConsumerWidget {
           'counter_host': counterHost.text.trim(),
           'kitchen_port': int.tryParse(kitchenPort.text.trim()) ?? 9100,
           'counter_port': int.tryParse(counterPort.text.trim()) ?? 9100,
+          'kitchen_host_confirmed': kitchenConfirmation.confirmed,
+          'counter_host_confirmed': counterConfirmation.confirmed,
           'manual_print': true,
         },
       );
@@ -1287,6 +1343,8 @@ class _PrinterConfigFields extends StatelessWidget {
     required this.portController,
     required this.transport,
     required this.onTransportChanged,
+    required this.hostConfirmed,
+    required this.onHostConfirmedChanged,
   });
 
   final String title;
@@ -1296,6 +1354,8 @@ class _PrinterConfigFields extends StatelessWidget {
   final TextEditingController portController;
   final String transport;
   final ValueChanged<String> onTransportChanged;
+  final bool hostConfirmed;
+  final ValueChanged<bool> onHostConfirmedChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1345,6 +1405,17 @@ class _PrinterConfigFields extends StatelessWidget {
             ),
           ],
         ),
+        if (transport == 'network')
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: hostConfirmed,
+            onChanged: (value) => onHostConfirmedChanged(value ?? false),
+            title: const Text(
+              'Je confirme que cette adresse correspond bien a '
+              'l\'imprimante physique sur le reseau local du restaurant',
+            ),
+          ),
       ],
     );
   }

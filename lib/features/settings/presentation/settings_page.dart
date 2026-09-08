@@ -604,6 +604,10 @@ class SettingsPage extends ConsumerWidget {
         current.config['kitchen_transport']?.toString() ?? 'pdf';
     var counterTransport =
         current.config['counter_transport']?.toString() ?? 'pdf';
+    var kitchenHostConfirmed =
+        current.config['kitchen_host_confirmed'] == true;
+    var counterHostConfirmed =
+        current.config['counter_host_confirmed'] == true;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -630,6 +634,10 @@ class SettingsPage extends ConsumerWidget {
                   onTransportChanged: (value) {
                     setState(() => kitchenTransport = value);
                   },
+                  hostConfirmed: kitchenHostConfirmed,
+                  onHostConfirmedChanged: (value) {
+                    setState(() => kitchenHostConfirmed = value);
+                  },
                 ),
                 const Divider(),
                 _PrinterConfigFields(
@@ -642,6 +650,10 @@ class SettingsPage extends ConsumerWidget {
                   onTransportChanged: (value) {
                     setState(() => counterTransport = value);
                   },
+                  hostConfirmed: counterHostConfirmed,
+                  onHostConfirmedChanged: (value) {
+                    setState(() => counterHostConfirmed = value);
+                  },
                 ),
               ],
             ),
@@ -652,7 +664,31 @@ class SettingsPage extends ConsumerWidget {
               child: const Text('Annuler'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () {
+                final missingConfirmation = <String>[];
+                if (kitchenTransport == 'network' &&
+                    kitchenHost.text.trim().isNotEmpty &&
+                    !kitchenHostConfirmed) {
+                  missingConfirmation.add('Cuisine');
+                }
+                if (counterTransport == 'network' &&
+                    counterHost.text.trim().isNotEmpty &&
+                    !counterHostConfirmed) {
+                  missingConfirmation.add('Comptoir');
+                }
+                if (missingConfirmation.isNotEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Confirmez l\'imprimante cible pour : '
+                        '${missingConfirmation.join(', ')}',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
               child: const Text('Enregistrer'),
             ),
           ],
@@ -674,6 +710,8 @@ class SettingsPage extends ConsumerWidget {
           'counter_host': counterHost.text.trim(),
           'kitchen_port': int.tryParse(kitchenPort.text.trim()) ?? 9100,
           'counter_port': int.tryParse(counterPort.text.trim()) ?? 9100,
+          'kitchen_host_confirmed': kitchenHostConfirmed,
+          'counter_host_confirmed': counterHostConfirmed,
           'manual_print': true,
         },
       );
@@ -1287,6 +1325,8 @@ class _PrinterConfigFields extends StatelessWidget {
     required this.portController,
     required this.transport,
     required this.onTransportChanged,
+    required this.hostConfirmed,
+    required this.onHostConfirmedChanged,
   });
 
   final String title;
@@ -1296,6 +1336,8 @@ class _PrinterConfigFields extends StatelessWidget {
   final TextEditingController portController;
   final String transport;
   final ValueChanged<String> onTransportChanged;
+  final bool hostConfirmed;
+  final ValueChanged<bool> onHostConfirmedChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1345,6 +1387,17 @@ class _PrinterConfigFields extends StatelessWidget {
             ),
           ],
         ),
+        if (transport == 'network')
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: hostConfirmed,
+            onChanged: (value) => onHostConfirmedChanged(value ?? false),
+            title: const Text(
+              'Je confirme que cette adresse correspond bien a '
+              'l\'imprimante physique sur le reseau local du restaurant',
+            ),
+          ),
       ],
     );
   }

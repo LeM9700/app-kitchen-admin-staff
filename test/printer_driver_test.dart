@@ -84,12 +84,85 @@ void main() {
       expect(await policy.resolveIfAllowed('printer.local', 9100), isNull);
     });
 
-    test('autorise une plage supplementaire configuree par restaurant',
+    test('autorise une plage CGNAT explicitement ajoutee par restaurant',
         () async {
       const policy = PrinterNetworkPolicy(
         extraAllowedCidrs: ['100.64.0.0/10'],
       );
       final result = await policy.resolveIfAllowed('100.64.0.5', 9100);
+      expect(result, isNotNull);
+    });
+
+    test('autorise un sous-reseau precis d\'une plage privee par defaut',
+        () async {
+      const policy = PrinterNetworkPolicy(
+        extraAllowedCidrs: ['172.16.5.0/24'],
+      );
+      final result = await policy.resolveIfAllowed('172.16.5.10', 9100);
+      expect(result, isNotNull);
+    });
+
+    test('la plage CGNAT n\'est jamais autorisee par defaut', () async {
+      const policy = PrinterNetworkPolicy();
+      expect(await policy.resolveIfAllowed('100.64.0.5', 9100), isNull);
+    });
+
+    test('refuse 0.0.0.0/0 comme plage supplementaire', () async {
+      const policy = PrinterNetworkPolicy(
+        extraAllowedCidrs: ['0.0.0.0/0'],
+      );
+      expect(await policy.resolveIfAllowed('8.8.8.8', 9100), isNull);
+      expect(await policy.resolveIfAllowed('1.2.3.4', 9100), isNull);
+    });
+
+    test('refuse ::/0 comme plage supplementaire', () async {
+      const policy = PrinterNetworkPolicy(
+        extraAllowedCidrs: ['::/0'],
+      );
+      expect(
+        await policy.resolveIfAllowed('2001:4860:4860::8888', 9100),
+        isNull,
+      );
+    });
+
+    test('refuse un CIDR public comme plage supplementaire', () async {
+      const policy = PrinterNetworkPolicy(
+        extraAllowedCidrs: ['8.0.0.0/8'],
+      );
+      expect(await policy.resolveIfAllowed('8.8.8.8', 9100), isNull);
+    });
+
+    test('refuse un CIDR plus large que la plage CGNAT reconnue', () async {
+      // /9 est plus large que la plage CGNAT reconnue (/10) : l'entree
+      // entiere doit etre ignoree, y compris pour les adresses qui seraient
+      // couvertes par un /10 legitime.
+      const policy = PrinterNetworkPolicy(
+        extraAllowedCidrs: ['100.64.0.0/9'],
+      );
+      expect(await policy.resolveIfAllowed('100.64.0.5', 9100), isNull);
+      expect(await policy.resolveIfAllowed('100.32.0.5', 9100), isNull);
+    });
+
+    test('refuse loopback/link-local/multicast comme plage supplementaire',
+        () async {
+      const policy = PrinterNetworkPolicy(
+        extraAllowedCidrs: [
+          '127.0.0.0/8',
+          '169.254.0.0/16',
+          '224.0.0.0/4',
+        ],
+      );
+      expect(await policy.resolveIfAllowed('127.0.0.5', 9100), isNull);
+      expect(await policy.resolveIfAllowed('169.254.1.1', 9100), isNull);
+      expect(await policy.resolveIfAllowed('224.0.0.5', 9100), isNull);
+    });
+
+    test('ignore un CIDR malforme sans planter', () async {
+      const policy = PrinterNetworkPolicy(
+        extraAllowedCidrs: ['not-a-cidr', '192.168.1.0/999', '192.168.1.0'],
+      );
+      // Les plages par defaut restent actives malgre les entrees invalides.
+      final result = await policy.resolveIfAllowed('192.168.1.50', 9100);
       expect(result, isNotNull);
     });
 

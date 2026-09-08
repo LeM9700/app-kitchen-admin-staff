@@ -1,3 +1,15 @@
+/// This file is a hardened *foundation* for network printer dispatch: host,
+/// port and network-range validation, timeouts, generic error messages and a
+/// content-free audit log. As of now nothing in `lib/` outside this file
+/// (and its tests) calls [PrinterDriverRegistry.driverFor] or constructs a
+/// [NetworkTextPrinterDriver] - screens only enqueue [PrintJob]s into
+/// `printJobsProvider`, and the settings screen lets staff mark them done by
+/// hand. No TCP connection is opened by the app today. See
+/// `docs/printer_network_security.md` for the full picture, and update both
+/// that doc and `test/no_printer_dispatcher_wired_test.dart` if a real
+/// dispatcher is wired up later.
+library;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
@@ -71,6 +83,14 @@ Future<List<InternetAddress>> _defaultResolveHost(String host) async {
 /// (including the 169.254.169.254 cloud metadata address), multicast and
 /// public internet destinations are always rejected regardless of
 /// [extraAllowedCidrs].
+///
+/// [extraAllowedCidrs] lets a restaurant with a non-default LAN layout (e.g.
+/// a shared CGNAT range across sites) opt in to more ranges, but every entry
+/// is validated against [_recognizedExtraCidrBases]: only a range that is a
+/// subnet of one of those bases is accepted, so a value such as `0.0.0.0/0`,
+/// a public CIDR, or an overly broad prefix can never widen the policy to
+/// public destinations. Invalid or disallowed entries are silently dropped
+/// rather than crashing the app on a corrupted config value.
 class PrinterNetworkPolicy {
   const PrinterNetworkPolicy({
     this.extraAllowedCidrs = const [],
@@ -79,7 +99,9 @@ class PrinterNetworkPolicy {
   }) : _resolveHost = resolveHost ?? _defaultResolveHost;
 
   /// Additional private network ranges (CIDR notation) authorised for this
-  /// restaurant, on top of the default private ranges below.
+  /// restaurant, on top of the default private ranges below. Entries that
+  /// are not a subnet of [_recognizedExtraCidrBases] are ignored - see the
+  /// class doc.
   final List<String> extraAllowedCidrs;
 
   /// Ports a network printer is allowed to listen on.
@@ -92,6 +114,17 @@ class PrinterNetworkPolicy {
     '172.16.0.0/12',
     '192.168.0.0/16',
     'fc00::/7',
+  ];
+
+  /// Ranges an [extraAllowedCidrs] entry is allowed to be a subnet of. Same
+  /// as [_defaultPrivateCidrs] plus the shared CGNAT range (RFC 6598),
+  /// which is intentionally *not* allowed by default: a restaurant must opt
+  /// in to it explicitly (e.g. `extraAllowedCidrs: ['100.64.0.0/10']`) since
+  /// it is sometimes used by carrier-grade NAT on the public internet side
+  /// too, not exclusively for private LANs.
+  static const List<String> _recognizedExtraCidrBases = [
+    ..._defaultPrivateCidrs,
+    '100.64.0.0/10',
   ];
 
   /// A bare hostname or IP literal: no scheme, path, credentials or
@@ -121,28 +154,76 @@ class PrinterNetworkPolicy {
     if (address.address == '0.0.0.0' || address.address == '::') {
       return false;
     }
-    final cidrs = [..._defaultPrivateCidrs, ...extraAllowedCidrs];
+    final cidrs = [
+      ..._defaultPrivateCidrs,
+      ...extraAllowedCidrs.where(_isRecognizedExtraCidr),
+    ];
     return cidrs.any((cidr) => _matchesCidr(address, cidr));
   }
 
-  static bool _matchesCidr(InternetAddress address, String cidr) {
+  /// Whether [cidr] is well-formed and entirely contained within one of the
+  /// [_recognizedExtraCidrBases] - i.e. it cannot describe anything broader
+  /// than, or outside of, the private/CGNAT ranges this app ever allows.
+  static bool _isRecognizedExtraCidr(String cidr) {
+    final parsed = _parseCidr(cidr);
+    if (parsed == null) return false;
+    final (network, prefixLength) = parsed;
+    if (network.isLoopback || network.isLinkLocal || network.isMulticast) {
+      return false;
+    }
+    for (final base in _recognizedExtraCidrBases) {
+      final baseParsed = _parseCidr(base);
+      if (baseParsed == null) continue;
+      final (baseNetwork, basePrefixLength) = baseParsed;
+      if (baseNetwork.type != network.type) continue;
+      if (prefixLength < basePrefixLength) continue;
+      if (_rawAddressMatchesPrefix(
+        network.rawAddress,
+        baseNetwork.rawAddress,
+        basePrefixLength,
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static (InternetAddress, int)? _parseCidr(String cidr) {
     final parts = cidr.split('/');
-    if (parts.length != 2) return false;
+    if (parts.length != 2) return null;
     final network = InternetAddress.tryParse(parts[0]);
     final prefixLength = int.tryParse(parts[1]);
-    if (network == null || prefixLength == null) return false;
+    if (network == null || prefixLength == null) return null;
+    if (prefixLength < 0 || prefixLength > network.rawAddress.length * 8) {
+      return null;
+    }
+    return (network, prefixLength);
+  }
+
+  static bool _matchesCidr(InternetAddress address, String cidr) {
+    final parsed = _parseCidr(cidr);
+    if (parsed == null) return false;
+    final (network, prefixLength) = parsed;
     if (network.type != address.type) return false;
+    return _rawAddressMatchesPrefix(
+      address.rawAddress,
+      network.rawAddress,
+      prefixLength,
+    );
+  }
 
-    final addressBytes = address.rawAddress;
-    final networkBytes = network.rawAddress;
-    if (addressBytes.length != networkBytes.length) return false;
-
+  static bool _rawAddressMatchesPrefix(
+    List<int> address,
+    List<int> network,
+    int prefixLength,
+  ) {
+    if (address.length != network.length) return false;
     var remainingBits = prefixLength;
-    for (var i = 0; i < addressBytes.length; i++) {
+    for (var i = 0; i < address.length; i++) {
       if (remainingBits <= 0) break;
       final bitsInByte = remainingBits >= 8 ? 8 : remainingBits;
       final mask = bitsInByte == 8 ? 0xFF : (0xFF << (8 - bitsInByte)) & 0xFF;
-      if ((addressBytes[i] & mask) != (networkBytes[i] & mask)) {
+      if ((address[i] & mask) != (network[i] & mask)) {
         return false;
       }
       remainingBits -= bitsInByte;

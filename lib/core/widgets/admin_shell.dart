@@ -9,6 +9,7 @@ import 'package:app_admin_staff/core/realtime/notification_bus.dart';
 import 'package:app_admin_staff/design_system/theme/api_kitchen_theme.dart';
 import 'package:app_admin_staff/design_system/tokens/app_breakpoints.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/establishments/application/establishment_invalidation.dart';
@@ -240,7 +241,10 @@ class _AdminSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: AppBreakpoints.adminSidebarWidth(context),
-      color: AppColors.adminSidebar,
+      decoration: BoxDecoration(
+        color: AppColors.adminSidebar,
+        boxShadow: AppElevation.raisedMd(AppColors.adminSidebar),
+      ),
       child: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(
@@ -295,6 +299,7 @@ class _SidebarBrand extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.adminSidebarActive,
             borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: AppElevation.raisedSm(AppColors.adminSidebarActive),
           ),
           child: const Text(
             'AK',
@@ -357,15 +362,24 @@ class _AdminSidebarItem extends StatelessWidget {
     final content = InkWell(
       borderRadius: BorderRadius.circular(AppRadius.lg),
       onTap: () => context.go(item.path),
-      child: Container(
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeInOut,
         constraints: const BoxConstraints(minHeight: 44),
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 0 : AppSpacing.sm,
           vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: selected ? AppColors.adminSidebarActive : Colors.transparent,
+          color: selected
+              ? NeumorphicShadows.pressedFill(AppColors.adminSidebarActive)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.lg),
+          boxShadow: selected
+              ? AppElevation.pressed(AppColors.adminSidebarActive)
+              : AppElevation.flat,
         ),
         child: Row(
           mainAxisAlignment:
@@ -427,6 +441,7 @@ class _SidebarFooter extends ConsumerWidget {
           decoration: BoxDecoration(
             color: AppColors.adminSidebarActive,
             borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: AppElevation.raisedSm(AppColors.adminSidebarActive),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

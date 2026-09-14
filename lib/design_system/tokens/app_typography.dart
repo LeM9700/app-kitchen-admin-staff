@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 
-import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
-
 class AppTypography {
   const AppTypography._();
 
-  static TextTheme textTheme(Color textColor) {
+  /// [textColor] is the primary on-surface color for the active scheme
+  /// (light or dark). [secondaryColor]/[mutedColor] default to opacity
+  /// steps of [textColor] so body/label text stays legible on both the
+  /// light admin surfaces and the dark staff/kitchen surfaces instead of
+  /// hardcoding light-mode-only colors.
+  static TextTheme textTheme(
+    Color textColor, {
+    Color? secondaryColor,
+    Color? mutedColor,
+  }) {
+    final secondary = secondaryColor ?? textColor.withValues(alpha: 0.72);
+    final muted = mutedColor ?? textColor.withValues(alpha: 0.56);
     return TextTheme(
       headlineMedium: TextStyle(
         color: textColor,
@@ -43,14 +52,14 @@ class AppTypography {
         fontWeight: FontWeight.w500,
         letterSpacing: 0,
       ),
-      bodyMedium: const TextStyle(
-        color: AppColors.textSecondary,
+      bodyMedium: TextStyle(
+        color: secondary,
         fontSize: 13,
         fontWeight: FontWeight.w500,
         letterSpacing: 0,
       ),
-      bodySmall: const TextStyle(
-        color: AppColors.textMuted,
+      bodySmall: TextStyle(
+        color: muted,
         fontSize: 11,
         fontWeight: FontWeight.w500,
         letterSpacing: 0,
@@ -61,8 +70,8 @@ class AppTypography {
         fontWeight: FontWeight.w700,
         letterSpacing: 0,
       ),
-      labelMedium: const TextStyle(
-        color: AppColors.textSecondary,
+      labelMedium: TextStyle(
+        color: secondary,
         fontSize: 10,
         fontWeight: FontWeight.w700,
         letterSpacing: 0,

@@ -1,3 +1,4 @@
+import 'package:app_admin_staff/design_system/theme/neumorphic_theme_extension.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_typography.dart';
@@ -75,13 +76,75 @@ class ApiKitchenTheme {
   }
 
   static ThemeData _base(ColorScheme scheme, Color scaffoldBackground) {
+    final isLight = scheme.brightness == Brightness.light;
+    final neumorphicSurfaceBase =
+        isLight ? AppColors.adminSurface : AppColors.staffCard;
     return ThemeData(
       useMaterial3: true,
       fontFamily: 'Inter',
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffoldBackground,
       visualDensity: VisualDensity.standard,
-      textTheme: AppTypography.textTheme(scheme.onSurface),
+      extensions: [
+        NeumorphicThemeExtension(
+          accentColor: scheme.primary,
+          surfaceBase: neumorphicSurfaceBase,
+        ),
+      ],
+      textTheme: AppTypography.textTheme(
+        scheme.onSurface,
+        secondaryColor: isLight ? AppColors.textSecondary : AppColors.staffMuted,
+        mutedColor: isLight
+            ? AppColors.textMuted
+            : AppColors.staffMuted.withValues(alpha: 0.7),
+      ),
+      appBarTheme: AppBarTheme(
+        elevation: 0,
+        backgroundColor: scaffoldBackground,
+        foregroundColor: scheme.onSurface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppTypography.textTheme(scheme.onSurface).titleLarge,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: isLight ? AppColors.adminSidebar : AppColors.staffCard,
+        contentTextStyle: const TextStyle(color: AppColors.staffText),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: scheme.primary,
+        unselectedLabelColor: scheme.onSurface.withValues(alpha: 0.6),
+        indicatorColor: scheme.primary,
+        dividerColor: scheme.outlineVariant,
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(44, 44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
+          ),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        thickness: 1,
+        space: 1,
+      ),
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,

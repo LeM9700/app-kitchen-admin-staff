@@ -157,53 +157,51 @@ class _EmployeeTile extends ConsumerWidget {
     final hourly = employee.hourlyRateCents == null
         ? 'Non renseigne'
         : _currency(employee.hourlyRateCents! / 100);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            CircleAvatar(child: Text(_avatarLabel(user?.displayName))),
-            SizedBox(
-              width: 260,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user?.displayName ?? 'Employe #${employee.id}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(user?.email ?? 'Utilisateur #${employee.userId}'),
-                ],
-              ),
+    return DsCard(
+      padding: const EdgeInsets.all(16),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          CircleAvatar(child: Text(_avatarLabel(user?.displayName))),
+          SizedBox(
+            width: 260,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user?.displayName ?? 'Employe #${employee.id}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(user?.email ?? 'Utilisateur #${employee.userId}'),
+              ],
             ),
-            _MetricChip(
-              icon: Icons.storefront_outlined,
-              label: 'Etab. ${employee.establishmentId}',
+          ),
+          _MetricChip(
+            icon: Icons.storefront_outlined,
+            label: 'Etab. ${employee.establishmentId}',
+          ),
+          _MetricChip(
+            icon: Icons.schedule_outlined,
+            label: '${employee.weeklyHoursContract}h/semaine',
+          ),
+          _MetricChip(icon: Icons.euro_outlined, label: hourly),
+          Chip(
+            avatar: Icon(
+              employee.isActive
+                  ? Icons.check_circle_outline
+                  : Icons.block_outlined,
+              size: 18,
             ),
-            _MetricChip(
-              icon: Icons.schedule_outlined,
-              label: '${employee.weeklyHoursContract}h/semaine',
-            ),
-            _MetricChip(icon: Icons.euro_outlined, label: hourly),
-            Chip(
-              avatar: Icon(
-                employee.isActive
-                    ? Icons.check_circle_outline
-                    : Icons.block_outlined,
-                size: 18,
-              ),
-              label: Text(employee.isActive ? 'Actif' : 'Inactif'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => _showEmployeeDialog(context, ref, employee),
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Modifier'),
-            ),
-          ],
-        ),
+            label: Text(employee.isActive ? 'Actif' : 'Inactif'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _showEmployeeDialog(context, ref, employee),
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Modifier'),
+          ),
+        ],
       ),
     );
   }
@@ -1526,26 +1524,24 @@ class _ErrorPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.error_outline,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              const SizedBox(height: 8),
-              Text(_errorMessage(error), textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reessayer'),
-              ),
-            ],
-          ),
+      child: DsCard(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 8),
+            Text(_errorMessage(error), textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reessayer'),
+            ),
+          ],
         ),
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
@@ -118,87 +119,82 @@ class _ReceptionCard extends StatelessWidget {
     final compliant = reception.isCompliant;
     final color = compliant ? Colors.green : Colors.red;
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: color.withOpacity(0.3)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  compliant ? Icons.check_circle : Icons.cancel,
-                  color: color,
-                  size: 18,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    reception.productName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 15),
-                  ),
-                ),
-                Text(
-                  _timeLabel(reception.controlledAt),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '📦 ${reception.supplierName}',
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Wrap(
-              spacing: 6,
-              children: [
-                if (reception.deliveryTemp != null)
-                  _CheckChip(
-                    label:
-                        '🌡️ ${reception.deliveryTemp!.toStringAsFixed(1)}°C',
-                    ok: reception.tempOk,
-                  ),
-                _CheckChip(label: '📦 Emballage', ok: reception.packagingOk),
-                _CheckChip(label: '🏷️ Étiquetage', ok: reception.labelingOk),
-                if (reception.dlcDate != null)
-                  _CheckChip(
-                    label: 'DLC ${_dateLabel(reception.dlcDate!)}',
-                    ok: reception.dlcDate!.isAfter(DateTime.now()),
-                  ),
-              ],
-            ),
-            if (!compliant && reception.correctiveAction != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.build_outlined,
-                        size: 13, color: Colors.orange),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        reception.correctiveAction!,
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.orange),
-                      ),
-                    ),
-                  ],
+    return DsCard(
+      borderRadius: 12,
+      borderColor: color.withValues(alpha: 0.3),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                compliant ? Icons.check_circle : Icons.cancel,
+                color: color,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  reception.productName,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
+              Text(
+                _timeLabel(reception.controlledAt),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '📦 ${reception.supplierName}',
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: 6,
+            children: [
+              if (reception.deliveryTemp != null)
+                _CheckChip(
+                  label: '🌡️ ${reception.deliveryTemp!.toStringAsFixed(1)}°C',
+                  ok: reception.tempOk,
+                ),
+              _CheckChip(label: '📦 Emballage', ok: reception.packagingOk),
+              _CheckChip(label: '🏷️ Étiquetage', ok: reception.labelingOk),
+              if (reception.dlcDate != null)
+                _CheckChip(
+                  label: 'DLC ${_dateLabel(reception.dlcDate!)}',
+                  ok: reception.dlcDate!.isAfter(DateTime.now()),
+                ),
+            ],
+          ),
+          if (!compliant && reception.correctiveAction != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.build_outlined,
+                      size: 13, color: Colors.orange),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      reception.correctiveAction!,
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.orange),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

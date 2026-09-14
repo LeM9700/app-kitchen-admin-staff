@@ -36,74 +36,74 @@ class OrdersBoardPage extends ConsumerWidget {
     return NeumorphicIntensityScope(
       intensity: NeumorphicIntensity.subtle,
       child: orders.when(
-      data: (items) {
-        if (items.isEmpty) {
-          return const EmptyState(
-            icon: Icons.receipt_long_outlined,
-            title: 'Aucune commande active',
-          );
-        }
-        final visibleItems = lateOnly ? items.where(_isLate).toList() : items;
-        final grouped = <String, List<OrderSummary>>{};
-        for (final order in visibleItems) {
-          grouped.putIfAbsent(order.status, () => []).add(order);
-        }
-        // pending/queued/confirmed/preparing ne sont plus affiches ici : la
-        // confirmation est automatique des le paiement valide (voir
-        // payments/service.py::finalize_payment et
-        // orders/service.py::create_manual_order), et la preparation reste
-        // l'affaire exclusive des ecrans cuisine/comptoir (KDS). Le Service
-        // ne prend la main qu'une fois la commande prete.
-        final statuses = [
-          'ready',
-          'out_for_delivery',
-        ];
+        data: (items) {
+          if (items.isEmpty) {
+            return const EmptyState(
+              icon: Icons.receipt_long_outlined,
+              title: 'Aucune commande active',
+            );
+          }
+          final visibleItems = lateOnly ? items.where(_isLate).toList() : items;
+          final grouped = <String, List<OrderSummary>>{};
+          for (final order in visibleItems) {
+            grouped.putIfAbsent(order.status, () => []).add(order);
+          }
+          // pending/queued/confirmed/preparing ne sont plus affiches ici : la
+          // confirmation est automatique des le paiement valide (voir
+          // payments/service.py::finalize_payment et
+          // orders/service.py::create_manual_order), et la preparation reste
+          // l'affaire exclusive des ecrans cuisine/comptoir (KDS). Le Service
+          // ne prend la main qu'une fois la commande prete.
+          final statuses = [
+            'ready',
+            'out_for_delivery',
+          ];
 
-        final isMobile = Breakpoints.isMobile(context);
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    'Commandes actives',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  FilterChip(
-                    selected: lateOnly,
-                    avatar: const Icon(Icons.timer_outlined),
-                    label: const Text('Retards'),
-                    onSelected: (value) {
-                      ref.read(_lateOnlyProvider.notifier).state = value;
-                    },
-                  ),
-                  if (isAdmin)
-                    IconButton.filledTonal(
-                      tooltip: 'Export CSV',
-                      onPressed: () => _exportCsv(context, ref),
-                      icon: const Icon(Icons.download_outlined),
+          final isMobile = Breakpoints.isMobile(context);
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      'Commandes actives',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  IconButton.filledTonal(
-                    tooltip: 'Rafraichir',
-                    onPressed: () => _refresh(context, ref),
-                    icon: const Icon(Icons.refresh),
-                  ),
-                ],
+                    FilterChip(
+                      selected: lateOnly,
+                      avatar: const Icon(Icons.timer_outlined),
+                      label: const Text('Retards'),
+                      onSelected: (value) {
+                        ref.read(_lateOnlyProvider.notifier).state = value;
+                      },
+                    ),
+                    if (isAdmin)
+                      IconButton.filledTonal(
+                        tooltip: 'Export CSV',
+                        onPressed: () => _exportCsv(context, ref),
+                        icon: const Icon(Icons.download_outlined),
+                      ),
+                    IconButton.filledTonal(
+                      tooltip: 'Rafraichir',
+                      onPressed: () => _refresh(context, ref),
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: isMobile
-                  ? _MobileOrdersBoard(statuses: statuses, grouped: grouped)
-                  : _DesktopOrdersBoard(statuses: statuses, grouped: grouped),
-            ),
-          ],
-        );
-      },
+              const Divider(height: 1),
+              Expanded(
+                child: isMobile
+                    ? _MobileOrdersBoard(statuses: statuses, grouped: grouped)
+                    : _DesktopOrdersBoard(statuses: statuses, grouped: grouped),
+              ),
+            ],
+          );
+        },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => EmptyState(
           icon: Icons.error_outline,
@@ -179,167 +179,167 @@ class _OrderCard extends ConsumerWidget {
       onTap: () => _showDetail(context, order.id),
       child: Stack(
         children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 42),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 42),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '#${order.id}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Imprimer',
+                      onPressed: () => _printOrder(context, ref),
+                      icon: const Icon(Icons.print_outlined),
+                    ),
+                    Flexible(
+                      child: Text(
+                        formatMoney(order.total),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _customerLine(order),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    Chip(label: Text(humanOrderType(order.orderType))),
+                    _OrderStatusBadge(status: order.paymentStatus),
+                    if (order.source == 'manual')
+                      const Chip(label: Text('Staff')),
+                    if (isLate)
+                      Chip(
+                        avatar: const Icon(Icons.warning_amber_outlined),
+                        label: const Text('Retard'),
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                  ],
+                ),
+                if (order.tableNumber != null) ...[
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          '#${order.id}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Imprimer',
-                        onPressed: () => _printOrder(context, ref),
-                        icon: const Icon(Icons.print_outlined),
-                      ),
-                      Flexible(
-                        child: Text(
-                          formatMoney(order.total),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _customerLine(order),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      Chip(label: Text(humanOrderType(order.orderType))),
-                      _OrderStatusBadge(status: order.paymentStatus),
-                      if (order.source == 'manual')
-                        const Chip(label: Text('Staff')),
-                      if (isLate)
-                        Chip(
-                          avatar: const Icon(Icons.warning_amber_outlined),
-                          label: const Text('Retard'),
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (order.tableNumber != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.table_restaurant_outlined, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Table ${order.tableNumber}'),
-                      ],
-                    ),
-                  ],
-                  if (order.deliveryAddress != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      order.deliveryAddress!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ...nextStatuses
-                          .where((status) => status != 'cancelled')
-                          .map((status) {
-                        final paymentRequired = status == 'confirmed' &&
-                            order.paymentStatus != 'paid';
-                        return Tooltip(
-                          message: paymentRequired
-                              ? 'Paiement requis avant confirmation'
-                              : humanStatus(status),
-                          child: FilledButton.tonal(
-                            onPressed: paymentRequired ||
-                                    _isActionBusy(busyActions, status)
-                                ? null
-                                : () => _runAction(
-                                      ref,
-                                      status,
-                                      () => _updateStatus(
-                                        context,
-                                        ref,
-                                        status,
-                                      ),
-                                    ),
-                            child: Text(humanStatus(status)),
-                          ),
-                        );
-                      }),
-                      if (nextStatuses.contains('cancelled'))
-                        OutlinedButton.icon(
-                          onPressed: _isActionBusy(busyActions, 'cancelled')
-                              ? null
-                              : () => _cancel(context, ref),
-                          icon: const Icon(Icons.cancel_outlined),
-                          label: const Text('Annuler'),
-                        ),
-                      if (showLocalTestPayment)
-                        FilledButton.tonalIcon(
-                          onPressed: _isActionBusy(
-                            busyActions,
-                            'local-test-payment',
-                          )
-                              ? null
-                              : () => _runAction(
-                                    ref,
-                                    'local-test-payment',
-                                    () => _confirmLocalTestPayment(
-                                      context,
-                                      ref,
-                                    ),
-                                  ),
-                          icon: const Icon(Icons.payments_outlined),
-                          label: const Text('Paiement test'),
-                        ),
+                      const Icon(Icons.table_restaurant_outlined, size: 18),
+                      const SizedBox(width: 6),
+                      Text('Table ${order.tableNumber}'),
                     ],
                   ),
                 ],
-              ),
-            ),
-            if (order.createdAt != null)
-              Positioned(
-                right: 12,
-                bottom: 10,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
+                if (order.deliveryAddress != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    order.deliveryAddress!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    child: LiveElapsed(
-                      since: order.createdAt!,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                ],
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ...nextStatuses
+                        .where((status) => status != 'cancelled')
+                        .map((status) {
+                      final paymentRequired = status == 'confirmed' &&
+                          order.paymentStatus != 'paid';
+                      return Tooltip(
+                        message: paymentRequired
+                            ? 'Paiement requis avant confirmation'
+                            : humanStatus(status),
+                        child: FilledButton.tonal(
+                          onPressed: paymentRequired ||
+                                  _isActionBusy(busyActions, status)
+                              ? null
+                              : () => _runAction(
+                                    ref,
+                                    status,
+                                    () => _updateStatus(
+                                      context,
+                                      ref,
+                                      status,
+                                    ),
+                                  ),
+                          child: Text(humanStatus(status)),
+                        ),
+                      );
+                    }),
+                    if (nextStatuses.contains('cancelled'))
+                      OutlinedButton.icon(
+                        onPressed: _isActionBusy(busyActions, 'cancelled')
+                            ? null
+                            : () => _cancel(context, ref),
+                        icon: const Icon(Icons.cancel_outlined),
+                        label: const Text('Annuler'),
                       ),
+                    if (showLocalTestPayment)
+                      FilledButton.tonalIcon(
+                        onPressed: _isActionBusy(
+                          busyActions,
+                          'local-test-payment',
+                        )
+                            ? null
+                            : () => _runAction(
+                                  ref,
+                                  'local-test-payment',
+                                  () => _confirmLocalTestPayment(
+                                    context,
+                                    ref,
+                                  ),
+                                ),
+                        icon: const Icon(Icons.payments_outlined),
+                        label: const Text('Paiement test'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (order.createdAt != null)
+            Positioned(
+              right: 12,
+              bottom: 10,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: LiveElapsed(
+                    since: order.createdAt!,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
+      ),
     );
   }
 

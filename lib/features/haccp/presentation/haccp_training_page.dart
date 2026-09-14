@@ -1,3 +1,4 @@
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
@@ -224,97 +225,90 @@ class _TrainingCard extends StatelessWidget {
       statusIcon = Icons.check_circle_outline;
     }
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: statusColor.withOpacity(0.3)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(statusIcon, color: statusColor, size: 16),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    record.trainingTypeLabel,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 14),
-                  ),
+    return DsCard(
+      borderRadius: 12,
+      borderColor: statusColor.withValues(alpha: 0.3),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(statusIcon, color: statusColor, size: 16),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  record.trainingTypeLabel,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor),
-                  ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
-                const SizedBox(width: 4),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text(
+                'Formé le ${_dateLabel(record.trainingDate)}',
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              if (record.expiryDate != null) ...[
+                const Text(' · ',
+                    style: TextStyle(color: Colors.grey, fontSize: 12)),
                 Text(
-                  'Formé le ${_dateLabel(record.trainingDate)}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  'Expire le ${_dateLabel(record.expiryDate!)}',
+                  style: TextStyle(
+                      color: record.isExpired
+                          ? Colors.red
+                          : record.expiresWithin30Days
+                              ? Colors.orange
+                              : Colors.grey,
+                      fontSize: 12,
+                      fontWeight: record.isExpired || record.expiresWithin30Days
+                          ? FontWeight.w600
+                          : FontWeight.normal),
                 ),
-                if (record.expiryDate != null) ...[
-                  const Text(' · ',
-                      style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text(
-                    'Expire le ${_dateLabel(record.expiryDate!)}',
-                    style: TextStyle(
-                        color: record.isExpired
-                            ? Colors.red
-                            : record.expiresWithin30Days
-                                ? Colors.orange
-                                : Colors.grey,
-                        fontSize: 12,
-                        fontWeight:
-                            record.isExpired || record.expiresWithin30Days
-                                ? FontWeight.w600
-                                : FontWeight.normal),
-                  ),
-                ],
               ],
+            ],
+          ),
+          if (record.trainerName != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              '🎓 ${record.trainerName}',
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
-            if (record.trainerName != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                '🎓 ${record.trainerName}',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ],
-            if (record.certificateRef != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                '📄 Réf. ${record.certificateRef}',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ],
-            if (record.notes != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                record.notes!,
-                style:
-                    const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-              ),
-            ],
           ],
-        ),
+          if (record.certificateRef != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              '📄 Réf. ${record.certificateRef}',
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+          if (record.notes != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              record.notes!,
+              style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ],
       ),
     );
   }

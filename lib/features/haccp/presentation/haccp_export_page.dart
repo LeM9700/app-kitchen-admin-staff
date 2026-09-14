@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -400,9 +401,9 @@ class _CsvExportTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    return DsCard(
+      borderRadius: 10,
+      padding: EdgeInsets.zero,
       child: ListTile(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),

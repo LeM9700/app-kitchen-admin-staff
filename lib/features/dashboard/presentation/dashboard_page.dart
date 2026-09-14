@@ -35,252 +35,255 @@ class DashboardPage extends ConsumerWidget {
     return NeumorphicIntensityScope(
       intensity: NeumorphicIntensity.flat,
       child: RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(activeOrdersProvider);
-        ref.invalidate(stockAlertsProvider);
-        ref.invalidate(paymentsSummaryProvider);
-        ref.invalidate(tenantStatusProvider);
-        ref.invalidate(statsSummaryProvider);
-        ref.invalidate(dailyStatsProvider);
-        ref.invalidate(monthlyStatsProvider);
-        ref.invalidate(topProductsProvider);
-      },
-      child: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _MetricTile(
-                icon: Icons.receipt_long_outlined,
-                label: 'Commandes actives',
-                value: orders.maybeWhen(
-                  data: (value) => value.length.toString(),
-                  orElse: () => '-',
-                ),
-                onTap: () => context.go('/orders'),
-              ),
-              _MetricTile(
-                icon: Icons.timer_outlined,
-                label: 'Preparation',
-                value: tenant.maybeWhen(
-                  data: (value) => '${value.estimatedPrepTimeMinutes} min',
-                  orElse: () => '-',
-                ),
-              ),
-              _MetricTile(
-                icon: Icons.warning_amber_outlined,
-                label: 'Alertes stock',
-                value: alerts.maybeWhen(
-                  data: (value) => value.length.toString(),
-                  orElse: () => '-',
-                ),
-                onTap: () => context.go('/stock'),
-              ),
-              _MetricTile(
-                icon: Icons.payments_outlined,
-                label: 'Net encaisse',
-                value: summary.maybeWhen(
-                  data: (value) => formatCents(value.netAmountCents),
-                  orElse: () => '-',
-                ),
-                onTap: () => context.go('/payments'),
-              ),
-              if (isAdmin)
+        onRefresh: () async {
+          ref.invalidate(activeOrdersProvider);
+          ref.invalidate(stockAlertsProvider);
+          ref.invalidate(paymentsSummaryProvider);
+          ref.invalidate(tenantStatusProvider);
+          ref.invalidate(statsSummaryProvider);
+          ref.invalidate(dailyStatsProvider);
+          ref.invalidate(monthlyStatsProvider);
+          ref.invalidate(topProductsProvider);
+        },
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
                 _MetricTile(
-                  icon: Icons.trending_up_outlined,
-                  label: 'CA 24h',
-                  value: stats?.maybeWhen(
-                        data: (value) => formatMoney(value.live.revenueLast24h),
-                        orElse: () => '-',
-                      ) ??
-                      '-',
+                  icon: Icons.receipt_long_outlined,
+                  label: 'Commandes actives',
+                  value: orders.maybeWhen(
+                    data: (value) => value.length.toString(),
+                    orElse: () => '-',
+                  ),
+                  onTap: () => context.go('/orders'),
                 ),
-              if (isAdmin)
                 _MetricTile(
-                  icon: Icons.shopping_cart_checkout_outlined,
-                  label: 'Panier moyen',
-                  value: stats?.maybeWhen(
-                        data: (value) =>
-                            formatMoney(value.live.avgOrderValue24h),
-                        orElse: () => '-',
-                      ) ??
-                      '-',
+                  icon: Icons.timer_outlined,
+                  label: 'Preparation',
+                  value: tenant.maybeWhen(
+                    data: (value) => '${value.estimatedPrepTimeMinutes} min',
+                    orElse: () => '-',
+                  ),
                 ),
-              if (isAdmin)
                 _MetricTile(
-                  icon: Icons.pending_actions_outlined,
-                  label: 'En attente',
-                  value: stats?.maybeWhen(
-                        data: (value) => value.live.pendingOrders.toString(),
-                        orElse: () => '-',
-                      ) ??
-                      '-',
+                  icon: Icons.warning_amber_outlined,
+                  label: 'Alertes stock',
+                  value: alerts.maybeWhen(
+                    data: (value) => value.length.toString(),
+                    orElse: () => '-',
+                  ),
+                  onTap: () => context.go('/stock'),
                 ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'A traiter maintenant',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 12),
-          orders.when(
-            data: (items) {
-              final pending =
-                  items.where((order) => order.status == 'pending').length;
-              final late = items.where(_isLate).length;
-              final delivery = items
-                  .where((order) => order.status == 'out_for_delivery')
-                  .length;
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
+                _MetricTile(
+                  icon: Icons.payments_outlined,
+                  label: 'Net encaisse',
+                  value: summary.maybeWhen(
+                    data: (value) => formatCents(value.netAmountCents),
+                    orElse: () => '-',
+                  ),
+                  onTap: () => context.go('/payments'),
+                ),
+                if (isAdmin)
+                  _MetricTile(
+                    icon: Icons.trending_up_outlined,
+                    label: 'CA 24h',
+                    value: stats?.maybeWhen(
+                          data: (value) =>
+                              formatMoney(value.live.revenueLast24h),
+                          orElse: () => '-',
+                        ) ??
+                        '-',
+                  ),
+                if (isAdmin)
+                  _MetricTile(
+                    icon: Icons.shopping_cart_checkout_outlined,
+                    label: 'Panier moyen',
+                    value: stats?.maybeWhen(
+                          data: (value) =>
+                              formatMoney(value.live.avgOrderValue24h),
+                          orElse: () => '-',
+                        ) ??
+                        '-',
+                  ),
+                if (isAdmin)
                   _MetricTile(
                     icon: Icons.pending_actions_outlined,
                     label: 'En attente',
-                    value: pending.toString(),
-                    onTap: () => context.go('/orders'),
+                    value: stats?.maybeWhen(
+                          data: (value) => value.live.pendingOrders.toString(),
+                          orElse: () => '-',
+                        ) ??
+                        '-',
                   ),
-                  _MetricTile(
-                    icon: Icons.timer_outlined,
-                    label: 'Retards',
-                    value: late.toString(),
-                    onTap: () => context.go('/orders'),
-                  ),
-                  _MetricTile(
-                    icon: Icons.delivery_dining_outlined,
-                    label: 'Livraisons',
-                    value: delivery.toString(),
-                    onTap: () => context.go('/orders'),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'A traiter maintenant',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            orders.when(
+              data: (items) {
+                final pending =
+                    items.where((order) => order.status == 'pending').length;
+                final late = items.where(_isLate).length;
+                final delivery = items
+                    .where((order) => order.status == 'out_for_delivery')
+                    .length;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _MetricTile(
+                      icon: Icons.pending_actions_outlined,
+                      label: 'En attente',
+                      value: pending.toString(),
+                      onTap: () => context.go('/orders'),
+                    ),
+                    _MetricTile(
+                      icon: Icons.timer_outlined,
+                      label: 'Retards',
+                      value: late.toString(),
+                      onTap: () => context.go('/orders'),
+                    ),
+                    _MetricTile(
+                      icon: Icons.delivery_dining_outlined,
+                      label: 'Livraisons',
+                      value: delivery.toString(),
+                      onTap: () => context.go('/orders'),
+                    ),
+                  ],
+                );
+              },
+              loading: () => const LinearProgressIndicator(),
+              error: (error, stackTrace) => _PanelMessage(
+                icon: Icons.error_outline,
+                text: error.toString(),
+              ),
+            ),
+            if (isAdmin) ...[
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Text('Periodes',
+                      style: Theme.of(context).textTheme.titleLarge),
+                  const Spacer(),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'today', label: Text("Aujourd'hui")),
+                      ButtonSegment(value: '7d', label: Text('7 jours')),
+                      ButtonSegment(value: '30d', label: Text('30 jours')),
+                    ],
+                    selected: {period},
+                    onSelectionChanged: (value) {
+                      ref.read(_dashboardPeriodProvider.notifier).state =
+                          value.first;
+                    },
                   ),
                 ],
-              );
-            },
-            loading: () => const LinearProgressIndicator(),
-            error: (error, stackTrace) => _PanelMessage(
-              icon: Icons.error_outline,
-              text: error.toString(),
-            ),
-          ),
-          if (isAdmin) ...[
+              ),
+              const SizedBox(height: 12),
+              _periodStats(period, daily, monthly),
+              const SizedBox(height: 24),
+              Text('Top produits',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              topProducts?.when(
+                    data: (items) {
+                      if (items.isEmpty) {
+                        return const _PanelMessage(
+                          icon: Icons.local_pizza_outlined,
+                          text: 'Aucune vente produit sur la periode',
+                        );
+                      }
+                      return Column(
+                        children: items.take(8).map((item) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outlineVariant,
+                                ),
+                              ),
+                              leading: const Icon(Icons.leaderboard_outlined),
+                              title: Text(item.productName),
+                              subtitle: Text('${item.quantity} vendu(s)'),
+                              trailing: Text(formatMoney(item.revenue)),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                    loading: () => const LinearProgressIndicator(),
+                    error: (error, stackTrace) => Text(error.toString()),
+                  ) ??
+                  const SizedBox.shrink(),
+            ],
             const SizedBox(height: 24),
             Row(
               children: [
-                Text('Periodes', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Service en cours',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const Spacer(),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'today', label: Text("Aujourd'hui")),
-                    ButtonSegment(value: '7d', label: Text('7 jours')),
-                    ButtonSegment(value: '30d', label: Text('30 jours')),
-                  ],
-                  selected: {period},
-                  onSelectionChanged: (value) {
-                    ref.read(_dashboardPeriodProvider.notifier).state =
-                        value.first;
-                  },
+                TextButton.icon(
+                  onPressed: () => context.go('/checkout'),
+                  icon: const Icon(Icons.point_of_sale_outlined),
+                  label: const Text('Caisse'),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            _periodStats(period, daily, monthly),
-            const SizedBox(height: 24),
-            Text('Top produits', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            topProducts?.when(
-                  data: (items) {
-                    if (items.isEmpty) {
-                      return const _PanelMessage(
-                        icon: Icons.local_pizza_outlined,
-                        text: 'Aucune vente produit sur la periode',
-                      );
-                    }
-                    return Column(
-                      children: items.take(8).map((item) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .outlineVariant,
-                              ),
-                            ),
-                            leading: const Icon(Icons.leaderboard_outlined),
-                            title: Text(item.productName),
-                            subtitle: Text('${item.quantity} vendu(s)'),
-                            trailing: Text(formatMoney(item.revenue)),
-                          ),
-                        );
-                      }).toList(),
-                    );
-                  },
-                  loading: () => const LinearProgressIndicator(),
-                  error: (error, stackTrace) => Text(error.toString()),
-                ) ??
-                const SizedBox.shrink(),
-          ],
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Text(
-                'Service en cours',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => context.go('/checkout'),
-                icon: const Icon(Icons.point_of_sale_outlined),
-                label: const Text('Caisse'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          orders.when(
-            data: (items) {
-              if (items.isEmpty) {
-                return const _PanelMessage(
-                  icon: Icons.check_circle_outline,
-                  text: 'Aucune commande active',
-                );
-              }
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: items.take(8).map((order) {
-                  return SizedBox(
-                    width: 280,
-                    child: ListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
-                      ),
-                      title: Text(
-                        '#${order.id} - ${humanOrderType(order.orderType)}',
-                      ),
-                      subtitle: Text(humanStatus(order.status)),
-                      trailing: Text(formatMoney(order.total)),
-                      onTap: () => context.go('/orders'),
-                    ),
+            orders.when(
+              data: (items) {
+                if (items.isEmpty) {
+                  return const _PanelMessage(
+                    icon: Icons.check_circle_outline,
+                    text: 'Aucune commande active',
                   );
-                }).toList(),
-              );
-            },
-            loading: () => const LinearProgressIndicator(),
-            error: (error, stackTrace) => _PanelMessage(
-              icon: Icons.error_outline,
-              text: error.toString(),
+                }
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: items.take(8).map((order) {
+                    return SizedBox(
+                      width: 280,
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ),
+                        title: Text(
+                          '#${order.id} - ${humanOrderType(order.orderType)}',
+                        ),
+                        subtitle: Text(humanStatus(order.status)),
+                        trailing: Text(formatMoney(order.total)),
+                        onTap: () => context.go('/orders'),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const LinearProgressIndicator(),
+              error: (error, stackTrace) => _PanelMessage(
+                icon: Icons.error_outline,
+                text: error.toString(),
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

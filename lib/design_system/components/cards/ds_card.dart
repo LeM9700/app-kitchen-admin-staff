@@ -107,7 +107,15 @@ class _DsCardState extends State<DsCard> {
             Border.all(color: widget.borderColor ?? scheme.outlineVariant),
         boxShadow: shadow,
       ),
-      child: widget.child,
+      // A transparent Material sits directly against the child (not just
+      // around the whole card) so descendants that need a Material
+      // ancestor for their own ink/background (ListTile, Chip, ...) have
+      // one with no colored decoration in between — the same guarantee
+      // the Card widget this replaces gave for free.
+      child: Material(
+        type: MaterialType.transparency,
+        child: widget.child,
+      ),
     );
 
     if (widget.onTap == null) {

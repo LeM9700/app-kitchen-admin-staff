@@ -64,86 +64,86 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     return NeumorphicIntensityScope(
       intensity: NeumorphicIntensity.flat,
       child: products.when(
-      data: (items) => LayoutBuilder(
-        builder: (context, constraints) {
-          final compactLayout = constraints.maxWidth < 980;
-          final cart = _CartPanel(
-            lines: _cart.values.toList(),
-            tenantStatus: tenantStatus,
-            orderType: _orderType,
-            paymentMethod: _paymentMethod,
-            tableController: _tableController,
-            deliveryAddressController: _deliveryAddressController,
-            customerEmailController: _customerEmailController,
-            customerNameController: _customerNameController,
-            customerPhoneController: _customerPhoneController,
-            externalReferenceController: _externalReferenceController,
-            amountReceivedController: _amountReceivedController,
-            promoCodeController: _promoCodeController,
-            loyaltyUserController: _loyaltyUserController,
-            loyaltyPointsController: _loyaltyPointsController,
-            loyaltyAccount: _loyaltyAccount,
-            loyaltyLoading: _loyaltyLoading,
-            noteController: _noteController,
-            submitting: _submitting,
-            onOrderTypeChanged: (value) => setState(() => _orderType = value),
-            onPaymentMethodChanged: (value) {
-              setState(() => _paymentMethod = value);
-            },
-            onRemove: (cartKey) => setState(() => _cart.remove(cartKey)),
-            onIncrement: (cartKey) {
-              setState(
-                () => _cart.update(
-                  cartKey,
-                  (line) => line.copyWith(quantity: line.quantity + 1),
-                ),
+        data: (items) => LayoutBuilder(
+          builder: (context, constraints) {
+            final compactLayout = constraints.maxWidth < 980;
+            final cart = _CartPanel(
+              lines: _cart.values.toList(),
+              tenantStatus: tenantStatus,
+              orderType: _orderType,
+              paymentMethod: _paymentMethod,
+              tableController: _tableController,
+              deliveryAddressController: _deliveryAddressController,
+              customerEmailController: _customerEmailController,
+              customerNameController: _customerNameController,
+              customerPhoneController: _customerPhoneController,
+              externalReferenceController: _externalReferenceController,
+              amountReceivedController: _amountReceivedController,
+              promoCodeController: _promoCodeController,
+              loyaltyUserController: _loyaltyUserController,
+              loyaltyPointsController: _loyaltyPointsController,
+              loyaltyAccount: _loyaltyAccount,
+              loyaltyLoading: _loyaltyLoading,
+              noteController: _noteController,
+              submitting: _submitting,
+              onOrderTypeChanged: (value) => setState(() => _orderType = value),
+              onPaymentMethodChanged: (value) {
+                setState(() => _paymentMethod = value);
+              },
+              onRemove: (cartKey) => setState(() => _cart.remove(cartKey)),
+              onIncrement: (cartKey) {
+                setState(
+                  () => _cart.update(
+                    cartKey,
+                    (line) => line.copyWith(quantity: line.quantity + 1),
+                  ),
+                );
+              },
+              onDecrement: (cartKey) {
+                setState(() {
+                  final line = _cart[cartKey];
+                  if (line == null) {
+                    return;
+                  }
+                  if (line.quantity <= 1) {
+                    _cart.remove(cartKey);
+                  } else {
+                    _cart[cartKey] = line.copyWith(quantity: line.quantity - 1);
+                  }
+                });
+              },
+              onLookupLoyalty: _lookupLoyalty,
+              onSubmit: _submit,
+              shrinkWrap: compactLayout,
+              physics:
+                  compactLayout ? const NeverScrollableScrollPhysics() : null,
+            );
+
+            final grid = _ProductGrid(
+              products: items,
+              onAdd: _addProduct,
+            );
+
+            if (compactLayout) {
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  SizedBox(height: 420, child: grid),
+                  const SizedBox(height: 16),
+                  cart,
+                ],
               );
-            },
-            onDecrement: (cartKey) {
-              setState(() {
-                final line = _cart[cartKey];
-                if (line == null) {
-                  return;
-                }
-                if (line.quantity <= 1) {
-                  _cart.remove(cartKey);
-                } else {
-                  _cart[cartKey] = line.copyWith(quantity: line.quantity - 1);
-                }
-              });
-            },
-            onLookupLoyalty: _lookupLoyalty,
-            onSubmit: _submit,
-            shrinkWrap: compactLayout,
-            physics:
-                compactLayout ? const NeverScrollableScrollPhysics() : null,
-          );
+            }
 
-          final grid = _ProductGrid(
-            products: items,
-            onAdd: _addProduct,
-          );
-
-          if (compactLayout) {
-            return ListView(
-              padding: const EdgeInsets.all(16),
+            return Row(
               children: [
-                SizedBox(height: 420, child: grid),
-                const SizedBox(height: 16),
-                cart,
+                Expanded(flex: 3, child: grid),
+                const VerticalDivider(width: 1),
+                SizedBox(width: 420, child: cart),
               ],
             );
-          }
-
-          return Row(
-            children: [
-              Expanded(flex: 3, child: grid),
-              const VerticalDivider(width: 1),
-              SizedBox(width: 420, child: cart),
-            ],
-          );
-        },
-      ),
+          },
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => Center(child: Text(error.toString())),
       ),

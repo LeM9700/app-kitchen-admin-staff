@@ -80,23 +80,20 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: AppSpacing.xl),
             Text('Session', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
-            ListTile(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+            DsCard(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(Icons.account_circle_outlined),
+                title: Text(session?.user?.email ?? '-'),
+                subtitle: Text(
+                  '${session?.tenantSlug ?? '-'} - ${session?.user?.role ?? '-'}',
                 ),
-              ),
-              leading: const Icon(Icons.account_circle_outlined),
-              title: Text(session?.user?.email ?? '-'),
-              subtitle: Text(
-                '${session?.tenantSlug ?? '-'} - ${session?.user?.role ?? '-'}',
-              ),
-              trailing: FilledButton.icon(
-                onPressed: () =>
-                    ref.read(sessionControllerProvider.notifier).logout(),
-                icon: const Icon(Icons.logout),
-                label: const Text('Deconnexion'),
+                trailing: FilledButton.icon(
+                  onPressed: () =>
+                      ref.read(sessionControllerProvider.notifier).logout(),
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Deconnexion'),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -110,77 +107,74 @@ class SettingsPage extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             sessions.when(
-              data: (items) => ExpansionTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+              data: (items) => DsCard(
+                padding: EdgeInsets.zero,
+                child: ExpansionTile(
+                  leading: const Icon(Icons.devices_outlined),
+                  title: Text('Sessions (${items.length})'),
+                  children: items.map((session) {
+                    return ListTile(
+                      title:
+                          Text(session.userAgent ?? 'Session #${session.id}'),
+                      subtitle: Text(
+                        '${session.ipAddress ?? '-'} - expire ${formatDateTime(session.expiresAt)}',
+                      ),
+                      trailing: session.isCurrent
+                          ? const Chip(label: Text('Courante'))
+                          : IconButton(
+                              tooltip: 'Revoquer',
+                              onPressed: () async {
+                                await ref
+                                    .read(authRepositoryProvider)
+                                    .revokeSession(session.id);
+                                ref.invalidate(authSessionsProvider);
+                              },
+                              icon: const Icon(Icons.logout_outlined),
+                            ),
+                    );
+                  }).toList(),
                 ),
-                leading: const Icon(Icons.devices_outlined),
-                title: Text('Sessions (${items.length})'),
-                children: items.map((session) {
-                  return ListTile(
-                    title: Text(session.userAgent ?? 'Session #${session.id}'),
-                    subtitle: Text(
-                      '${session.ipAddress ?? '-'} - expire ${formatDateTime(session.expiresAt)}',
-                    ),
-                    trailing: session.isCurrent
-                        ? const Chip(label: Text('Courante'))
-                        : IconButton(
-                            tooltip: 'Revoquer',
-                            onPressed: () async {
-                              await ref
-                                  .read(authRepositoryProvider)
-                                  .revokeSession(session.id);
-                              ref.invalidate(authSessionsProvider);
-                            },
-                            icon: const Icon(Icons.logout_outlined),
-                          ),
-                  );
-                }).toList(),
               ),
               loading: () => const LinearProgressIndicator(),
               error: (error, stackTrace) => Text(error.toString()),
             ),
             const SizedBox(height: 24),
-            SwitchListTile(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
+            DsCard(
+              padding: EdgeInsets.zero,
+              child: SwitchListTile(
+                secondary: const Icon(Icons.dark_mode_outlined),
+                title: const Text('Mode service'),
+                subtitle: const Text('Theme sombre force pendant le rush'),
+                value: serviceMode,
+                onChanged: (value) {
+                  ref.read(serviceModeProvider.notifier).state = value;
+                },
               ),
-              secondary: const Icon(Icons.dark_mode_outlined),
-              title: const Text('Mode service'),
-              subtitle: const Text('Theme sombre force pendant le rush'),
-              value: serviceMode,
-              onChanged: (value) {
-                ref.read(serviceModeProvider.notifier).state = value;
-              },
             ),
             const SizedBox(height: 24),
             Text('Restaurant', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             status.when(
-              data: (value) => ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,
+              data: (value) => DsCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  leading: Icon(
+                    value.isOpen
+                        ? Icons.storefront_outlined
+                        : Icons.lock_outline,
                   ),
+                  title: Text(value.isOpen ? 'Ouvert' : 'Ferme'),
+                  subtitle: Text(
+                    'Preparation ${value.estimatedPrepTimeMinutes} min - ${value.activeOrdersCount} commande(s)',
+                  ),
+                  trailing: isAdmin
+                      ? FilledButton.tonal(
+                          onPressed: () =>
+                              _toggleClosure(context, ref, value.isOpen),
+                          child: Text(value.isOpen ? 'Fermer' : 'Rouvrir'),
+                        )
+                      : null,
                 ),
-                leading: Icon(
-                  value.isOpen ? Icons.storefront_outlined : Icons.lock_outline,
-                ),
-                title: Text(value.isOpen ? 'Ouvert' : 'Ferme'),
-                subtitle: Text(
-                  'Preparation ${value.estimatedPrepTimeMinutes} min - ${value.activeOrdersCount} commande(s)',
-                ),
-                trailing: isAdmin
-                    ? FilledButton.tonal(
-                        onPressed: () =>
-                            _toggleClosure(context, ref, value.isOpen),
-                        child: Text(value.isOpen ? 'Fermer' : 'Rouvrir'),
-                      )
-                    : null,
               ),
               loading: () => const LinearProgressIndicator(),
               error: (error, stackTrace) => Text(error.toString()),
@@ -190,33 +184,37 @@ class SettingsPage extends ConsumerWidget {
               config?.when(
                     data: (value) => Column(
                       children: [
-                        ListTile(
-                          shape: _shape(context),
-                          leading: const Icon(Icons.timer_outlined),
-                          title: const Text('Temps de preparation'),
-                          subtitle: Text(
-                            'Normal ${value.prepTimeNormalMinutes} min - rush ${value.prepTimePeakMinutes} min - seuil ${value.peakOrdersThreshold}',
-                          ),
-                          trailing: IconButton(
-                            tooltip: 'Modifier',
-                            onPressed: () =>
-                                _prepTimeDialog(context, ref, value),
-                            icon: const Icon(Icons.edit_outlined),
+                        DsCard(
+                          padding: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: const Icon(Icons.timer_outlined),
+                            title: const Text('Temps de preparation'),
+                            subtitle: Text(
+                              'Normal ${value.prepTimeNormalMinutes} min - rush ${value.prepTimePeakMinutes} min - seuil ${value.peakOrdersThreshold}',
+                            ),
+                            trailing: IconButton(
+                              tooltip: 'Modifier',
+                              onPressed: () =>
+                                  _prepTimeDialog(context, ref, value),
+                              icon: const Icon(Icons.edit_outlined),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
-                        ListTile(
-                          shape: _shape(context),
-                          leading: const Icon(Icons.rule_folder_outlined),
-                          title: const Text('Seuil gros ajustement stock'),
-                          subtitle: Text(
-                            '${value.largeStockAdjustmentThreshold.toStringAsFixed(2)} unite(s)',
-                          ),
-                          trailing: IconButton(
-                            tooltip: 'Modifier',
-                            onPressed: () =>
-                                _stockThresholdDialog(context, ref, value),
-                            icon: const Icon(Icons.edit_outlined),
+                        DsCard(
+                          padding: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: const Icon(Icons.rule_folder_outlined),
+                            title: const Text('Seuil gros ajustement stock'),
+                            subtitle: Text(
+                              '${value.largeStockAdjustmentThreshold.toStringAsFixed(2)} unite(s)',
+                            ),
+                            trailing: IconButton(
+                              tooltip: 'Modifier',
+                              onPressed: () =>
+                                  _stockThresholdDialog(context, ref, value),
+                              icon: const Icon(Icons.edit_outlined),
+                            ),
                           ),
                         ),
                       ],
@@ -250,31 +248,33 @@ class SettingsPage extends ConsumerWidget {
                                 .join(', ');
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            shape: _shape(context),
-                            leading: const Icon(Icons.schedule_outlined),
-                            title: Text(_dayName(day)),
-                            subtitle: Text(label),
-                            trailing: Wrap(
-                              spacing: 4,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Modifier',
-                                  onPressed: () => _hoursDialog(
-                                    context,
-                                    ref,
-                                    day,
-                                    daySlots.isEmpty ? null : daySlots.first,
+                          child: DsCard(
+                            padding: EdgeInsets.zero,
+                            child: ListTile(
+                              leading: const Icon(Icons.schedule_outlined),
+                              title: Text(_dayName(day)),
+                              subtitle: Text(label),
+                              trailing: Wrap(
+                                spacing: 4,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Modifier',
+                                    onPressed: () => _hoursDialog(
+                                      context,
+                                      ref,
+                                      day,
+                                      daySlots.isEmpty ? null : daySlots.first,
+                                    ),
+                                    icon: const Icon(Icons.edit_outlined),
                                   ),
-                                  icon: const Icon(Icons.edit_outlined),
-                                ),
-                                IconButton(
-                                  tooltip: 'Fermer ce jour',
-                                  onPressed: () =>
-                                      _deleteHours(context, ref, day),
-                                  icon: const Icon(Icons.block_outlined),
-                                ),
-                              ],
+                                  IconButton(
+                                    tooltip: 'Fermer ce jour',
+                                    onPressed: () =>
+                                        _deleteHours(context, ref, day),
+                                    icon: const Icon(Icons.block_outlined),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -301,31 +301,36 @@ class SettingsPage extends ConsumerWidget {
               const SizedBox(height: 8),
               closures?.when(
                     data: (items) => items.isEmpty
-                        ? const ListTile(
-                            leading: Icon(Icons.event_available_outlined),
-                            title: Text('Aucune fermeture planifiee'),
+                        ? const DsCard(
+                            padding: EdgeInsets.zero,
+                            child: ListTile(
+                              leading: Icon(Icons.event_available_outlined),
+                              title: Text('Aucune fermeture planifiee'),
+                            ),
                           )
                         : Column(
                             children: items.map((closure) {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  shape: _shape(context),
-                                  leading:
-                                      const Icon(Icons.event_busy_outlined),
-                                  title: Text(closure.closureDate),
-                                  subtitle: Text(
-                                    closure.customMessage ??
-                                        'Message par defaut',
-                                  ),
-                                  trailing: IconButton(
-                                    tooltip: 'Supprimer',
-                                    onPressed: () => _deleteClosure(
-                                      context,
-                                      ref,
-                                      closure.id,
+                                child: DsCard(
+                                  padding: EdgeInsets.zero,
+                                  child: ListTile(
+                                    leading:
+                                        const Icon(Icons.event_busy_outlined),
+                                    title: Text(closure.closureDate),
+                                    subtitle: Text(
+                                      closure.customMessage ??
+                                          'Message par defaut',
                                     ),
-                                    icon: const Icon(Icons.delete_outline),
+                                    trailing: IconButton(
+                                      tooltip: 'Supprimer',
+                                      onPressed: () => _deleteClosure(
+                                        context,
+                                        ref,
+                                        closure.id,
+                                      ),
+                                      icon: const Icon(Icons.delete_outline),
+                                    ),
                                   ),
                                 ),
                               );
@@ -337,23 +342,24 @@ class SettingsPage extends ConsumerWidget {
                   const SizedBox.shrink(),
               const SizedBox(height: 24),
               audit?.when(
-                    data: (items) => ExpansionTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    data: (items) => DsCard(
+                      padding: EdgeInsets.zero,
+                      child: ExpansionTile(
+                        leading: const Icon(Icons.history_outlined),
+                        title: const Text('Audit configuration'),
+                        children: items.isEmpty
+                            ? const [ListTile(title: Text('Aucune entree'))]
+                            : items.map((entry) {
+                                return ListTile(
+                                  title: Text(entry.fieldName),
+                                  subtitle: Text(
+                                    '${entry.oldValue ?? '-'} -> ${entry.newValue ?? '-'}',
+                                  ),
+                                  trailing:
+                                      Text(formatDateTime(entry.changedAt)),
+                                );
+                              }).toList(),
                       ),
-                      leading: const Icon(Icons.history_outlined),
-                      title: const Text('Audit configuration'),
-                      children: items.isEmpty
-                          ? const [ListTile(title: Text('Aucune entree'))]
-                          : items.map((entry) {
-                              return ListTile(
-                                title: Text(entry.fieldName),
-                                subtitle: Text(
-                                  '${entry.oldValue ?? '-'} -> ${entry.newValue ?? '-'}',
-                                ),
-                                trailing: Text(formatDateTime(entry.changedAt)),
-                              );
-                            }).toList(),
                     ),
                     loading: () => const LinearProgressIndicator(),
                     error: (error, stackTrace) => Text(error.toString()),
@@ -368,33 +374,32 @@ class SettingsPage extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               printConfig.when(
-                data: (value) => ListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                data: (value) => DsCard(
+                  padding: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: Icon(
+                      value.enabled
+                          ? Icons.print_outlined
+                          : Icons.print_disabled_outlined,
                     ),
+                    title: Text(
+                      value.enabled
+                          ? 'Impression active'
+                          : 'Impression inactive',
+                    ),
+                    subtitle: Text(
+                      value.config.isEmpty
+                          ? 'Aucune imprimante'
+                          : value.config.toString(),
+                    ),
+                    trailing: isAdmin
+                        ? IconButton(
+                            tooltip: 'Configurer',
+                            onPressed: () => _printDialog(context, ref, value),
+                            icon: const Icon(Icons.edit_outlined),
+                          )
+                        : null,
                   ),
-                  leading: Icon(
-                    value.enabled
-                        ? Icons.print_outlined
-                        : Icons.print_disabled_outlined,
-                  ),
-                  title: Text(
-                    value.enabled ? 'Impression active' : 'Impression inactive',
-                  ),
-                  subtitle: Text(
-                    value.config.isEmpty
-                        ? 'Aucune imprimante'
-                        : value.config.toString(),
-                  ),
-                  trailing: isAdmin
-                      ? IconButton(
-                          tooltip: 'Configurer',
-                          onPressed: () => _printDialog(context, ref, value),
-                          icon: const Icon(Icons.edit_outlined),
-                        )
-                      : null,
                 ),
                 loading: () => const LinearProgressIndicator(),
                 error: (error, stackTrace) => Text(error.toString()),
@@ -410,63 +415,65 @@ class SettingsPage extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            ExpansionTile(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+            DsCard(
+              padding: EdgeInsets.zero,
+              child: ExpansionTile(
+                leading: const Icon(Icons.sync_problem_outlined),
+                title: Text('Actions offline (${queuedActions.length})'),
+                trailing: queuedActions.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Synchroniser',
+                        onPressed: () async {
+                          await ref
+                              .read(syncWorkerProvider)
+                              .flush(queuedActions);
+                        },
+                        icon: const Icon(Icons.cloud_sync_outlined),
+                      ),
+                children: queuedActions.isEmpty
+                    ? const [ListTile(title: Text('Aucune action'))]
+                    : queuedActions.map((action) {
+                        return ListTile(
+                          title: Text(action.label),
+                          subtitle: Text('${action.method} ${action.endpoint}'),
+                          trailing: IconButton(
+                            tooltip: 'Retirer',
+                            onPressed: () => ref
+                                .read(syncQueueProvider.notifier)
+                                .remove(action.id),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                        );
+                      }).toList(),
               ),
-              leading: const Icon(Icons.sync_problem_outlined),
-              title: Text('Actions offline (${queuedActions.length})'),
-              trailing: queuedActions.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Synchroniser',
-                      onPressed: () async {
-                        await ref.read(syncWorkerProvider).flush(queuedActions);
-                      },
-                      icon: const Icon(Icons.cloud_sync_outlined),
-                    ),
-              children: queuedActions.isEmpty
-                  ? const [ListTile(title: Text('Aucune action'))]
-                  : queuedActions.map((action) {
-                      return ListTile(
-                        title: Text(action.label),
-                        subtitle: Text('${action.method} ${action.endpoint}'),
-                        trailing: IconButton(
-                          tooltip: 'Retirer',
-                          onPressed: () => ref
-                              .read(syncQueueProvider.notifier)
-                              .remove(action.id),
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                      );
-                    }).toList(),
             ),
             const SizedBox(height: 8),
-            ExpansionTile(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+            DsCard(
+              padding: EdgeInsets.zero,
+              child: ExpansionTile(
+                leading: const Icon(Icons.print_outlined),
+                title: Text('Impressions (${printJobs.length})'),
+                children: printJobs.isEmpty
+                    ? const [ListTile(title: Text('Aucun ticket'))]
+                    : printJobs.map((job) {
+                        return ListTile(
+                          title: Text(job.title),
+                          subtitle: Text(
+                            job.content,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Terminer',
+                            onPressed: () => ref
+                                .read(printJobsProvider.notifier)
+                                .markDone(job.id),
+                            icon: const Icon(Icons.check_circle_outline),
+                          ),
+                        );
+                      }).toList(),
               ),
-              leading: const Icon(Icons.print_outlined),
-              title: Text('Impressions (${printJobs.length})'),
-              children: printJobs.isEmpty
-                  ? const [ListTile(title: Text('Aucun ticket'))]
-                  : printJobs.map((job) {
-                      return ListTile(
-                        title: Text(job.title),
-                        subtitle: Text(
-                          job.content,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: IconButton(
-                          tooltip: 'Terminer',
-                          onPressed: () => ref
-                              .read(printJobsProvider.notifier)
-                              .markDone(job.id),
-                          icon: const Icon(Icons.check_circle_outline),
-                        ),
-                      );
-                    }).toList(),
             ),
           ],
         ),
@@ -1042,13 +1049,6 @@ class SettingsPage extends ConsumerWidget {
   void _snack(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  ShapeBorder _shape(BuildContext context) {
-    return RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(8),
-      side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-    );
   }
 
   String _dayName(int day) {

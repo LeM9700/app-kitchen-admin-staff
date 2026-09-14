@@ -4,6 +4,7 @@ import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:app_admin_staff/core/offline/sync_worker.dart';
 import 'package:app_admin_staff/features/haccp/application/haccp_offline_service.dart';
 import 'package:app_admin_staff/design_system/components/badges/status_badge.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
@@ -322,38 +323,36 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
 
           // Session non démarrée
           if (summary.status == 'not_started') ...[
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  children: [
-                    Icon(Icons.play_circle_outline,
-                        size: 48, color: AppColors.infoAlt),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Check $_label non démarré',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Démarrez le check pour commencer les relevés.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    FilledButton.icon(
-                      onPressed: _loading ? null : _startSession,
-                      icon: _loading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.play_arrow),
-                      label: Text('Démarrer le check $_label'),
-                    ),
-                  ],
-                ),
+            DsCard(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                children: [
+                  Icon(Icons.play_circle_outline,
+                      size: 48, color: AppColors.infoAlt),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Check $_label non démarré',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Démarrez le check pour commencer les relevés.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FilledButton.icon(
+                    onPressed: _loading ? null : _startSession,
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.play_arrow),
+                    label: Text('Démarrer le check $_label'),
+                  ),
+                ],
               ),
             ),
           ] else ...[
@@ -400,8 +399,9 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
 
             // Statut validé
             if (summary.isComplete)
-              Card(
-                color: Colors.green.withOpacity(0.1),
+              DsCard(
+                backgroundColor: Colors.green.withValues(alpha: 0.1),
+                padding: EdgeInsets.zero,
                 child: ListTile(
                   leading: const Icon(Icons.check_circle, color: Colors.green),
                   title: Text(
@@ -446,70 +446,68 @@ class _ProgressBanner extends StatelessWidget {
             ? Colors.grey
             : AppColors.infoAlt;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return DsCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                summary.isComplete
+                    ? Icons.check_circle
+                    : summary.status == 'not_started'
+                        ? Icons.radio_button_unchecked
+                        : Icons.pending,
+                color: color,
+                size: 20,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                _statusLabel(summary.status),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+              const Spacer(),
+              if (summary.hasNonConformities)
+                const StatusBadge(
+                  label: 'NC',
+                  tone: StatusTone.warning,
+                ),
+            ],
+          ),
+          if (summary.status != 'not_started') ...[
+            const SizedBox(height: AppSpacing.sm),
+            LinearProgressIndicator(
+              value: summary.progress,
+              color: color,
+              backgroundColor: color.withOpacity(0.15),
+            ),
+            const SizedBox(height: AppSpacing.xs),
             Row(
               children: [
-                Icon(
-                  summary.isComplete
-                      ? Icons.check_circle
-                      : summary.status == 'not_started'
-                          ? Icons.radio_button_unchecked
-                          : Icons.pending,
-                  color: color,
-                  size: 20,
+                _ProgressChip(
+                  label:
+                      '${summary.temperaturesDone}/${summary.temperaturesTotal} Températures',
+                  done: summary.temperaturesDone >= summary.temperaturesTotal,
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                Text(
-                  _statusLabel(summary.status),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
+                _ProgressChip(
+                  label:
+                      '${summary.cleaningDone}/${summary.cleaningTotal} Nettoyage',
+                  done: summary.cleaningDone >= summary.cleaningTotal,
                 ),
-                const Spacer(),
-                if (summary.hasNonConformities)
-                  const StatusBadge(
-                    label: 'NC',
-                    tone: StatusTone.warning,
-                  ),
+                const SizedBox(width: AppSpacing.xs),
+                _ProgressChip(
+                  label: '${summary.dlcDone} DLC',
+                  done: summary.dlcDone > 0,
+                ),
               ],
             ),
-            if (summary.status != 'not_started') ...[
-              const SizedBox(height: AppSpacing.sm),
-              LinearProgressIndicator(
-                value: summary.progress,
-                color: color,
-                backgroundColor: color.withOpacity(0.15),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  _ProgressChip(
-                    label:
-                        '${summary.temperaturesDone}/${summary.temperaturesTotal} Températures',
-                    done: summary.temperaturesDone >= summary.temperaturesTotal,
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  _ProgressChip(
-                    label:
-                        '${summary.cleaningDone}/${summary.cleaningTotal} Nettoyage',
-                    done: summary.cleaningDone >= summary.cleaningTotal,
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  _ProgressChip(
-                    label: '${summary.dlcDone} DLC',
-                    done: summary.dlcDone > 0,
-                  ),
-                ],
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1164,7 +1162,8 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return DsCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1211,82 +1210,79 @@ class _OilSection extends ConsumerWidget {
 
     final logsAsync = ref.watch(haccpOilLogsProvider(sessionId));
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.local_fire_department_outlined,
-                    size: 18, color: Colors.deepOrange),
-                const SizedBox(width: 6),
-                Text('Huile friteuse',
-                    style: Theme.of(context).textTheme.titleSmall),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => _showOilForm(context, ref, sessionId),
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Relever'),
-                  style:
-                      TextButton.styleFrom(foregroundColor: Colors.deepOrange),
-                ),
-              ],
-            ),
-            logsAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(AppSpacing.md),
-                child: Center(child: CircularProgressIndicator()),
+    return DsCard(
+      borderRadius: 12,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_fire_department_outlined,
+                  size: 18, color: Colors.deepOrange),
+              const SizedBox(width: 6),
+              Text('Huile friteuse',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => _showOilForm(context, ref, sessionId),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Relever'),
+                style: TextButton.styleFrom(foregroundColor: Colors.deepOrange),
               ),
-              error: (e, _) => Text('Erreur: $e',
-                  style: const TextStyle(color: Colors.red, fontSize: 12)),
-              data: (logs) {
-                if (logs.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                    child: Text(
-                      'Aucun relevé huile pour cette session.',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
+            ],
+          ),
+          logsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(AppSpacing.md),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Text('Erreur: $e',
+                style: const TextStyle(color: Colors.red, fontSize: 12)),
+            data: (logs) {
+              if (logs.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Text(
+                    'Aucun relevé huile pour cette session.',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                );
+              }
+              return Column(
+                children: logs.map((log) {
+                  final compliant = log.isCompliant;
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      compliant ? Icons.check_circle : Icons.cancel,
+                      color: compliant ? Colors.green : Colors.red,
+                      size: 18,
+                    ),
+                    title: Text(
+                      'Polarité : ${log.polarityPercent.toStringAsFixed(1)}%',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    subtitle: compliant
+                        ? null
+                        : Text(
+                            log.correctiveAction ?? 'NC — huile à changer',
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.orange),
+                          ),
+                    trailing: Text(
+                      '${log.polarityPercent > 25 ? "⚠️ " : ""}≤ 25% requis',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: compliant ? Colors.grey : Colors.red),
                     ),
                   );
-                }
-                return Column(
-                  children: logs.map((log) {
-                    final compliant = log.isCompliant;
-                    return ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        compliant ? Icons.check_circle : Icons.cancel,
-                        color: compliant ? Colors.green : Colors.red,
-                        size: 18,
-                      ),
-                      title: Text(
-                        'Polarité : ${log.polarityPercent.toStringAsFixed(1)}%',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      subtitle: compliant
-                          ? null
-                          : Text(
-                              log.correctiveAction ?? 'NC — huile à changer',
-                              style: const TextStyle(
-                                  fontSize: 11, color: Colors.orange),
-                            ),
-                      trailing: Text(
-                        '${log.polarityPercent > 25 ? "⚠️ " : ""}≤ 25% requis',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: compliant ? Colors.grey : Colors.red),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-          ],
-        ),
+                }).toList(),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

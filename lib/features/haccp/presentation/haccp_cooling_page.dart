@@ -1,3 +1,4 @@
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
@@ -185,121 +186,117 @@ class _CoolingCard extends StatelessWidget {
         isActive ? DateTime.now().difference(log.startedAt).inMinutes : null;
     final twoHoursWarning = elapsed != null && elapsed >= 90;
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: statusColor.withOpacity(0.3)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  isActive
-                      ? Icons.ac_unit
-                      : (compliant ? Icons.check_circle : Icons.cancel),
-                  color: statusColor,
-                  size: 18,
+    return DsCard(
+      borderRadius: 12,
+      borderColor: statusColor.withValues(alpha: 0.3),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isActive
+                    ? Icons.ac_unit
+                    : (compliant ? Icons.check_circle : Icons.cancel),
+                color: statusColor,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  log.productName,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15),
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    log.productName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 15),
-                  ),
-                ),
-                if (isActive && elapsed != null) ...[
-                  if (twoHoursWarning)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '⚠️ ${elapsed}min',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    )
-                  else
-                    Text(
-                      '${elapsed}min',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              if (isActive && elapsed != null) ...[
+                if (twoHoursWarning)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                ],
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Row(
-              children: [
-                _TempBadge(label: 'T° init.', temp: log.tempInitial, ok: true),
-                if (!isActive && log.tempFinal != null) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  const Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
-                  const SizedBox(width: AppSpacing.xs),
-                  _TempBadge(
-                    label: 'T° finale',
-                    temp: log.tempFinal!,
-                    ok: log.tempFinal! <= 10,
-                  ),
-                ],
-                if (!isActive && log.durationMinutes != null) ...[
-                  const Spacer(),
+                    child: Text(
+                      '⚠️ ${elapsed}min',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  )
+                else
                   Text(
-                    '${log.durationMinutes}min',
+                    '${elapsed}min',
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
-                ],
               ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              _TempBadge(label: 'T° init.', temp: log.tempInitial, ok: true),
+              if (!isActive && log.tempFinal != null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                const Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
+                const SizedBox(width: AppSpacing.xs),
+                _TempBadge(
+                  label: 'T° finale',
+                  temp: log.tempFinal!,
+                  ok: log.tempFinal! <= 10,
+                ),
+              ],
+              if (!isActive && log.durationMinutes != null) ...[
+                const Spacer(),
+                Text(
+                  '${log.durationMinutes}min',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+          if (twoHoursWarning) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber, size: 13, color: Colors.red),
+                  SizedBox(width: 4),
+                  Text(
+                    'Objectif 2h bientôt dépassé — enregistrez la T° finale',
+                    style: TextStyle(fontSize: 12, color: Colors.red),
+                  ),
+                ],
+              ),
             ),
-            if (twoHoursWarning) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.warning_amber, size: 13, color: Colors.red),
-                    SizedBox(width: 4),
-                    Text(
-                      'Objectif 2h bientôt dépassé — enregistrez la T° finale',
-                      style: TextStyle(fontSize: 12, color: Colors.red),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (!compliant && log.correctiveAction != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '🔧 ${log.correctiveAction}',
-                style: const TextStyle(fontSize: 12, color: Colors.orange),
-              ),
-            ],
-            if (isActive && onComplete != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onComplete,
-                  icon: const Icon(Icons.thermostat, size: 16),
-                  label: const Text('Enregistrer T° finale'),
-                ),
-              ),
-            ],
           ],
-        ),
+          if (!compliant && log.correctiveAction != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '🔧 ${log.correctiveAction}',
+              style: const TextStyle(fontSize: 12, color: Colors.orange),
+            ),
+          ],
+          if (isActive && onComplete != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onComplete,
+                icon: const Icon(Icons.thermostat, size: 16),
+                label: const Text('Enregistrer T° finale'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/auth/session_models.dart';
 import 'package:app_admin_staff/core/config/env.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -55,72 +56,69 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           constraints: const BoxConstraints(maxWidth: 420),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+            child: DsCard(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      "O'Pizza Staff",
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _tenantController,
+                      decoration: const InputDecoration(
+                        labelText: 'Tenant',
+                        prefixIcon: Icon(Icons.store_outlined),
+                      ),
+                      validator: _required,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.mail_outline),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: _required,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _passwordController,
+                      decoration: const InputDecoration(
+                        labelText: 'Mot de passe',
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                      obscureText: true,
+                      validator: _required,
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
                       Text(
-                        "O'Pizza Staff",
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _tenantController,
-                        decoration: const InputDecoration(
-                          labelText: 'Tenant',
-                          prefixIcon: Icon(Icons.store_outlined),
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
                         ),
-                        validator: _required,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.mail_outline),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: _required,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _passwordController,
-                        decoration: const InputDecoration(
-                          labelText: 'Mot de passe',
-                          prefixIcon: Icon(Icons.lock_outline),
-                        ),
-                        obscureText: true,
-                        validator: _required,
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        onPressed: loading ? null : _submit,
-                        icon: loading
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.login),
-                        label: const Text('Connexion'),
                       ),
                     ],
-                  ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: loading ? null : _submit,
+                      icon: loading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.login),
+                      label: const Text('Connexion'),
+                    ),
+                  ],
                 ),
               ),
             ),

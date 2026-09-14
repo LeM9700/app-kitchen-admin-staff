@@ -11,6 +11,7 @@
 /// Accessible via le menu `⋮` dans [HaccpCheckPage] → `/haccp/stats`.
 library haccp_stats_page;
 
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
@@ -291,77 +292,74 @@ class _ScoreGauge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Row(
-          children: [
-            // Cercle de score
-            SizedBox(
-              width: 88,
-              height: 88,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    value: score / 100,
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation(_color),
+    return DsCard(
+      borderRadius: 16,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        children: [
+          // Cercle de score
+          SizedBox(
+            width: 88,
+            height: 88,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: score / 100,
+                  strokeWidth: 8,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation(_color),
+                ),
+                Text(
+                  '${score.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: _color,
                   ),
-                  Text(
-                    '${score.toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: _color,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Score de conformité',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _label,
-                      style: TextStyle(
-                        color: _color,
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Score de conformité',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
                       ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _label,
+                    style: TextStyle(
+                      color: _color,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    score >= 80
-                        ? 'Conforme aux exigences réglementaires.'
-                        : 'Des actions correctives sont nécessaires.',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  score >= 80
+                      ? 'Conforme aux exigences réglementaires.'
+                      : 'Des actions correctives sont nécessaires.',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -464,49 +462,45 @@ class _SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          children: [
-            _SessionRow(
-              icon: Icons.wb_sunny_outlined,
-              label: 'Ouverture',
-              done: sessions.openingCompleted,
-              total: sessions.openingTotal,
-            ),
-            const Divider(height: 20),
-            _SessionRow(
-              icon: Icons.nights_stay_outlined,
-              label: 'Fermeture',
-              done: sessions.closingCompleted,
-              total: sessions.closingTotal,
-            ),
-            const Divider(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Taux de complétion',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
+    return DsCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        children: [
+          _SessionRow(
+            icon: Icons.wb_sunny_outlined,
+            label: 'Ouverture',
+            done: sessions.openingCompleted,
+            total: sessions.openingTotal,
+          ),
+          const Divider(height: 20),
+          _SessionRow(
+            icon: Icons.nights_stay_outlined,
+            label: 'Fermeture',
+            done: sessions.closingCompleted,
+            total: sessions.closingTotal,
+          ),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Taux de complétion',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+              Text(
+                '${sessions.completionRate.toStringAsFixed(1)}%',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: sessions.completionRate >= 80
+                      ? Colors.green
+                      : Colors.orange,
                 ),
-                Text(
-                  '${sessions.completionRate.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: sessions.completionRate >= 80
-                        ? Colors.green
-                        : Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -557,50 +551,45 @@ class _NcCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _NcPill(label: 'Ouvertes', count: nc.open, color: Colors.red),
-                const SizedBox(width: AppSpacing.xs),
-                _NcPill(
-                    label: 'En cours',
-                    count: nc.inProgress,
-                    color: Colors.orange),
-                const SizedBox(width: AppSpacing.xs),
-                _NcPill(
-                    label: 'Clôturées', count: nc.closed, color: Colors.green),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Taux de résolution',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
+    return DsCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _NcPill(label: 'Ouvertes', count: nc.open, color: Colors.red),
+              const SizedBox(width: AppSpacing.xs),
+              _NcPill(
+                  label: 'En cours',
+                  count: nc.inProgress,
+                  color: Colors.orange),
+              const SizedBox(width: AppSpacing.xs),
+              _NcPill(
+                  label: 'Clôturées', count: nc.closed, color: Colors.green),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Taux de résolution',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+              Text(
+                nc.total == 0
+                    ? 'Aucune NC'
+                    : '${nc.resolutionRate.toStringAsFixed(1)}%',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: nc.resolutionRate >= 80 ? Colors.green : Colors.orange,
                 ),
-                Text(
-                  nc.total == 0
-                      ? 'Aucune NC'
-                      : '${nc.resolutionRate.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color:
-                        nc.resolutionRate >= 80 ? Colors.green : Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -656,55 +645,49 @@ class _CoolingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _NcPill(
-                    label: 'Conformes',
-                    count: cooling.compliant,
-                    color: Colors.green),
-                const SizedBox(width: AppSpacing.xs),
-                _NcPill(
-                    label: 'NC',
-                    count: cooling.nonCompliant,
-                    color: Colors.red),
-                const SizedBox(width: AppSpacing.xs),
-                _NcPill(
-                    label: 'En cours',
-                    count: cooling.inProgress,
-                    color: Colors.blue),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Seuil légal : ≤10°C en 2h',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+    return DsCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _NcPill(
+                  label: 'Conformes',
+                  count: cooling.compliant,
+                  color: Colors.green),
+              const SizedBox(width: AppSpacing.xs),
+              _NcPill(
+                  label: 'NC', count: cooling.nonCompliant, color: Colors.red),
+              const SizedBox(width: AppSpacing.xs),
+              _NcPill(
+                  label: 'En cours',
+                  count: cooling.inProgress,
+                  color: Colors.blue),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Seuil légal : ≤10°C en 2h',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              Text(
+                cooling.compliant + cooling.nonCompliant == 0
+                    ? '—'
+                    : '${cooling.complianceRate.toStringAsFixed(1)}%',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: cooling.complianceRate >= 80
+                      ? Colors.green
+                      : Colors.orange,
                 ),
-                Text(
-                  cooling.compliant + cooling.nonCompliant == 0
-                      ? '—'
-                      : '${cooling.complianceRate.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: cooling.complianceRate >= 80
-                        ? Colors.green
-                        : Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

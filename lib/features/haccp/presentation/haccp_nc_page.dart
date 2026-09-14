@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/core/auth/session_controller.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
@@ -422,152 +423,138 @@ class _NcCardState extends ConsumerState<_NcCard> {
     final isInProgress = nc.status == 'in_progress';
     final isClosed = nc.status == 'closed';
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: _statusColor.withOpacity(isClosed ? 0.2 : 0.4),
-          width: 1.2,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => setState(() => _expanded = !_expanded),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return DsCard(
+      borderRadius: 12,
+      borderColor: _statusColor.withValues(alpha: isClosed ? 0.2 : 0.4),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // En-tête
+          Row(
             children: [
-              // En-tête
-              Row(
-                children: [
-                  Icon(_statusIcon, color: _statusColor, size: 18),
-                  const SizedBox(width: AppSpacing.xs),
-                  _StatusChip(label: _statusLabel, color: _statusColor),
-                  const SizedBox(width: AppSpacing.xs),
-                  _SourceChip(label: _sourceLabel),
-                  const Spacer(),
-                  Text(
-                    _formatDate(nc.createdAt),
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    size: 18,
-                    color: Colors.grey,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSpacing.sm),
-
-              // Description
+              Icon(_statusIcon, color: _statusColor, size: 18),
+              const SizedBox(width: AppSpacing.xs),
+              _StatusChip(label: _statusLabel, color: _statusColor),
+              const SizedBox(width: AppSpacing.xs),
+              _SourceChip(label: _sourceLabel),
+              const Spacer(),
               Text(
-                nc.description,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                _formatDate(nc.createdAt),
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
               ),
-
-              // Détails étendus
-              if (_expanded) ...[
-                const SizedBox(height: AppSpacing.sm),
-                const Divider(height: 1),
-                const SizedBox(height: AppSpacing.sm),
-
-                // Action corrective existante
-                if (nc.correctiveAction != null) ...[
-                  _DetailRow(
-                    icon: Icons.build_outlined,
-                    label: 'Action corrective',
-                    value: nc.correctiveAction!,
-                    valueColor:
-                        isInProgress ? Colors.orange[700] : Colors.green[700],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                ] else if (!isClosed) ...[
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.info_outline, size: 14, color: Colors.red),
-                        SizedBox(width: 4),
-                        Text(
-                          'Action corrective requise',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.red,
-                              fontStyle: FontStyle.italic),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                ],
-
-                // Validé par
-                if (nc.validatedAt != null) ...[
-                  _DetailRow(
-                    icon: Icons.verified_outlined,
-                    label: 'Clôturée le',
-                    value: _formatDateTime(nc.validatedAt!),
-                    valueColor: Colors.green[700],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                ],
-
-                // Actions (admin uniquement, NC non clôturée)
-                if (widget.isAdmin && !isClosed) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      // Ajouter / modifier action corrective
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _saving ? null : _addCorrectiveAction,
-                          icon: const Icon(Icons.edit_outlined, size: 16),
-                          label: Text(nc.correctiveAction == null
-                              ? 'Ajouter action'
-                              : 'Modifier action'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.orange,
-                            side: const BorderSide(color: Colors.orange),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      // Clôturer
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: (_saving || nc.correctiveAction == null)
-                              ? null
-                              : _validate,
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.check, size: 16),
-                          label: const Text('Clôturer'),
-                          style: FilledButton.styleFrom(
-                              backgroundColor: Colors.green),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
+              const SizedBox(width: AppSpacing.xs),
+              Icon(
+                _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                size: 18,
+                color: Colors.grey,
+              ),
             ],
           ),
-        ),
+
+          const SizedBox(height: AppSpacing.sm),
+
+          // Description
+          Text(
+            nc.description,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+          ),
+
+          // Détails étendus
+          if (_expanded) ...[
+            const SizedBox(height: AppSpacing.sm),
+            const Divider(height: 1),
+            const SizedBox(height: AppSpacing.sm),
+
+            // Action corrective existante
+            if (nc.correctiveAction != null) ...[
+              _DetailRow(
+                icon: Icons.build_outlined,
+                label: 'Action corrective',
+                value: nc.correctiveAction!,
+                valueColor:
+                    isInProgress ? Colors.orange[700] : Colors.green[700],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+            ] else if (!isClosed) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: Colors.red),
+                    SizedBox(width: 4),
+                    Text(
+                      'Action corrective requise',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                          fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+            ],
+
+            // Validé par
+            if (nc.validatedAt != null) ...[
+              _DetailRow(
+                icon: Icons.verified_outlined,
+                label: 'Clôturée le',
+                value: _formatDateTime(nc.validatedAt!),
+                valueColor: Colors.green[700],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+            ],
+
+            // Actions (admin uniquement, NC non clôturée)
+            if (widget.isAdmin && !isClosed) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  // Ajouter / modifier action corrective
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _saving ? null : _addCorrectiveAction,
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: Text(nc.correctiveAction == null
+                          ? 'Ajouter action'
+                          : 'Modifier action'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange,
+                        side: const BorderSide(color: Colors.orange),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  // Clôturer
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: (_saving || nc.correctiveAction == null)
+                          ? null
+                          : _validate,
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check, size: 16),
+                      label: const Text('Clôturer'),
+                      style:
+                          FilledButton.styleFrom(backgroundColor: Colors.green),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ],
       ),
     );
   }

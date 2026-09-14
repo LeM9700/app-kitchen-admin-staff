@@ -19,9 +19,19 @@ test/failures/
 
 android/.gradle/
 android/local.properties
+
+# Release signing — secrets, never commit (see docs/android-release-signing.md)
+android/key.properties
+android/*.jks
+android/*.keystore
+android/app/*.jks
+android/app/*.keystore
 ios/Pods/
 ios/Flutter/ephemeral/
 macos/Pods/
 macos/Flutter/ephemeral/
 windows/flutter/ephemeral/
 linux/flutter/ephemeral/
+
+# Netlify CLI local state (site link + machine-specific generated config)
+.netlify/

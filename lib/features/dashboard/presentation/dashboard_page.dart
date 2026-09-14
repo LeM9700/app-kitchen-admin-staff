@@ -1,5 +1,7 @@
 import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/features/dashboard/data/dashboard_repository.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/payments/data/payments_repository.dart';
@@ -28,7 +30,11 @@ class DashboardPage extends ConsumerWidget {
     final topProducts = isAdmin ? ref.watch(topProductsProvider) : null;
     final period = ref.watch(_dashboardPeriodProvider);
 
-    return RefreshIndicator(
+    // Dashboard is the at-a-glance ops overview — depth stays flat so KPI
+    // numbers read instantly.
+    return NeumorphicIntensityScope(
+      intensity: NeumorphicIntensity.flat,
+      child: RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(activeOrdersProvider);
         ref.invalidate(stockAlertsProvider);
@@ -275,6 +281,7 @@ class DashboardPage extends ConsumerWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -367,31 +374,25 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 220,
-      child: Card(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(icon, size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: Theme.of(context).textTheme.bodySmall),
-                      Text(
-                        value,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ],
+      child: DsCard(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

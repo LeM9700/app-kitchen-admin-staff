@@ -10,7 +10,9 @@ import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/core/widgets/empty_state.dart';
 import 'package:app_admin_staff/core/widgets/live_elapsed.dart';
 import 'package:app_admin_staff/design_system/components/badges/status_badge.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/states/order_status_ui.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +31,11 @@ class OrdersBoardPage extends ConsumerWidget {
     final isAdmin = user?.role == 'admin' || user?.role == 'super-admin';
     final lateOnly = ref.watch(_lateOnlyProvider);
 
-    return orders.when(
+    // Orders is a live service board — depth stays subtle so status/timer
+    // text is never competing with decorative shadow.
+    return NeumorphicIntensityScope(
+      intensity: NeumorphicIntensity.subtle,
+      child: orders.when(
       data: (items) {
         if (items.isEmpty) {
           return const EmptyState(
@@ -98,11 +104,12 @@ class OrdersBoardPage extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => EmptyState(
-        icon: Icons.error_outline,
-        title: 'Chargement impossible',
-        subtitle: error.toString(),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => EmptyState(
+          icon: Icons.error_outline,
+          title: 'Chargement impossible',
+          subtitle: error.toString(),
+        ),
       ),
     );
   }
@@ -167,12 +174,11 @@ class _OrderCard extends ConsumerWidget {
     final showLocalTestPayment = _supportsLocalTestPayment &&
         order.status == 'pending' &&
         order.paymentStatus != 'paid';
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => _showDetail(context, order.id),
-        child: Stack(
-          children: [
+    return DsCard(
+      padding: EdgeInsets.zero,
+      onTap: () => _showDetail(context, order.id),
+      child: Stack(
+        children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 42),
               child: Column(
@@ -334,7 +340,6 @@ class _OrderCard extends ConsumerWidget {
               ),
           ],
         ),
-      ),
     );
   }
 

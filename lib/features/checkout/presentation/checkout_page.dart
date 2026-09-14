@@ -2,6 +2,8 @@ import 'package:app_admin_staff/core/api/idempotency_key.dart';
 import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/core/printing/printer_registry.dart';
 import 'package:app_admin_staff/core/printing/receipt_builder.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
 import 'package:app_admin_staff/features/loyalty/data/loyalty_repository.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
@@ -57,7 +59,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     final products = ref.watch(catalogProductsProvider);
     final tenantStatus = ref.watch(tenantStatusProvider);
 
-    return products.when(
+    // Checkout runs during active service — depth stays flat so the till
+    // stays fast to read under time pressure.
+    return NeumorphicIntensityScope(
+      intensity: NeumorphicIntensity.flat,
+      child: products.when(
       data: (items) => LayoutBuilder(
         builder: (context, constraints) {
           final compactLayout = constraints.maxWidth < 980;
@@ -138,8 +144,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           );
         },
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => Center(child: Text(error.toString())),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => Center(child: Text(error.toString())),
+      ),
     );
   }
 
@@ -466,34 +473,29 @@ class _ProductGrid extends StatelessWidget {
       itemCount: availableProducts.length,
       itemBuilder: (context, index) {
         final product = availableProducts[index];
-        return Card(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () {
-              onAdd(product);
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        return DsCard(
+          padding: const EdgeInsets.all(12),
+          onTap: () {
+            onAdd(product);
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                product.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const Spacer(),
+              Row(
                 children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text(formatMoney(product.basePrice)),
                   const Spacer(),
-                  Row(
-                    children: [
-                      Text(formatMoney(product.basePrice)),
-                      const Spacer(),
-                      const Icon(Icons.add_circle_outline),
-                    ],
-                  ),
+                  const Icon(Icons.add_circle_outline),
                 ],
               ),
-            ),
+            ],
           ),
         );
       },

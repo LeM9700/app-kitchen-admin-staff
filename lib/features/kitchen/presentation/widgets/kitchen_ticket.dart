@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_time.dart';
@@ -102,13 +103,7 @@ class _KitchenTicketState extends State<KitchenTicket> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.sm),
           boxShadow: widget.focused
-              ? [
-                  BoxShadow(
-                    color: scheme.primary.withValues(alpha: 0.28),
-                    blurRadius: 0,
-                    spreadRadius: isLate ? 3 : 2,
-                  ),
-                ]
+              ? AppGlow.urgent(scheme.primary, spread: isLate ? 3 : 2)
               : const [],
         ),
         child: Material(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:flutter/material.dart';
 
 class KitchenReadyTransition extends StatefulWidget {
@@ -89,13 +90,7 @@ class _KitchenReadyTransitionState extends State<KitchenReadyTransition>
                   decoration: BoxDecoration(
                     color: scheme.primary,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: scheme.primary.withValues(alpha: 0.24),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      ),
-                    ],
+                    boxShadow: AppGlow.ready(scheme.primary),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(8),

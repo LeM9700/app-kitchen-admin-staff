@@ -1,4 +1,6 @@
 import 'package:app_admin_staff/core/widgets/empty_state.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_connection.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_controller.dart';
@@ -32,23 +34,28 @@ class KitchenPage extends ConsumerWidget {
       },
     );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final policy = KitchenLayoutPolicy.fromConstraints(constraints);
-        final profile = ref.watch(kitchenScreenProfileProvider);
-        _syncProfileWithPolicy(ref, profile, policy);
+    // Kitchen is a real-time board — depth stays subtle so live status/
+    // countdown text is never competing with decorative shadow.
+    return NeumorphicIntensityScope(
+      intensity: NeumorphicIntensity.subtle,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final policy = KitchenLayoutPolicy.fromConstraints(constraints);
+          final profile = ref.watch(kitchenScreenProfileProvider);
+          _syncProfileWithPolicy(ref, profile, policy);
 
-        final queue = ref.watch(kitchenQueueProvider);
+          final queue = ref.watch(kitchenQueueProvider);
 
-        return queue.when(
-          data: (state) => _KitchenBoard(state: state, policy: policy),
-          loading: () => _KitchenLoadingBoard(profile: profile),
-          error: (error, stackTrace) => _KitchenErrorBoard(
-            error: error,
-            profile: profile,
-          ),
-        );
-      },
+          return queue.when(
+            data: (state) => _KitchenBoard(state: state, policy: policy),
+            loading: () => _KitchenLoadingBoard(profile: profile),
+            error: (error, stackTrace) => _KitchenErrorBoard(
+              error: error,
+              profile: profile,
+            ),
+          );
+        },
+      ),
     );
   }
 

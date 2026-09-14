@@ -13,6 +13,7 @@ import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/stock/data/stock_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class StockPage extends ConsumerStatefulWidget {
   const StockPage({super.key});
@@ -58,6 +59,7 @@ class _StockPageState extends ConsumerState<StockPage> {
             onRefresh: () => _refresh(ref),
             onCreateIngredient: () => _ingredientDialog(context, ref),
             onRecipe: () => _recipeDialog(context, ref),
+            onManageDlc: () => context.push('/stock/dlc'),
           ),
           const SizedBox(height: AppSpacing.lg),
           _StockStatsRow(
@@ -578,12 +580,14 @@ class _StockHeader extends StatelessWidget {
     required this.onRefresh,
     required this.onCreateIngredient,
     required this.onRecipe,
+    required this.onManageDlc,
   });
 
   final bool isAdmin;
   final VoidCallback onRefresh;
   final VoidCallback onCreateIngredient;
   final VoidCallback onRecipe;
+  final VoidCallback onManageDlc;
 
   @override
   Widget build(BuildContext context) {
@@ -620,6 +624,11 @@ class _StockHeader extends StatelessWidget {
                 tooltip: 'Recette',
                 onPressed: onRecipe,
                 icon: const Icon(Icons.menu_book_outlined),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Gérer les DLC',
+                onPressed: onManageDlc,
+                icon: const Icon(Icons.event_available_outlined),
               ),
             ],
             IconButton.filledTonal(

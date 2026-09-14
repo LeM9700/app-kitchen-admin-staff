@@ -249,6 +249,8 @@ class ApiEndpoints {
   static String haccpSessionComplete(int id) => '/haccp/sessions/$id/complete';
   static String haccpSessionTemperatures(int id) => '/haccp/sessions/$id/temperatures';
   static String haccpSessionDlc(int id) => '/haccp/sessions/$id/dlc';
+  static const haccpDlc = '/haccp/dlc';
+  static String haccpDlcItem(int id) => '/haccp/dlc/$id';
   static String haccpSessionCleaning(int id) => '/haccp/sessions/$id/cleaning';
   static String haccpSessionOil(int id) => '/haccp/sessions/$id/oil';
   static const haccpEquipment = '/haccp/equipment';

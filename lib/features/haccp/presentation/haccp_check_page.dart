@@ -2,13 +2,13 @@ import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/connectivity/connectivity_status.dart';
 import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:app_admin_staff/core/offline/sync_worker.dart';
-import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/features/haccp/application/haccp_offline_service.dart';
 import 'package:app_admin_staff/design_system/components/badges/status_badge.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
+import 'package:app_admin_staff/features/haccp/presentation/dlc_form_dialog.dart';
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -127,6 +127,25 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
                       Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
                   title: Text('Export PDF / CSV',
                       style: TextStyle(color: Colors.red)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: '/haccp/equipment',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.kitchen_outlined),
+                  title: Text('Équipements'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: '/haccp/cleaning-tasks',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.cleaning_services_outlined),
+                  title: Text('Tâches de nettoyage'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -862,7 +881,7 @@ class _DlcSectionState extends ConsumerState<_DlcSection> {
   Future<void> _addDlcCheck() async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (_) => const _DlcInputDialog(),
+      builder: (_) => const DlcFormDialog(),
     );
     if (result == null) return;
 
@@ -952,162 +971,6 @@ class _DlcTile extends StatelessWidget {
 
   String _formatDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-}
-
-class _DlcInputDialog extends StatefulWidget {
-  const _DlcInputDialog();
-
-  @override
-  State<_DlcInputDialog> createState() => _DlcInputDialogState();
-}
-
-class _DlcInputDialogState extends State<_DlcInputDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _locationController = TextEditingController();
-  int _dlcLevel = 1;
-  DateTime _dlcDate = DateTime.now();
-  bool _isCompliant = true;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _locationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _dlcDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null) setState(() => _dlcDate = picked);
-  }
-
-  String get _levelLabel {
-    switch (_dlcLevel) {
-      case 1:
-        return 'Emballage produit brut';
-      case 2:
-        return 'Conservation frigo/congélateur';
-      case 3:
-        return 'Utilisation (table garniture)';
-      default:
-        return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // DLC non conforme si la date est dépassée
-    final isExpired = _dlcDate.isBefore(
-      DateTime.now().subtract(const Duration(hours: 1)),
-    );
-
-    return AlertDialog(
-      title: const Text('Vérification DLC'),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Ingrédient / Produit *',
-                ),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Champ obligatoire' : null,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              DropdownButtonFormField<int>(
-                value: _dlcLevel,
-                decoration: const InputDecoration(labelText: 'Niveau DLC'),
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('DLC 1 — Emballage')),
-                  DropdownMenuItem(
-                      value: 2, child: Text('DLC 2 — Conservation')),
-                  DropdownMenuItem(
-                      value: 3, child: Text('DLC 3 — Utilisation')),
-                ],
-                onChanged: (v) => setState(() => _dlcLevel = v!),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(_levelLabel,
-                  style: const TextStyle(color: Colors.grey, fontSize: 11)),
-              const SizedBox(height: AppSpacing.sm),
-              InkWell(
-                onTap: _pickDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Date DLC',
-                    suffixIcon: Icon(Icons.calendar_today, size: 18),
-                  ),
-                  child: Text(
-                    '${_dlcDate.day.toString().padLeft(2, '0')}/${_dlcDate.month.toString().padLeft(2, '0')}/${_dlcDate.year}',
-                    style: TextStyle(
-                      color: isExpired ? Colors.red : null,
-                      fontWeight:
-                          isExpired ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ),
-              if (isExpired) ...[
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  '⚠️ DLC dépassée — non-conformité',
-                  style: TextStyle(color: Colors.red, fontSize: 12),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Emplacement (optionnel)',
-                  hintText: 'Ex: Frigo 2, Table garniture',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SwitchListTile(
-                dense: true,
-                value: _isCompliant && !isExpired,
-                onChanged:
-                    isExpired ? null : (v) => setState(() => _isCompliant = v),
-                title: const Text('Conforme', style: TextStyle(fontSize: 13)),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annuler'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (!_formKey.currentState!.validate()) return;
-            Navigator.pop(context, {
-              'ingredient_name': _nameController.text.trim(),
-              'dlc_level': _dlcLevel,
-              'dlc_date':
-                  '${_dlcDate.year}-${_dlcDate.month.toString().padLeft(2, '0')}-${_dlcDate.day.toString().padLeft(2, '0')}',
-              'location': _locationController.text.trim().isNotEmpty
-                  ? _locationController.text.trim()
-                  : null,
-              'is_compliant': _isCompliant && !isExpired,
-            });
-          },
-          child: const Text('Enregistrer'),
-        ),
-      ],
-    );
-  }
 }
 
 // ─── Section nettoyage ────────────────────────────────────────────────────────

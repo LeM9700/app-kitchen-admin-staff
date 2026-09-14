@@ -222,7 +222,7 @@ class HaccpTemperatureLog {
 class HaccpDlcCheck {
   const HaccpDlcCheck({
     required this.id,
-    required this.sessionId,
+    this.sessionId,
     this.ingredientId,
     this.batchId,
     required this.ingredientName,
@@ -236,7 +236,7 @@ class HaccpDlcCheck {
   });
 
   final int id;
-  final int sessionId;
+  final int? sessionId;
   final int? ingredientId;
   final int? batchId;
   final String ingredientName;
@@ -265,7 +265,7 @@ class HaccpDlcCheck {
   factory HaccpDlcCheck.fromJson(Map<String, dynamic> json) {
     return HaccpDlcCheck(
       id: json['id'] as int,
-      sessionId: json['session_id'] as int,
+      sessionId: json['session_id'] as int?,
       ingredientId: json['ingredient_id'] as int?,
       batchId: json['batch_id'] as int?,
       ingredientName: json['ingredient_name'] as String,

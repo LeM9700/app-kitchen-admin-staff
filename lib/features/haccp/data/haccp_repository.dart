@@ -127,6 +127,42 @@ class HaccpRepository {
         .toList();
   }
 
+  /// Toutes les vérifications DLC du tenant, hors contexte session -- pour
+  /// l'onglet Stock. [ingredientId]/[isCompliant] filtrent si fournis.
+  Future<List<HaccpDlcCheck>> listAllDlcChecks({
+    int? ingredientId,
+    bool? isCompliant,
+  }) async {
+    final response = await _api.get(
+      ApiEndpoints.haccpDlc,
+      queryParameters: {
+        if (ingredientId != null) 'ingredient_id': ingredientId,
+        if (isCompliant != null) 'is_compliant': isCompliant,
+      },
+    );
+    return (response.data as List)
+        .map((e) => HaccpDlcCheck.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Crée une vérification DLC hors session (onglet Stock).
+  Future<HaccpDlcCheck> createStandaloneDlcCheck(
+      Map<String, dynamic> body) async {
+    final response = await _api.post(ApiEndpoints.haccpDlc, data: body);
+    return HaccpDlcCheck.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<HaccpDlcCheck> updateDlcCheck(
+      int id, Map<String, dynamic> body) async {
+    final response =
+        await _api.patch(ApiEndpoints.haccpDlcItem(id), data: body);
+    return HaccpDlcCheck.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteDlcCheck(int id) async {
+    await _api.delete(ApiEndpoints.haccpDlcItem(id));
+  }
+
   // ── Cleaning Tasks & Logs ─────────────────────────────────────────────────
 
   Future<List<HaccpCleaningTask>> listCleaningTasks({

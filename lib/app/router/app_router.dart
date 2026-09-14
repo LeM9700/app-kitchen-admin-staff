@@ -17,9 +17,12 @@ import 'package:app_admin_staff/features/orders/presentation/orders_board_page.d
 import 'package:app_admin_staff/features/payments/presentation/payments_page.dart';
 import 'package:app_admin_staff/features/promotions/presentation/promotions_page.dart';
 import 'package:app_admin_staff/features/settings/presentation/settings_page.dart';
+import 'package:app_admin_staff/features/stock/presentation/stock_dlc_page.dart';
 import 'package:app_admin_staff/features/stock/presentation/stock_page.dart';
 import 'package:app_admin_staff/features/haccp/presentation/haccp_check_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_cleaning_tasks_page.dart';
 import 'package:app_admin_staff/features/haccp/presentation/haccp_cooling_page.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_equipment_page.dart';
 import 'package:app_admin_staff/features/haccp/presentation/haccp_export_page.dart';
 import 'package:app_admin_staff/features/haccp/presentation/haccp_nc_page.dart';
 import 'package:app_admin_staff/features/haccp/presentation/haccp_reception_page.dart';
@@ -106,6 +109,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/stock',
             builder: (context, state) => const StockPage(),
+            routes: [
+              GoRoute(
+                path: 'dlc',
+                builder: (context, state) => const StockDlcPage(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/team',
@@ -162,6 +171,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'stats',
                 builder: (context, state) => const HaccpStatsPage(),
+              ),
+              GoRoute(
+                path: 'equipment',
+                builder: (context, state) => const HaccpEquipmentPage(),
+              ),
+              GoRoute(
+                path: 'cleaning-tasks',
+                builder: (context, state) => const HaccpCleaningTasksPage(),
               ),
             ],
           ),

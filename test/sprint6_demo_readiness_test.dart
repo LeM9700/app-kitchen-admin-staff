@@ -12,8 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('service order status action is single-flight while pending',
-      (tester) async {
+  testWidgets('service order status action is single-flight', (tester) async {
     addTearDown(tester.view.reset);
     tester.view.physicalSize = const Size(1280, 900);
     tester.view.devicePixelRatio = 1;
@@ -29,13 +28,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final confirmButton = find.widgetWithText(FilledButton, 'Confirmee');
-    expect(confirmButton, findsOneWidget);
+    final deliverButton = find.widgetWithText(FilledButton, 'Livree');
+    expect(deliverButton, findsOneWidget);
 
-    await tester.tap(confirmButton);
+    await tester.tap(deliverButton);
     await repository.statusStarted.future;
     await tester.pump();
-    await tester.tap(confirmButton);
+    await tester.tap(deliverButton);
 
     expect(repository.statusCalls, 1);
     repository.releaseStatus.complete();
@@ -79,7 +78,10 @@ class _SlowStatusRepository extends OrdersRepository {
       OrderSummary(
         id: 10,
         orderType: 'pickup',
-        status: 'pending',
+        // 'ready' : seul statut encore actionnable manuellement depuis le
+        // Service (pending/confirmed/preparing n'y apparaissent plus du
+        // tout -- voir orders_board_page.dart::_nextStatuses).
+        status: 'ready',
         paymentStatus: 'paid',
         source: 'customer',
         total: 18,

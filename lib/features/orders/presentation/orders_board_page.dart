@@ -42,11 +42,13 @@ class OrdersBoardPage extends ConsumerWidget {
         for (final order in visibleItems) {
           grouped.putIfAbsent(order.status, () => []).add(order);
         }
+        // pending/queued/confirmed/preparing ne sont plus affiches ici : la
+        // confirmation est automatique des le paiement valide (voir
+        // payments/service.py::finalize_payment et
+        // orders/service.py::create_manual_order), et la preparation reste
+        // l'affaire exclusive des ecrans cuisine/comptoir (KDS). Le Service
+        // ne prend la main qu'une fois la commande prete.
         final statuses = [
-          'pending',
-          'queued',
-          'confirmed',
-          'preparing',
           'ready',
           'out_for_delivery',
         ];
@@ -336,12 +338,14 @@ class _OrderCard extends ConsumerWidget {
     );
   }
 
+  // pending/queued/confirmed/preparing n'ont plus de transition manuelle
+  // depuis cet ecran : la confirmation est automatique des le paiement
+  // valide, et le passage a "ready" est reserve aux ecrans cuisine/comptoir
+  // (KDS), qui verifient reellement que chaque poste a termine. Annuler une
+  // commande avant qu'elle soit prete n'est plus une action prevue depuis le
+  // Service.
   List<String> _nextStatuses(OrderSummary order) {
     return switch (order.status) {
-      'pending' => const ['confirmed', 'cancelled'],
-      'queued' => const ['confirmed', 'cancelled'],
-      'confirmed' => const ['preparing', 'cancelled'],
-      'preparing' => const ['ready'],
       'ready' => order.orderType == 'delivery'
           ? const ['out_for_delivery', 'delivered']
           : const ['delivered'],

@@ -1,11 +1,14 @@
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 
+// 'ready' est volontairement exclu : une fois la commande prete, elle
+// disparait des ecrans cuisine/comptoir et n'atterrit sur l'onglet Service
+// (orders_board_page.dart) qu'a ce moment-la -- voir la discussion produit
+// sur la separation prod (KDS) / service.
 const _kdsStatuses = {
   'pending',
   'queued',
   'confirmed',
   'preparing',
-  'ready',
 };
 
 bool isKdsOrderStatus(String status) {

@@ -7,7 +7,7 @@ void main() {
     final queue = buildKitchenQueue([
       _summary(
         id: 104,
-        status: 'ready',
+        status: 'queued',
         createdAt: DateTime.utc(2026, 8, 17, 10, 4),
       ),
       _summary(
@@ -30,17 +30,19 @@ void main() {
     expect(queue.map((order) => order.id), [101, 102, 103, 104]);
   });
 
-  test('excludes statuses outside the KDS lifecycle', () {
+  test('excludes statuses outside the KDS lifecycle, including ready', () {
     final filtered = filterOrdersForKds([
       _summary(id: 1, status: 'pending'),
       _summary(id: 2, status: 'cancelled'),
       _summary(id: 3, status: 'delivered'),
       _summary(id: 4, status: 'out_for_delivery'),
       _summary(id: 5, status: 'refunded'),
+      // 'ready' est exclu volontairement : la commande doit disparaitre de
+      // l'ecran cuisine/comptoir des qu'elle est prete.
       _summary(id: 6, status: 'ready'),
     ]);
 
-    expect(filtered.map((order) => order.id), [1, 6]);
+    expect(filtered.map((order) => order.id), [1]);
   });
 
   test('places orders without createdAt after dated orders', () {

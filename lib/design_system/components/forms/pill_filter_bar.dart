@@ -1,4 +1,6 @@
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -58,35 +60,58 @@ class _PillFilterButton<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = selected ? Colors.white : AppColors.textSecondary;
+    final fillBase =
+        selected ? AppColors.adminSidebar : AppColors.adminSurfaceMuted;
+    final intensity =
+        NeumorphicIntensityScope.maybeOf(context) ?? NeumorphicIntensity.full;
+    // Selected reads as "pressed in" (active filter), unselected stays
+    // flat — same press/depth language as DsCard, attenuated together
+    // with it on real-time screens via NeumorphicIntensityScope.
+    final hasDepth = selected && intensity != NeumorphicIntensity.flat;
+    final depthIntensity = intensity == NeumorphicIntensity.subtle ? 0.5 : 1.0;
+    final fill = hasDepth ? NeumorphicShadows.pressedFill(fillBase) : fillBase;
+    final shadow = hasDepth
+        ? AppElevation.pressed(fillBase, intensity: depthIntensity)
+        : AppElevation.flat;
+
     return Tooltip(
       message: option.label,
-      child: Material(
-        color: selected ? AppColors.adminSidebar : AppColors.adminSurfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: InkWell(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: fill,
           borderRadius: BorderRadius.circular(AppRadius.pill),
-          onTap: () => onSelected(option.value),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 36),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (option.icon != null) ...[
-                    Icon(option.icon, size: 16, color: foreground),
-                    const SizedBox(width: AppSpacing.xs),
-                  ],
-                  Text(
-                    option.label,
-                    style: TextStyle(
-                      color: foreground,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0,
+          boxShadow: shadow,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            onTap: () => onSelected(option.value),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 36),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (option.icon != null) ...[
+                      Icon(option.icon, size: 16, color: foreground),
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
+                    Text(
+                      option.label,
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

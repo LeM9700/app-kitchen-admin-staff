@@ -7,6 +7,7 @@ import 'package:app_admin_staff/design_system/components/badges/status_badge.dar
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/components/cards/stat_card.dart';
 import 'package:app_admin_staff/design_system/components/forms/pill_filter_bar.dart';
+import 'package:app_admin_staff/design_system/theme/staggered_entrance.dart';
 import 'package:app_admin_staff/design_system/tokens/app_breakpoints.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
@@ -799,7 +800,7 @@ class _IngredientsPanel extends StatelessWidget {
                     children: [
                       const _IngredientHeader(),
                       const Divider(height: 1),
-                      for (final ingredient in items) ...[
+                      for (final (index, ingredient) in items.indexed) ...[
                         _IngredientRow(
                           ingredient: ingredient,
                           isAdmin: isAdmin,
@@ -808,7 +809,7 @@ class _IngredientsPanel extends StatelessWidget {
                           onSupply: onSupply,
                           onAdjust: onAdjust,
                           onBatches: onBatches,
-                        ),
+                        ).staggeredEntrance(index),
                         const Divider(height: 1),
                       ],
                     ],

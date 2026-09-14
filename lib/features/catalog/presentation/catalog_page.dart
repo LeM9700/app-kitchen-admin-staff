@@ -7,6 +7,7 @@ import 'package:app_admin_staff/design_system/components/badges/status_badge.dar
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/components/cards/stat_card.dart';
 import 'package:app_admin_staff/design_system/components/forms/pill_filter_bar.dart';
+import 'package:app_admin_staff/design_system/theme/staggered_entrance.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
@@ -2195,7 +2196,7 @@ class _ProductTable extends StatelessWidget {
                 children: [
                   const _ProductTableHeader(),
                   const Divider(height: 1),
-                  for (final product in products) ...[
+                  for (final (index, product) in products.indexed) ...[
                     _ProductTableRow(
                       product: product,
                       isAdmin: isAdmin,
@@ -2206,7 +2207,7 @@ class _ProductTable extends StatelessWidget {
                       onDelete: onDelete,
                       onStation: onStation,
                       onAvailability: onAvailability,
-                    ),
+                    ).staggeredEntrance(index),
                     const Divider(height: 1),
                   ],
                 ],

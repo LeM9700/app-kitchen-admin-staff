@@ -329,6 +329,13 @@ Future<void> _pumpShell(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
+  // Goldens must capture settled UI, not a mid-transition frame — disable
+  // decorative animations (e.g. the design system's staggered list
+  // entrance) for the duration of this pump.
+  tester.platformDispatcher.accessibilityFeaturesTestValue =
+      const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+
   await tester.pumpWidget(
     ProviderScope(
       overrides: overrides,

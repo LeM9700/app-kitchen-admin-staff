@@ -5,6 +5,7 @@ import 'package:app_admin_staff/design_system/components/badges/status_badge.dar
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/components/cards/stat_card.dart';
 import 'package:app_admin_staff/design_system/components/feedback/app_feedback.dart';
+import 'package:app_admin_staff/design_system/theme/staggered_entrance.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/loyalty/data/loyalty_repository.dart';
@@ -797,7 +798,7 @@ class _RewardsPanel extends ConsumerWidget {
                   }
                   return Column(
                     children: [
-                      for (final reward in items)
+                      for (final (index, reward) in items.indexed)
                         _RewardRow(
                           reward: reward,
                           onToggle: (value) async {
@@ -815,7 +816,7 @@ class _RewardsPanel extends ConsumerWidget {
                               }
                             }
                           },
-                        ),
+                        ).staggeredEntrance(index),
                     ],
                   );
                 },

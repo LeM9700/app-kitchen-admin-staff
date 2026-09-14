@@ -130,8 +130,13 @@ class CatalogRepository {
   }
 
   Future<CatalogProduct> getProduct(int productId) async {
-    final response =
-        await _apiClient.get(ApiEndpoints.catalogProduct(productId));
+    // Same public listing endpoint as listProducts -- see its comment.
+    final tenantSlug =
+        await _tokenStore.readTenantSlug() ?? Env.defaultTenantSlug;
+    final response = await _apiClient.get(
+      ApiEndpoints.catalogProduct(productId),
+      headers: {'X-Tenant-Slug': tenantSlug},
+    );
     return CatalogProduct.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -362,8 +367,12 @@ class CatalogRepository {
     required String entityType,
     required int entityId,
   }) async {
+    // Same public listing endpoint pattern as listProducts -- see its comment.
+    final tenantSlug =
+        await _tokenStore.readTenantSlug() ?? Env.defaultTenantSlug;
     final response = await _apiClient.get(
       ApiEndpoints.catalogEntityImages(entityType, entityId),
+      headers: {'X-Tenant-Slug': tenantSlug},
     );
     return (response.data as List? ?? const [])
         .whereType<Map>()
@@ -434,7 +443,13 @@ class CatalogRepository {
   }
 
   Future<List<AllergenDefinition>> listAllergens() async {
-    final response = await _apiClient.get(ApiEndpoints.catalogAllergens);
+    // Same public listing endpoint pattern as listProducts -- see its comment.
+    final tenantSlug =
+        await _tokenStore.readTenantSlug() ?? Env.defaultTenantSlug;
+    final response = await _apiClient.get(
+      ApiEndpoints.catalogAllergens,
+      headers: {'X-Tenant-Slug': tenantSlug},
+    );
     return (response.data as List? ?? const [])
         .whereType<Map>()
         .map(
@@ -445,8 +460,12 @@ class CatalogRepository {
   }
 
   Future<ProductAllergenSummary> productAllergens(int productId) async {
+    // Same public listing endpoint pattern as listProducts -- see its comment.
+    final tenantSlug =
+        await _tokenStore.readTenantSlug() ?? Env.defaultTenantSlug;
     final response = await _apiClient.get(
       ApiEndpoints.catalogProductAllergens(productId),
+      headers: {'X-Tenant-Slug': tenantSlug},
     );
     return ProductAllergenSummary.fromJson(
       response.data as Map<String, dynamic>,
@@ -475,7 +494,13 @@ class CatalogRepository {
   }
 
   Future<List<DietaryTag>> listDietaryTags() async {
-    final response = await _apiClient.get(ApiEndpoints.catalogDietaryTags);
+    // Same public listing endpoint pattern as listProducts -- see its comment.
+    final tenantSlug =
+        await _tokenStore.readTenantSlug() ?? Env.defaultTenantSlug;
+    final response = await _apiClient.get(
+      ApiEndpoints.catalogDietaryTags,
+      headers: {'X-Tenant-Slug': tenantSlug},
+    );
     return (response.data as List? ?? const [])
         .whereType<Map>()
         .map((value) => DietaryTag.fromJson(Map<String, dynamic>.from(value)))

@@ -118,8 +118,9 @@ class QueuedAction {
       idempotencyKey: idempotencyKey,
       retryCount: retryCount ?? this.retryCount,
       lastError: lastError ?? this.lastError,
-      blockReason:
-          identical(blockReason, _unset) ? this.blockReason : blockReason as String?,
+      blockReason: identical(blockReason, _unset)
+          ? this.blockReason
+          : blockReason as String?,
     );
   }
 
@@ -427,7 +428,8 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
 
   Future<void> _appendToQuarantine(List<QueuedAction> actions) async {
     final raw = await storage.read(_quarantineKey);
-    final existing = raw != null && raw.isNotEmpty ? _decode(raw) : const <QueuedAction>[];
+    final existing =
+        raw != null && raw.isNotEmpty ? _decode(raw) : const <QueuedAction>[];
     await storage.write(
       _quarantineKey,
       _encode([...existing, ...actions]),

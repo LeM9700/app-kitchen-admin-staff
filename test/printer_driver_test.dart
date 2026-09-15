@@ -29,8 +29,7 @@ void main() {
   group('PrinterNetworkPolicy.resolveIfAllowed', () {
     test('accepte une IP privee sur un port imprimante autorise', () async {
       const policy = PrinterNetworkPolicy();
-      final result =
-          await policy.resolveIfAllowed('192.168.1.50', 9100);
+      final result = await policy.resolveIfAllowed('192.168.1.50', 9100);
       expect(result, isNotNull);
       expect(result!.address, '192.168.1.50');
     });
@@ -166,8 +165,7 @@ void main() {
       expect(result, isNotNull);
     });
 
-    test('une erreur de resolution DNS est traitee comme un refus',
-        () async {
+    test('une erreur de resolution DNS est traitee comme un refus', () async {
       final policy = PrinterNetworkPolicy(
         resolveHost: (host) async => throw const SocketException('nope'),
       );
@@ -176,8 +174,7 @@ void main() {
   });
 
   group('NetworkTextPrinterDriver', () {
-    test('refuse d\'envoyer sans confirmation explicite de la cible',
-        () async {
+    test('refuse d\'envoyer sans confirmation explicite de la cible', () async {
       const driver = NetworkTextPrinterDriver();
       final result = await driver.send(
         _job(),
@@ -222,8 +219,7 @@ void main() {
   });
 
   group('PrinterDriverRegistry', () {
-    test('construit un NetworkTextPrinterDriver pour le transport reseau',
-        () {
+    test('construit un NetworkTextPrinterDriver pour le transport reseau', () {
       const registry = PrinterDriverRegistry();
       final driver = registry.driverFor(PrinterTransport.network);
       expect(driver, isA<NetworkTextPrinterDriver>());

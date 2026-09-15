@@ -159,17 +159,16 @@ class _StockDlcPageState extends ConsumerState<StockDlcPage> {
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: AppSpacing.lg,
                                 ),
-                                child:
-                                    const Icon(Icons.delete, color: Colors.white),
+                                child: const Icon(Icons.delete,
+                                    color: Colors.white),
                               ),
                               child: ListTile(
                                 leading: Icon(
                                   c.isCompliant
                                       ? Icons.check_circle
                                       : Icons.cancel,
-                                  color: c.isCompliant
-                                      ? Colors.green
-                                      : Colors.red,
+                                  color:
+                                      c.isCompliant ? Colors.green : Colors.red,
                                 ),
                                 title: Text(c.ingredientName),
                                 subtitle: Text(

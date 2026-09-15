@@ -214,8 +214,8 @@ class _CleaningTaskFormDialogState extends State<_CleaningTaskFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title:
-          Text(widget.existing == null ? 'Nouvelle tâche ND' : 'Modifier la tâche'),
+      title: Text(
+          widget.existing == null ? 'Nouvelle tâche ND' : 'Modifier la tâche'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -276,8 +276,8 @@ class _CleaningTaskFormDialogState extends State<_CleaningTaskFormDialog> {
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<String>(
                 value: _requiredRole,
-                decoration:
-                    const InputDecoration(labelText: 'Rôle requis pour valider'),
+                decoration: const InputDecoration(
+                    labelText: 'Rôle requis pour valider'),
                 items: const [
                   DropdownMenuItem(value: 'staff', child: Text('Staff')),
                   DropdownMenuItem(value: 'admin', child: Text('Admin')),

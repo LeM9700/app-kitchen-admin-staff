@@ -89,8 +89,7 @@ class _DsCardState extends State<DsCard> {
         shadow = AppElevation.pressed(surfaceBase, intensity: depthIntensity);
         fill = NeumorphicShadows.pressedFill(surfaceBase);
       } else {
-        shadow =
-            AppElevation.raisedMd(surfaceBase, intensity: depthIntensity);
+        shadow = AppElevation.raisedMd(surfaceBase, intensity: depthIntensity);
       }
     }
 
@@ -103,8 +102,7 @@ class _DsCardState extends State<DsCard> {
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(widget.borderRadius),
-        border:
-            Border.all(color: widget.borderColor ?? scheme.outlineVariant),
+        border: Border.all(color: widget.borderColor ?? scheme.outlineVariant),
         boxShadow: shadow,
       ),
       // A transparent Material sits directly against the child (not just

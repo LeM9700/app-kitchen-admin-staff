@@ -93,7 +93,8 @@ class ApiKitchenTheme {
       ],
       textTheme: AppTypography.textTheme(
         scheme.onSurface,
-        secondaryColor: isLight ? AppColors.textSecondary : AppColors.staffMuted,
+        secondaryColor:
+            isLight ? AppColors.textSecondary : AppColors.staffMuted,
         mutedColor: isLight
             ? AppColors.textMuted
             : AppColors.staffMuted.withValues(alpha: 0.7),

@@ -13,8 +13,7 @@ class HaccpEquipmentPage extends ConsumerStatefulWidget {
   const HaccpEquipmentPage({super.key});
 
   @override
-  ConsumerState<HaccpEquipmentPage> createState() =>
-      _HaccpEquipmentPageState();
+  ConsumerState<HaccpEquipmentPage> createState() => _HaccpEquipmentPageState();
 }
 
 class _HaccpEquipmentPageState extends ConsumerState<HaccpEquipmentPage> {
@@ -34,8 +33,9 @@ class _HaccpEquipmentPageState extends ConsumerState<HaccpEquipmentPage> {
       _error = null;
     });
     try {
-      final equipment =
-          await ref.read(haccpRepositoryProvider).listEquipment(activeOnly: false);
+      final equipment = await ref
+          .read(haccpRepositoryProvider)
+          .listEquipment(activeOnly: false);
       if (mounted) setState(() => _equipment = equipment);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -241,8 +241,7 @@ class _EquipmentFormDialogState extends State<_EquipmentFormDialog> {
                   DropdownMenuItem(
                       value: 'hot_hold', child: Text('Maintien au chaud')),
                   DropdownMenuItem(
-                      value: 'ambient',
-                      child: Text('Température ambiante')),
+                      value: 'ambient', child: Text('Température ambiante')),
                 ],
                 onChanged: (v) => setState(() => _type = v!),
               ),
@@ -281,9 +280,8 @@ class _EquipmentFormDialogState extends State<_EquipmentFormDialog> {
                       ),
                       validator: (v) {
                         final min = double.tryParse(_minTempController.text);
-                        final max = v == null || v.isEmpty
-                            ? null
-                            : double.tryParse(v);
+                        final max =
+                            v == null || v.isEmpty ? null : double.tryParse(v);
                         if (min != null && max != null && max <= min) {
                           return 'Doit être > temp. min';
                         }

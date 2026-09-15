@@ -16,8 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('LoyaltyPage — actions admin', () {
-    testWidgets(
-        'desactiver le programme via la config envoie le PATCH attendu',
+    testWidgets('desactiver le programme via la config envoie le PATCH attendu',
         (tester) async {
       final requests = <RequestOptions>[];
       final api = _client((options) {
@@ -72,7 +71,8 @@ void main() {
       expect(find.text('Configuration mise a jour'), findsOneWidget);
     });
 
-    testWidgets('desactiver une recompense appelle updateReward(isActive: false)',
+    testWidgets(
+        'desactiver une recompense appelle updateReward(isActive: false)',
         (tester) async {
       final requests = <RequestOptions>[];
       final api = _client((options) {
@@ -114,8 +114,7 @@ void main() {
 
       final patches = requests
           .where((r) =>
-              r.method == 'PATCH' &&
-              r.path == ApiEndpoints.loyaltyReward(5))
+              r.method == 'PATCH' && r.path == ApiEndpoints.loyaltyReward(5))
           .toList();
       expect(patches, hasLength(1));
       expect(patches.single.data['is_active'], isFalse);

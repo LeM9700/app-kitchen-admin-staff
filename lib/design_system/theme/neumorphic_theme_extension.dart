@@ -44,10 +44,8 @@ class NeumorphicThemeExtension
       return this;
     }
     return NeumorphicThemeExtension(
-      accentColor: Color.lerp(accentColor, other.accentColor, t) ??
-          accentColor,
-      surfaceBase: Color.lerp(surfaceBase, other.surfaceBase, t) ??
-          surfaceBase,
+      accentColor: Color.lerp(accentColor, other.accentColor, t) ?? accentColor,
+      surfaceBase: Color.lerp(surfaceBase, other.surfaceBase, t) ?? surfaceBase,
       defaultIntensity: t < 0.5 ? defaultIntensity : other.defaultIntensity,
     );
   }

@@ -19,8 +19,7 @@ const _validGeoJson = '{"type":"Polygon","coordinates":[[[2.3,48.8],'
 
 void main() {
   group('DeliveryPage — editeur de zone', () {
-    testWidgets(
-        'creation avec polygone GeoJSON valide envoie le POST attendu',
+    testWidgets('creation avec polygone GeoJSON valide envoie le POST attendu',
         (tester) async {
       final requests = <RequestOptions>[];
       final api = _client((options) {
@@ -56,8 +55,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final created = requests
-          .where((r) =>
-              r.method == 'POST' && r.path == ApiEndpoints.deliveryZones)
+          .where(
+              (r) => r.method == 'POST' && r.path == ApiEndpoints.deliveryZones)
           .toList();
       expect(created, hasLength(1));
       final body = created.single.data as Map;

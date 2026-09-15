@@ -345,8 +345,7 @@ class NetworkTextPrinterDriver extends PrinterDriver {
       );
       return const PrinterDispatchResult(
         ok: false,
-        message:
-            'Cette destination n\'est pas autorisee pour l\'impression '
+        message: 'Cette destination n\'est pas autorisee pour l\'impression '
             'reseau.',
       );
     }

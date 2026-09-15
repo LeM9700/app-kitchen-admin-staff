@@ -4,8 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('NetworkPrinterConfirmationTracker', () {
-    test('une config historique sans confirmation explicite est refusee',
-        () {
+    test('une config historique sans confirmation explicite est refusee', () {
       final tracker = NetworkPrinterConfirmationTracker(
         hostController: TextEditingController(text: '192.168.1.50'),
         portController: TextEditingController(text: '9100'),
@@ -62,7 +61,8 @@ void main() {
       tracker.dispose();
     });
 
-    test('notifie onChanged uniquement quand une edition invalide la '
+    test(
+        'notifie onChanged uniquement quand une edition invalide la '
         'confirmation', () {
       var notifications = 0;
       final host = TextEditingController(text: '192.168.1.50');
@@ -89,8 +89,7 @@ void main() {
       tracker.dispose();
     });
 
-    test('dispose retire les listeners et arrete les resets automatiques',
-        () {
+    test('dispose retire les listeners et arrete les resets automatiques', () {
       var notifications = 0;
       final host = TextEditingController(text: '192.168.1.50');
       final tracker = NetworkPrinterConfirmationTracker(

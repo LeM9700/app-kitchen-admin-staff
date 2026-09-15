@@ -145,8 +145,7 @@ class _DlcFormDialogState extends ConsumerState<DlcFormDialog> {
                   final ingredientsAsync = ref.watch(ingredientsProvider);
                   return ingredientsAsync.when(
                     loading: () => const LinearProgressIndicator(),
-                    error: (e, _) =>
-                        Text('Erreur chargement ingrédients : $e'),
+                    error: (e, _) => Text('Erreur chargement ingrédients : $e'),
                     data: (ingredients) => DropdownButtonFormField<int>(
                       value: _selectedIngredientId,
                       decoration: const InputDecoration(
@@ -296,7 +295,9 @@ class _DlcFormDialogState extends ConsumerState<DlcFormDialog> {
               'batch_id': isOther ? null : _selectedBatchId,
               'ingredient_name': isOther
                   ? _nameController.text.trim()
-                  : (selectedIngredient?.name ?? widget.existing?.ingredientName ?? ''),
+                  : (selectedIngredient?.name ??
+                      widget.existing?.ingredientName ??
+                      ''),
               'dlc_level': _dlcLevel,
               'dlc_date':
                   '${_dlcDate.year}-${_dlcDate.month.toString().padLeft(2, '0')}-${_dlcDate.day.toString().padLeft(2, '0')}',

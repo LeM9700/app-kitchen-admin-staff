@@ -50,12 +50,12 @@ void main() {
     addTearDown(container.dispose);
 
     container.read(syncQueueProvider.notifier).add(
-          feature: 'kitchen',
-          label: 'Commande #1',
-          endpoint: '/orders/1/status',
-          method: 'PATCH',
-          payload: {'status': 'ready'},
-        );
+      feature: 'kitchen',
+      label: 'Commande #1',
+      endpoint: '/orders/1/status',
+      method: 'PATCH',
+      payload: {'status': 'ready'},
+    );
 
     final action = container.read(syncQueueProvider).single;
     expect(action.tenantSlug, 'pizza-a');
@@ -64,24 +64,24 @@ void main() {
     expect(action.formatVersion, QueuedAction.currentFormatVersion);
   });
 
-  test('add() refuses to queue an action without an authenticated session',
-      () {
+  test('add() refuses to queue an action without an authenticated session', () {
     final container = ProviderContainer(
       overrides: [
         sessionControllerOverride(null),
-        syncQueueProvider.overrideWith(() => _TestSyncQueue(_InMemoryKeyValueStore())),
+        syncQueueProvider
+            .overrideWith(() => _TestSyncQueue(_InMemoryKeyValueStore())),
       ],
     );
     addTearDown(container.dispose);
 
     expect(
       () => container.read(syncQueueProvider.notifier).add(
-            feature: 'kitchen',
-            label: 'Commande #1',
-            endpoint: '/orders/1/status',
-            method: 'PATCH',
-            payload: {'status': 'ready'},
-          ),
+        feature: 'kitchen',
+        label: 'Commande #1',
+        endpoint: '/orders/1/status',
+        method: 'PATCH',
+        payload: {'status': 'ready'},
+      ),
       throwsStateError,
     );
     expect(container.read(syncQueueProvider), isEmpty);
@@ -108,12 +108,12 @@ void main() {
       addTearDown(container.dispose);
 
       container.read(syncQueueProvider.notifier).add(
-            feature: 'kitchen',
-            label: 'Commande #1 -- infos sensibles tenant A',
-            endpoint: '/orders/1/status',
-            method: 'PATCH',
-            payload: {'status': 'ready', 'note': 'donnee metier tenant A'},
-          );
+        feature: 'kitchen',
+        label: 'Commande #1 -- infos sensibles tenant A',
+        endpoint: '/orders/1/status',
+        method: 'PATCH',
+        payload: {'status': 'ready', 'note': 'donnee metier tenant A'},
+      );
       expect(container.read(syncQueueProvider), hasLength(1));
 
       // Deconnexion puis connexion tenant B (autre etablissement).
@@ -161,14 +161,15 @@ void main() {
       addTearDown(container.dispose);
 
       container.read(syncQueueProvider.notifier).add(
-            feature: 'kitchen',
-            label: 'Commande #1 tenant A',
-            endpoint: '/orders/1/status',
-            method: 'PATCH',
-            payload: {'status': 'ready'},
-          );
-      final rawPartitionABefore =
-          store.data.entries.singleWhere((e) => e.key.contains('pizza-a::11')).value;
+        feature: 'kitchen',
+        label: 'Commande #1 tenant A',
+        endpoint: '/orders/1/status',
+        method: 'PATCH',
+        payload: {'status': 'ready'},
+      );
+      final rawPartitionABefore = store.data.entries
+          .singleWhere((e) => e.key.contains('pizza-a::11'))
+          .value;
 
       session.setSession(
         testAuthenticatedSession(tenantSlug: 'burger-b', userId: 22),
@@ -186,14 +187,14 @@ void main() {
       // A : no-op (rien de tel dans la partition de B), et la partition de
       // A sur le disque partage n'est pas modifiee.
       container.read(syncQueueProvider.notifier).remove('does-not-matter');
-      final rawPartitionAAfter =
-          store.data.entries.singleWhere((e) => e.key.contains('pizza-a::11')).value;
+      final rawPartitionAAfter = store.data.entries
+          .singleWhere((e) => e.key.contains('pizza-a::11'))
+          .value;
       expect(rawPartitionAAfter, rawPartitionABefore);
     },
   );
 
-  test('A reconnecte retrouve et peut synchroniser sa propre action',
-      () async {
+  test('A reconnecte retrouve et peut synchroniser sa propre action', () async {
     final requests = <RequestOptions>[];
     final apiClient = _apiClient(requests);
     final store = _InMemoryKeyValueStore();
@@ -210,12 +211,12 @@ void main() {
     addTearDown(container.dispose);
 
     container.read(syncQueueProvider.notifier).add(
-          feature: 'kitchen',
-          label: 'Commande #1 -> PRETE',
-          endpoint: '/orders/1/status',
-          method: 'PATCH',
-          payload: {'status': 'ready'},
-        );
+      feature: 'kitchen',
+      label: 'Commande #1 -> PRETE',
+      endpoint: '/orders/1/status',
+      method: 'PATCH',
+      payload: {'status': 'ready'},
+    );
 
     // B se connecte sur le meme appareil, ne voit rien.
     session.setSession(
@@ -230,7 +231,8 @@ void main() {
     );
     await _settle();
     expect(container.read(syncQueueProvider), hasLength(1));
-    expect(container.read(syncQueueProvider).single.endpoint, '/orders/1/status');
+    expect(
+        container.read(syncQueueProvider).single.endpoint, '/orders/1/status');
 
     await container
         .read(syncWorkerProvider)
@@ -261,12 +263,12 @@ void main() {
       addTearDown(container.dispose);
 
       container.read(syncQueueProvider.notifier).add(
-            feature: 'haccp',
-            label: 'Releve T°',
-            endpoint: '/haccp/sessions/1/temperatures',
-            method: 'POST',
-            payload: {'equipment_id': 1, 'measured_temp': 4.0},
-          );
+        feature: 'haccp',
+        label: 'Releve T°',
+        endpoint: '/haccp/sessions/1/temperatures',
+        method: 'POST',
+        payload: {'equipment_id': 1, 'measured_temp': 4.0},
+      );
 
       // Meme tenant, mais un autre membre du staff se connecte.
       session.setSession(
@@ -307,12 +309,12 @@ void main() {
       addTearDown(container.dispose);
 
       container.read(syncQueueProvider.notifier).add(
-            feature: 'kitchen',
-            label: 'Commande #1 -> PRETE',
-            endpoint: '/orders/1/status',
-            method: 'PATCH',
-            payload: {'status': 'ready'},
-          );
+        feature: 'kitchen',
+        label: 'Commande #1 -> PRETE',
+        endpoint: '/orders/1/status',
+        method: 'PATCH',
+        payload: {'status': 'ready'},
+      );
       expect(container.read(syncQueueProvider).single.sessionId, 501);
 
       // Une rotation de refresh token change l'identifiant de session

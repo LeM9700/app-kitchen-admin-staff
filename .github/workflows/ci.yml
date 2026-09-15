@@ -11,6 +11,10 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.44.7"
+  # Production backend for the Netlify web deploy. Not a secret (it's the
+  # public API host) -- kept as a workflow env var rather than a repo
+  # secret so it's visible/updatable without touching secret storage.
+  WEB_API_BASE_URL: "https://api-kitchen-production.up.railway.app/api/v1"
 
 jobs:
   test:
@@ -77,7 +81,16 @@ jobs:
         run: flutter pub get
 
       - name: Build web (release)
-        run: flutter build web --release
+        # Without these, Env.apiBaseUrl defaults to http://127.0.0.1:8000
+        # (see lib/core/config/env.dart) -- unreachable from the deployed
+        # site, and http:// from an https:// page is blocked as mixed
+        # content by the browser. The WebSocket URL derives from
+        # API_BASE_URL automatically (see websocket_client.dart), so no
+        # separate define is needed for it.
+        run: |
+          flutter build web --release \
+            --dart-define=APP_ENV=production \
+            --dart-define=API_BASE_URL=${{ env.WEB_API_BASE_URL }}
 
       - name: Check Netlify secrets
         # nwtgck/actions-netlify silently no-ops (exits 0, job stays green)

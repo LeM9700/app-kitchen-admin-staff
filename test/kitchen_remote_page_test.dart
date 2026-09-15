@@ -314,10 +314,14 @@ void main() {
     tester,
   ) async {
     addTearDown(tester.view.reset);
+    // 'ready' est desormais exclu de la file KDS des sa reception (voir
+    // kitchen_queue.dart) -- la commande reste donc 'preparing' au niveau
+    // resume/ecran, mais son unique station ('kitchen') a deja tous ses
+    // items en 'ready', ce qui declenche stationReady sur le ticket.
     final orders = TestKitchenRepository()
-      ..setOrders([101], statuses: {101: 'ready'});
+      ..setOrders([101], statuses: {101: 'preparing'});
     orders.details = {
-      101: _remoteKitchenOrder(status: 'ready'),
+      101: _remoteKitchenOrderStationReady(),
     };
     final container = connectedRemoteContainer(orders);
     addTearDown(container.dispose);
@@ -353,10 +357,13 @@ void main() {
     tester,
   ) async {
     addTearDown(tester.view.reset);
+    // Meme raisonnement que le test precedent : la commande reste
+    // 'preparing' au niveau resume (sinon elle disparaitrait de la file
+    // KDS), la station 'kitchen' est prete individuellement.
     final orders = TestKitchenRepository()
-      ..setOrders([101], statuses: {101: 'ready'});
+      ..setOrders([101], statuses: {101: 'preparing'});
     orders.details = {
-      101: _remoteKitchenOrder(status: 'ready'),
+      101: _remoteKitchenOrderStationReady(),
     };
     final container = connectedRemoteContainer(orders);
     addTearDown(container.dispose);
@@ -620,6 +627,39 @@ OrderDetail _remoteKitchenOrder({required String status}) {
         id: 2,
         productName: 'Frites',
         preparationStatus: status == 'ready' ? 'ready' : 'preparing',
+        preparationStation: 'kitchen',
+      ),
+    ],
+  );
+}
+
+/// Order still 'preparing' at the summary level (so it stays in the KDS
+/// queue -- 'ready' orders are filtered out, see kitchen_queue.dart), but
+/// every 'kitchen' station item is already 'ready', which is what actually
+/// drives `KitchenTicketViewModel.stationReady` for a kitchen/counter
+/// screen (see kitchen_ticket_mapper.dart's `_stationReady`).
+OrderDetail _remoteKitchenOrderStationReady() {
+  return testKitchenOrder(
+    id: 101,
+    status: 'preparing',
+    orderType: 'dine_in',
+    tableNumber: '08',
+    confirmedAt:
+        DateTime.now().subtract(const Duration(minutes: 6, seconds: 5)),
+    items: [
+      testKitchenItem(
+        id: 1,
+        quantity: 2,
+        productName: 'Burger Classic',
+        variantName: 'Double',
+        extras: [testKitchenExtra(name: 'Cheddar')],
+        preparationStatus: 'ready',
+        preparationStation: 'kitchen',
+      ),
+      testKitchenItem(
+        id: 2,
+        productName: 'Frites',
+        preparationStatus: 'ready',
         preparationStation: 'kitchen',
       ),
     ],

@@ -79,6 +79,17 @@ jobs:
       - name: Build web (release)
         run: flutter build web --release
 
+      - name: Check Netlify secrets
+        # nwtgck/actions-netlify silently no-ops (exits 0, job stays green)
+        # when credentials are missing instead of failing — fail loudly here
+        # instead, so a misconfigured/missing secret is never mistaken for a
+        # real deploy again.
+        run: |
+          if [ -z "${{ secrets.NETLIFY_AUTH_TOKEN_KITCHEN }}" ] || [ -z "${{ secrets.NETLIFY_SITE_ID_KITCHEN }}" ]; then
+            echo "::error::NETLIFY_AUTH_TOKEN_KITCHEN and/or NETLIFY_SITE_ID_KITCHEN repo secrets are not set — deploy would silently no-op. Add them under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3
         with:
@@ -90,6 +101,6 @@ jobs:
           enable-commit-comment: false
           enable-commit-status: true
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN_KITCHEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_KITCHEN }}
         timeout-minutes: 5

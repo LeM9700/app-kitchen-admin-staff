@@ -45,6 +45,7 @@ class SettingsPage extends ConsumerWidget {
             TenantPrintConfig(enabled: false, config: {}),
           );
     final config = isAdmin ? ref.watch(tenantConfigProvider) : null;
+    final branding = isAdmin ? ref.watch(tenantBrandingProvider) : null;
     final hours = isAdmin ? ref.watch(tenantBusinessHoursProvider) : null;
     final closures = isAdmin ? ref.watch(tenantClosuresProvider) : null;
     final audit = isAdmin ? ref.watch(tenantAuditProvider) : null;
@@ -54,6 +55,7 @@ class SettingsPage extends ConsumerWidget {
       child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(tenantStatusProvider);
+          ref.invalidate(tenantBrandingProvider);
           ref.invalidate(tenantConfigProvider);
           ref.invalidate(tenantPrintConfigProvider);
           ref.invalidate(tenantBusinessHoursProvider);
@@ -180,6 +182,16 @@ class SettingsPage extends ConsumerWidget {
               error: (error, stackTrace) => Text(error.toString()),
             ),
             if (isAdmin) ...[
+              const SizedBox(height: 12),
+              branding?.when(
+                    data: (value) => _PublicContactsCard(
+                      branding: value,
+                      onEdit: () => _contactsDialog(context, ref, value),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (error, stackTrace) => Text(error.toString()),
+                  ) ??
+                  const SizedBox.shrink(),
               const SizedBox(height: 12),
               config?.when(
                     data: (value) => Column(
@@ -748,6 +760,103 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
+  Future<void> _contactsDialog(
+    BuildContext context,
+    WidgetRef ref,
+    TenantBranding current,
+  ) async {
+    final phone = TextEditingController(text: current.contactPhone ?? '');
+    final email = TextEditingController(text: current.contactEmail ?? '');
+    final instagram = TextEditingController(text: current.instagramUrl ?? '');
+    final googleBusiness =
+        TextEditingController(text: current.googleBusinessUrl ?? '');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Contacts publics'),
+        content: SizedBox(
+          width: 520,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              TextField(
+                controller: phone,
+                decoration: const InputDecoration(labelText: 'Telephone'),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: email,
+                decoration: const InputDecoration(labelText: 'Email public'),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: instagram,
+                decoration: const InputDecoration(labelText: 'Lien Instagram'),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: googleBusiness,
+                decoration: const InputDecoration(
+                  labelText: 'Lien Google Business',
+                ),
+                keyboardType: TextInputType.url,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final invalidLinks = [
+                instagram.text,
+                googleBusiness.text,
+              ].where((value) => !_looksLikePublicUrl(value)).toList();
+              if (invalidLinks.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Les liens doivent commencer par http(s)://'),
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(context, true);
+            },
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    try {
+      await ref.read(tenantRepositoryProvider).updatePublicContacts(
+            contactPhone: phone.text,
+            contactEmail: email.text,
+            instagramUrl: instagram.text,
+            googleBusinessUrl: googleBusiness.text,
+          );
+      ref.invalidate(tenantBrandingProvider);
+      ref.invalidate(tenantAuditProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contacts publics mis a jour')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        _snack(context, error.toString());
+      }
+    }
+  }
+
   Future<void> _hoursDialog(
     BuildContext context,
     WidgetRef ref,
@@ -1078,6 +1187,17 @@ class SettingsPage extends ConsumerWidget {
   int _int(String value, {required int fallback}) {
     return int.tryParse(value.trim()) ?? fallback;
   }
+
+  bool _looksLikePublicUrl(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return true;
+    }
+    final uri = Uri.tryParse(trimmed);
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
 }
 
 class _SettingsHeader extends StatelessWidget {
@@ -1254,6 +1374,132 @@ class _OperationalStateCard extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PublicContactsCard extends StatelessWidget {
+  const _PublicContactsCard({
+    required this.branding,
+    required this.onEdit,
+  });
+
+  final TenantBranding branding;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = [
+      _PublicContactRow(
+        icon: Icons.phone_outlined,
+        label: 'Telephone',
+        value: _displayValue(branding.contactPhone),
+      ),
+      _PublicContactRow(
+        icon: Icons.mail_outline,
+        label: 'Email',
+        value: _displayValue(branding.contactEmail),
+      ),
+      _PublicContactRow(
+        icon: Icons.alternate_email_outlined,
+        label: 'Instagram',
+        value: _displayValue(branding.instagramUrl),
+      ),
+      _PublicContactRow(
+        icon: Icons.travel_explore_outlined,
+        label: 'Google Business',
+        value: _displayValue(branding.googleBusinessUrl),
+      ),
+    ];
+
+    return DsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Contacts publics',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Modifier',
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Coordonnees affichees sur l\'accueil client.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.sm,
+            children: rows,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _displayValue(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return 'Non renseigne';
+    }
+    return trimmed;
+  }
+}
+
+class _PublicContactRow extends StatelessWidget {
+  const _PublicContactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 260,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: AppColors.textSecondary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

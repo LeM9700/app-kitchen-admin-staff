@@ -17,6 +17,11 @@ final tenantStatusProvider = FutureProvider.autoDispose<TenantStatus>((ref) {
   return ref.watch(tenantRepositoryProvider).status();
 });
 
+final tenantBrandingProvider =
+    FutureProvider.autoDispose<TenantBranding>((ref) {
+  return ref.watch(tenantRepositoryProvider).branding();
+});
+
 final tenantConfigProvider = FutureProvider.autoDispose<TenantConfig>((ref) {
   return ref.watch(tenantRepositoryProvider).config();
 });
@@ -56,6 +61,17 @@ class TenantRepository {
       authenticated: false,
     );
     return TenantStatus.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<TenantBranding> branding() async {
+    final tenantSlug =
+        await _tokenStore.readTenantSlug() ?? Env.defaultTenantSlug;
+    final response = await _apiClient.get(
+      ApiEndpoints.tenantBranding,
+      queryParameters: {'tenant_slug': tenantSlug},
+      authenticated: false,
+    );
+    return TenantBranding.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<TenantPrintConfig> printConfig() async {
@@ -205,6 +221,32 @@ class TenantRepository {
     );
     return TenantConfig.fromJson(response.data as Map<String, dynamic>);
   }
+
+  Future<TenantBranding> updatePublicContacts({
+    String? contactPhone,
+    String? contactEmail,
+    String? instagramUrl,
+    String? googleBusinessUrl,
+  }) async {
+    final response = await _apiClient.patch(
+      ApiEndpoints.tenantBranding,
+      data: {
+        'contact_phone': _emptyToNull(contactPhone),
+        'contact_email': _emptyToNull(contactEmail),
+        'instagram_url': _emptyToNull(instagramUrl),
+        'google_business_url': _emptyToNull(googleBusinessUrl),
+      },
+    );
+    return TenantBranding.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  String? _emptyToNull(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
+  }
 }
 
 class TenantStatus {
@@ -229,6 +271,44 @@ class TenantStatus {
       activeOrdersCount: readInt(json['active_orders_count']),
       message: json['message']?.toString(),
       nextOpening: json['next_opening']?.toString(),
+    );
+  }
+}
+
+class TenantBranding {
+  const TenantBranding({
+    this.displayName,
+    this.logoUrl,
+    this.primaryColor,
+    this.secondaryColor,
+    this.fontFamily,
+    this.contactPhone,
+    this.contactEmail,
+    this.instagramUrl,
+    this.googleBusinessUrl,
+  });
+
+  final String? displayName;
+  final String? logoUrl;
+  final String? primaryColor;
+  final String? secondaryColor;
+  final String? fontFamily;
+  final String? contactPhone;
+  final String? contactEmail;
+  final String? instagramUrl;
+  final String? googleBusinessUrl;
+
+  factory TenantBranding.fromJson(Map<String, dynamic> json) {
+    return TenantBranding(
+      displayName: json['display_name']?.toString(),
+      logoUrl: json['logo_url']?.toString(),
+      primaryColor: json['primary_color']?.toString(),
+      secondaryColor: json['secondary_color']?.toString(),
+      fontFamily: json['font_family']?.toString(),
+      contactPhone: json['contact_phone']?.toString(),
+      contactEmail: json['contact_email']?.toString(),
+      instagramUrl: json['instagram_url']?.toString(),
+      googleBusinessUrl: json['google_business_url']?.toString(),
     );
   }
 }

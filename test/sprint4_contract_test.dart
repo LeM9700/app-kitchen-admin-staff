@@ -264,6 +264,46 @@ void main() {
     expect(seen.last.path, ApiEndpoints.tenantToggleClosure);
     expect((seen.last.data as Map)['is_temporarily_closed'], true);
   });
+
+  test('settings repository reads and patches public contacts', () async {
+    final seen = <RequestOptions>[];
+    final repository = TenantRepository(
+      _client(
+        (options) {
+          seen.add(options);
+          return _jsonResponse({
+            'display_name': 'KOD MOME',
+            'logo_url': null,
+            'primary_color': null,
+            'secondary_color': null,
+            'font_family': null,
+            'contact_phone': '06 12 34 56 78',
+            'contact_email': 'contact@kodmome.fr',
+            'instagram_url': 'https://instagram.com/kodmome',
+            'google_business_url': 'https://maps.google.com/?cid=123',
+          });
+        },
+      ),
+      _MemoryTokenStore(),
+    );
+
+    final branding = await repository.branding();
+    final updated = await repository.updatePublicContacts(
+      contactPhone: '07 00 00 00 00',
+      contactEmail: '',
+      instagramUrl: 'https://instagram.com/kodmome',
+      googleBusinessUrl: '',
+    );
+
+    expect(seen.first.path, ApiEndpoints.tenantBranding);
+    expect(seen.first.queryParameters['tenant_slug'], 'pizza');
+    expect(branding.contactPhone, '06 12 34 56 78');
+    expect(seen.last.path, ApiEndpoints.tenantBranding);
+    expect((seen.last.data as Map)['contact_phone'], '07 00 00 00 00');
+    expect((seen.last.data as Map)['contact_email'], isNull);
+    expect((seen.last.data as Map)['google_business_url'], isNull);
+    expect(updated.instagramUrl, 'https://instagram.com/kodmome');
+  });
 }
 
 ApiClient _client(

@@ -366,6 +366,7 @@ List<Override> _adminOverrides() {
         activeOrdersCount: 4,
       ),
     ),
+    tenantBrandingProvider.overrideWith((ref) async => _tenantBranding()),
     tenantConfigProvider.overrideWith((ref) async => _tenantConfig()),
     tenantBusinessHoursProvider.overrideWith((ref) async => _businessHours()),
     tenantClosuresProvider.overrideWith((ref) async => _closures()),
@@ -1072,6 +1073,16 @@ TenantConfig _tenantConfig() {
     printEnabled: true,
     printConfig: const {'kitchen_printer': 'Cuisine'},
     updatedAt: DateTime(2026, 8, 10, 9),
+  );
+}
+
+TenantBranding _tenantBranding() {
+  return const TenantBranding(
+    displayName: 'KOD MOME',
+    contactPhone: '06 12 34 56 78',
+    contactEmail: 'contact@kodmome.fr',
+    instagramUrl: 'https://instagram.com/kodmome',
+    googleBusinessUrl: 'https://maps.google.com/?cid=123',
   );
 }
 

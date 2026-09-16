@@ -164,6 +164,7 @@ class ApiEndpoints {
   }
 
   static const tenantStatus = '/tenant/status';
+  static const tenantBranding = '/tenant/branding';
   static const tenantConfig = '/tenant/config';
   static const tenantHours = '/tenant/hours';
   static const tenantClosures = '/tenant/closures';

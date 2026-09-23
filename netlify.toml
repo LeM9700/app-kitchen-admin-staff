@@ -1,4 +1,5 @@
 [build]
+command = "flutter build web --release --no-wasm-dry-run --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api-kitchen-production.up.railway.app/api/v1 --dart-define=DEFAULT_TENANT_SLUG=kod-mome"
 publish = "build/web"
 
 [[redirects]]

@@ -6,19 +6,25 @@ class StripeConnectCallbackConfig {
   });
 
   factory StripeConnectCallbackConfig.fromEnvironment() {
-    return const StripeConnectCallbackConfig(
-      environment: String.fromEnvironment(
-        'APP_ENV',
-        defaultValue: 'development',
-      ),
-      returnUrl: String.fromEnvironment(
-        'STRIPE_CONNECT_RETURN_URL',
-        defaultValue: 'http://localhost:8080/stripe/connect/return',
-      ),
-      refreshUrl: String.fromEnvironment(
-        'STRIPE_CONNECT_REFRESH_URL',
-        defaultValue: 'http://localhost:8080/stripe/connect/refresh',
-      ),
+    const environment = String.fromEnvironment(
+      'APP_ENV',
+      defaultValue: 'development',
+    );
+    const returnUrl = String.fromEnvironment('STRIPE_CONNECT_RETURN_URL');
+    const refreshUrl = String.fromEnvironment('STRIPE_CONNECT_REFRESH_URL');
+
+    final fallbackBaseUrl = environment.toLowerCase() == 'production'
+        ? Uri.base.origin
+        : 'http://localhost:8080';
+
+    return StripeConnectCallbackConfig(
+      environment: environment,
+      returnUrl: returnUrl.isEmpty
+          ? '$fallbackBaseUrl/stripe/connect/return'
+          : returnUrl,
+      refreshUrl: refreshUrl.isEmpty
+          ? '$fallbackBaseUrl/stripe/connect/refresh'
+          : refreshUrl,
     );
   }
 

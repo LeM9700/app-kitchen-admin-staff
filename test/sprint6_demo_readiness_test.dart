@@ -32,7 +32,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final deliverButton = find.widgetWithText(FilledButton, 'Livree');
+    final deliverButton = find.widgetWithText(FilledButton, 'REMISE AU CLIENT');
     expect(deliverButton, findsOneWidget);
 
     await tester.tap(deliverButton);
@@ -94,7 +94,7 @@ class _SlowStatusRepository extends OrdersRepository {
         orderType: 'pickup',
         // 'ready' : seul statut encore actionnable manuellement depuis le
         // Service (pending/confirmed/preparing n'y apparaissent plus du
-        // tout -- voir orders_board_page.dart::_nextStatuses).
+        // tout -- voir ServiceBoardState).
         status: 'ready',
         paymentStatus: 'paid',
         source: 'customer',

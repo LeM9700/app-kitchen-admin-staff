@@ -68,8 +68,11 @@ class _HaccpNonConformityPageState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.red, size: 40),
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 40,
+                    ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(e.toString()),
                     const SizedBox(height: AppSpacing.md),
@@ -159,7 +162,9 @@ class _StatusFilterBar extends StatelessWidget {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -171,7 +176,7 @@ class _StatusFilterBar extends StatelessWidget {
                 label: Text(f.$2),
                 selected: selected,
                 onSelected: (_) => onChanged(f.$1),
-                selectedColor: AppColors.infoAlt.withOpacity(0.15),
+                selectedColor: AppColors.infoAlt.withValues(alpha: 0.15),
                 checkmarkColor: AppColors.infoAlt,
               ),
             );
@@ -274,9 +279,10 @@ class _NcCardState extends ConsumerState<_NcCard> {
             Text(
               widget.nc.description,
               style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic),
+                fontSize: 13,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(
@@ -336,7 +342,8 @@ class _NcCardState extends ConsumerState<_NcCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-              '⚠️ Ajoutez d\'abord une action corrective avant de clôturer.'),
+            '⚠️ Ajoutez d\'abord une action corrective avant de clôturer.',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -356,13 +363,16 @@ class _NcCardState extends ConsumerState<_NcCard> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.08),
+                color: Colors.green.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_outline,
-                      color: Colors.green, size: 16),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.green,
+                    size: 16,
+                  ),
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
@@ -481,7 +491,7 @@ class _NcCardState extends ConsumerState<_NcCard> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.06),
+                  color: Colors.red.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Row(
@@ -491,9 +501,10 @@ class _NcCardState extends ConsumerState<_NcCard> {
                     Text(
                       'Action corrective requise',
                       style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.red,
-                          fontStyle: FontStyle.italic),
+                        fontSize: 12,
+                        color: Colors.red,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ],
                 ),
@@ -522,9 +533,11 @@ class _NcCardState extends ConsumerState<_NcCard> {
                     child: OutlinedButton.icon(
                       onPressed: _saving ? null : _addCorrectiveAction,
                       icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: Text(nc.correctiveAction == null
-                          ? 'Ajouter action'
-                          : 'Modifier action'),
+                      label: Text(
+                        nc.correctiveAction == null
+                            ? 'Ajouter action'
+                            : 'Modifier action',
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.orange,
                         side: const BorderSide(color: Colors.orange),
@@ -579,7 +592,7 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -601,7 +614,7 @@ class _SourceChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
+        color: Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -636,14 +649,17 @@ class _DetailRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
               Text(
                 value,
                 style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: valueColor),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: valueColor,
+                ),
               ),
             ],
           ),

@@ -764,12 +764,14 @@ class HaccpStatsData {
       sessions:
           HaccpSessionStats.fromJson(json['sessions'] as Map<String, dynamic>),
       temperature: HaccpStatSection.fromJson(
-          json['temperature'] as Map<String, dynamic>),
+        json['temperature'] as Map<String, dynamic>,
+      ),
       dlc: HaccpStatSection.fromJson(json['dlc'] as Map<String, dynamic>),
       cleaning:
           HaccpStatSection.fromJson(json['cleaning'] as Map<String, dynamic>),
       nonConformities: HaccpNcStats.fromJson(
-          json['non_conformities'] as Map<String, dynamic>),
+        json['non_conformities'] as Map<String, dynamic>,
+      ),
       reception:
           HaccpStatSection.fromJson(json['reception'] as Map<String, dynamic>),
       cooling:

@@ -44,11 +44,13 @@ void main() {
       final repository = HaccpRepository(
         _client((options) {
           seen = options;
-          return _jsonResponse(_ncJson(
-            id: 501,
-            status: 'in_progress',
-            correctiveAction: 'Ajustement thermostat',
-          ));
+          return _jsonResponse(
+            _ncJson(
+              id: 501,
+              status: 'in_progress',
+              correctiveAction: 'Ajustement thermostat',
+            ),
+          );
         }),
       );
 
@@ -108,19 +110,23 @@ void main() {
           final data = options.data as Map;
           if (data['status'] == 'in_progress') {
             stage = 'in_progress';
-            return _jsonResponse(_ncJson(
-              id: 501,
-              status: 'in_progress',
-              correctiveAction: data['corrective_action'] as String,
-            ));
+            return _jsonResponse(
+              _ncJson(
+                id: 501,
+                status: 'in_progress',
+                correctiveAction: data['corrective_action'] as String,
+              ),
+            );
           }
           stage = 'closed';
-          return _jsonResponse(_ncJson(
-            id: 501,
-            status: 'closed',
-            correctiveAction: 'Ajustement thermostat',
-            validatedAt: '2026-08-20T08:00:00Z',
-          ));
+          return _jsonResponse(
+            _ncJson(
+              id: 501,
+              status: 'closed',
+              correctiveAction: 'Ajustement thermostat',
+              validatedAt: '2026-08-20T08:00:00Z',
+            ),
+          );
         }
         throw StateError(
           'requete inattendue ${options.method} ${options.path}',
@@ -139,7 +145,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-          find.text('Frigo positif à 8°C, hors plage 0-4°C'), findsOneWidget);
+        find.text('Frigo positif à 8°C, hors plage 0-4°C'),
+        findsOneWidget,
+      );
 
       // Déplie la carte pour accéder aux actions admin.
       await tester.tap(find.text('Frigo positif à 8°C, hors plage 0-4°C'));
@@ -290,8 +298,8 @@ Map<String, dynamic> _ncJson({
 class _AdminSessionController extends SessionController {
   @override
   Future<SessionState> build() async {
-    return SessionState.authenticated(
-      user: const StaffUser(
+    return const SessionState.authenticated(
+      user: StaffUser(
         id: 1,
         email: 'admin@test.com',
         role: 'admin',

@@ -215,7 +215,8 @@ class _CleaningTaskFormDialogState extends State<_CleaningTaskFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-          widget.existing == null ? 'Nouvelle tâche ND' : 'Modifier la tâche'),
+        widget.existing == null ? 'Nouvelle tâche ND' : 'Modifier la tâche',
+      ),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -241,26 +242,32 @@ class _CleaningTaskFormDialogState extends State<_CleaningTaskFormDialog> {
               ),
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<String>(
-                value: _frequency,
+                initialValue: _frequency,
                 decoration: const InputDecoration(labelText: 'Fréquence'),
                 items: const [
                   DropdownMenuItem(value: 'daily', child: Text('Quotidien')),
                   DropdownMenuItem(
-                      value: 'weekly', child: Text('Hebdomadaire')),
+                    value: 'weekly',
+                    child: Text('Hebdomadaire'),
+                  ),
                   DropdownMenuItem(value: 'monthly', child: Text('Mensuel')),
                   DropdownMenuItem(
-                      value: 'per_service', child: Text('Par service')),
+                    value: 'per_service',
+                    child: Text('Par service'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _frequency = v!),
               ),
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<String>(
-                value: _sessionType,
+                initialValue: _sessionType,
                 decoration:
                     const InputDecoration(labelText: 'Session concernée'),
                 items: const [
                   DropdownMenuItem(
-                      value: 'both', child: Text('Ouverture + Fermeture')),
+                    value: 'both',
+                    child: Text('Ouverture + Fermeture'),
+                  ),
                   DropdownMenuItem(value: 'opening', child: Text('Ouverture')),
                   DropdownMenuItem(value: 'closing', child: Text('Fermeture')),
                 ],
@@ -275,9 +282,10 @@ class _CleaningTaskFormDialogState extends State<_CleaningTaskFormDialog> {
               ),
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<String>(
-                value: _requiredRole,
+                initialValue: _requiredRole,
                 decoration: const InputDecoration(
-                    labelText: 'Rôle requis pour valider'),
+                  labelText: 'Rôle requis pour valider',
+                ),
                 items: const [
                   DropdownMenuItem(value: 'staff', child: Text('Staff')),
                   DropdownMenuItem(value: 'admin', child: Text('Admin')),

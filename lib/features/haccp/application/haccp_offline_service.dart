@@ -86,7 +86,8 @@ class HaccpOfflineService {
   /// Idempotent — safe to queue (le serveur retourne la session existante
   /// si elle existe déjà pour la date + type).
   Future<OfflineResult<HaccpCheckSession>> startSession(
-      String sessionType) async {
+    String sessionType,
+  ) async {
     if (isOnline) {
       final result = await repo.startSession(sessionType);
       return OnlineSuccess(result);
@@ -173,8 +174,12 @@ class HaccpOfflineService {
       'is_compliant': isCompliant,
     };
     if (isOnline) {
-      final result = await repo.logCleaning(sessionId,
-          taskId: taskId, notes: notes, isCompliant: isCompliant);
+      final result = await repo.logCleaning(
+        sessionId,
+        taskId: taskId,
+        notes: notes,
+        isCompliant: isCompliant,
+      );
       return OnlineSuccess(result);
     }
     _enqueue(
@@ -204,11 +209,13 @@ class HaccpOfflineService {
       if (correctiveAction != null) 'corrective_action': correctiveAction,
     };
     if (isOnline) {
-      final result = await repo.logFryingOil(sessionId,
-          polarityPercent: polarityPercent,
-          color: color,
-          odor: odor,
-          correctiveAction: correctiveAction);
+      final result = await repo.logFryingOil(
+        sessionId,
+        polarityPercent: polarityPercent,
+        color: color,
+        odor: odor,
+        correctiveAction: correctiveAction,
+      );
       return OnlineSuccess(result);
     }
     _enqueue(
@@ -225,7 +232,8 @@ class HaccpOfflineService {
   // ── Réception fournisseur ──────────────────────────────────────────────────
 
   Future<OfflineResult<HaccpReceptionControl>> createReceptionControl(
-      Map<String, dynamic> body) async {
+    Map<String, dynamic> body,
+  ) async {
     if (isOnline) {
       final result = await repo.createReceptionControl(body);
       return OnlineSuccess(result);
@@ -237,7 +245,9 @@ class HaccpOfflineService {
       method: 'POST',
       payload: body,
       idempotencyKey: _ikey(
-          'reception', '${body["supplier_name"]}_${body["product_name"]}'),
+        'reception',
+        '${body["supplier_name"]}_${body["product_name"]}',
+      ),
     );
     return const QueuedForSync('Contrôle réception mis en queue');
   }
@@ -245,7 +255,8 @@ class HaccpOfflineService {
   // ── Refroidissement rapide ─────────────────────────────────────────────────
 
   Future<OfflineResult<HaccpCoolingLog>> startCooling(
-      Map<String, dynamic> body) async {
+    Map<String, dynamic> body,
+  ) async {
     if (isOnline) {
       final result = await repo.startCooling(body);
       return OnlineSuccess(result);
@@ -272,8 +283,11 @@ class HaccpOfflineService {
       if (correctiveAction != null) 'corrective_action': correctiveAction,
     };
     if (isOnline) {
-      final result = await repo.completeCooling(id,
-          tempFinal: tempFinal, correctiveAction: correctiveAction);
+      final result = await repo.completeCooling(
+        id,
+        tempFinal: tempFinal,
+        correctiveAction: correctiveAction,
+      );
       return OnlineSuccess(result);
     }
     _enqueue(
@@ -300,8 +314,11 @@ class HaccpOfflineService {
       if (status != null) 'status': status,
     };
     if (isOnline) {
-      final result = await repo.updateNonConformity(id,
-          correctiveAction: correctiveAction, status: status);
+      final result = await repo.updateNonConformity(
+        id,
+        correctiveAction: correctiveAction,
+        status: status,
+      );
       return OnlineSuccess(result);
     }
     _enqueue(

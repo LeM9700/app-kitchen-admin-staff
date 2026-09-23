@@ -83,7 +83,9 @@ class _HaccpStatsPageState extends ConsumerState<HaccpStatsPage> {
           Container(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             child: Row(
               children: [
                 const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
@@ -126,8 +128,11 @@ class _HaccpStatsPageState extends ConsumerState<HaccpStatsPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.red, size: 48),
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 48,
+                    ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(e.toString(), textAlign: TextAlign.center),
                     const SizedBox(height: AppSpacing.md),
@@ -166,7 +171,7 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
 
         // Sessions
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.assignment_turned_in_outlined,
           label: 'Sessions HACCP',
         ),
@@ -175,7 +180,10 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // Températures
-        _SectionHeader(icon: Icons.thermostat_outlined, label: 'Températures'),
+        const _SectionHeader(
+          icon: Icons.thermostat_outlined,
+          label: 'Températures',
+        ),
         const SizedBox(height: AppSpacing.xs),
         _StatCard(
           section: stats.temperature,
@@ -186,8 +194,10 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // DLC
-        _SectionHeader(
-            icon: Icons.calendar_today_outlined, label: 'Vérifications DLC'),
+        const _SectionHeader(
+          icon: Icons.calendar_today_outlined,
+          label: 'Vérifications DLC',
+        ),
         const SizedBox(height: AppSpacing.xs),
         _StatCard(
           section: stats.dlc,
@@ -198,8 +208,10 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // Nettoyage
-        _SectionHeader(
-            icon: Icons.cleaning_services_outlined, label: 'Nettoyage'),
+        const _SectionHeader(
+          icon: Icons.cleaning_services_outlined,
+          label: 'Nettoyage',
+        ),
         const SizedBox(height: AppSpacing.xs),
         _StatCard(
           section: stats.cleaning,
@@ -210,16 +222,19 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // Non-conformités
-        _SectionHeader(
-            icon: Icons.report_problem_outlined, label: 'Non-conformités'),
+        const _SectionHeader(
+          icon: Icons.report_problem_outlined,
+          label: 'Non-conformités',
+        ),
         const SizedBox(height: AppSpacing.xs),
         _NcCard(nc: stats.nonConformities),
         const SizedBox(height: AppSpacing.md),
 
         // Réceptions
-        _SectionHeader(
-            icon: Icons.local_shipping_outlined,
-            label: 'Réceptions fournisseurs'),
+        const _SectionHeader(
+          icon: Icons.local_shipping_outlined,
+          label: 'Réceptions fournisseurs',
+        ),
         const SizedBox(height: AppSpacing.xs),
         _StatCard(
           section: stats.reception,
@@ -230,8 +245,10 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // Refroidissement
-        _SectionHeader(
-            icon: Icons.ac_unit_outlined, label: 'Refroidissement rapide'),
+        const _SectionHeader(
+          icon: Icons.ac_unit_outlined,
+          label: 'Refroidissement rapide',
+        ),
         const SizedBox(height: AppSpacing.xs),
         _CoolingCard(cooling: stats.cooling),
         const SizedBox(height: AppSpacing.xl),
@@ -240,9 +257,9 @@ class _StatsBody extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.06),
+            color: Colors.blue.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue.withOpacity(0.2)),
+            border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
           ),
           child: const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,7 +354,7 @@ class _ScoreGauge extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _color.withOpacity(0.12),
+                    color: _color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -483,10 +500,9 @@ class _SessionCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'Taux de complétion',
-                style:
-                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
               Text(
                 '${sessions.completionRate.toStringAsFixed(1)}%',
@@ -560,22 +576,25 @@ class _NcCard extends StatelessWidget {
               _NcPill(label: 'Ouvertes', count: nc.open, color: Colors.red),
               const SizedBox(width: AppSpacing.xs),
               _NcPill(
-                  label: 'En cours',
-                  count: nc.inProgress,
-                  color: Colors.orange),
+                label: 'En cours',
+                count: nc.inProgress,
+                color: Colors.orange,
+              ),
               const SizedBox(width: AppSpacing.xs),
               _NcPill(
-                  label: 'Clôturées', count: nc.closed, color: Colors.green),
+                label: 'Clôturées',
+                count: nc.closed,
+                color: Colors.green,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'Taux de résolution',
-                style:
-                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
               Text(
                 nc.total == 0
@@ -596,8 +615,11 @@ class _NcCard extends StatelessWidget {
 }
 
 class _NcPill extends StatelessWidget {
-  const _NcPill(
-      {required this.label, required this.count, required this.color});
+  const _NcPill({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
 
   final String label;
   final int count;
@@ -610,9 +632,9 @@ class _NcPill extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: 4),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
         child: Column(
           children: [
@@ -652,17 +674,22 @@ class _CoolingCard extends StatelessWidget {
           Row(
             children: [
               _NcPill(
-                  label: 'Conformes',
-                  count: cooling.compliant,
-                  color: Colors.green),
+                label: 'Conformes',
+                count: cooling.compliant,
+                color: Colors.green,
+              ),
               const SizedBox(width: AppSpacing.xs),
               _NcPill(
-                  label: 'NC', count: cooling.nonCompliant, color: Colors.red),
+                label: 'NC',
+                count: cooling.nonCompliant,
+                color: Colors.red,
+              ),
               const SizedBox(width: AppSpacing.xs),
               _NcPill(
-                  label: 'En cours',
-                  count: cooling.inProgress,
-                  color: Colors.blue),
+                label: 'En cours',
+                count: cooling.inProgress,
+                color: Colors.blue,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),

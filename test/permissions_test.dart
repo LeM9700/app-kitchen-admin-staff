@@ -14,9 +14,17 @@ void main() {
     expect(permissions.can('anything'), isTrue);
   });
 
-  test('legacy staff permissions use MVP defaults', () {
+  test('staff permissions null are deny by default', () {
     const permissions = PermissionSet(role: 'staff', permissions: null);
-    expect(permissions.can(AppPermission.ordersPreparation), isTrue);
+    expect(permissions.can(AppPermission.ordersPreparation), isFalse);
+    expect(permissions.can(AppPermission.ordersRead), isFalse);
+    expect(permissions.can('unknown'), isFalse);
+  });
+
+  test('staff permissions empty are deny by default', () {
+    const permissions = PermissionSet(role: 'staff', permissions: {});
+    expect(permissions.can(AppPermission.ordersPreparation), isFalse);
+    expect(permissions.can(AppPermission.ordersRead), isFalse);
     expect(permissions.can('unknown'), isFalse);
   });
 

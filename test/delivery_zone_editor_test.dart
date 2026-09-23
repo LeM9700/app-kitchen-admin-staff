@@ -56,7 +56,8 @@ void main() {
 
       final created = requests
           .where(
-              (r) => r.method == 'POST' && r.path == ApiEndpoints.deliveryZones)
+            (r) => r.method == 'POST' && r.path == ApiEndpoints.deliveryZones,
+          )
           .toList();
       expect(created, hasLength(1));
       final body = created.single.data as Map;
@@ -134,8 +135,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final updated = requests
-          .where((r) =>
-              r.method == 'PUT' && r.path == ApiEndpoints.deliveryZone(7))
+          .where(
+            (r) => r.method == 'PUT' && r.path == ApiEndpoints.deliveryZone(7),
+          )
           .toList();
       expect(updated, hasLength(1));
       expect(updated.single.data['name'], 'Nord etendu');
@@ -236,8 +238,8 @@ class _MemoryTokenStore extends TokenStore {
 class _AdminSessionController extends SessionController {
   @override
   Future<SessionState> build() async {
-    return SessionState.authenticated(
-      user: const StaffUser(
+    return const SessionState.authenticated(
+      user: StaffUser(
         id: 1,
         email: 'admin@test.com',
         role: 'admin',

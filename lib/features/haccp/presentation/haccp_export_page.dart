@@ -114,8 +114,9 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
       );
 
       final bytes = response.data as List<int>?;
-      if (bytes == null || bytes.isEmpty)
+      if (bytes == null || bytes.isEmpty) {
         throw Exception('PDF vide reçu du serveur');
+      }
 
       final tmpDir = await getTemporaryDirectory();
       final file = File('${tmpDir.path}/haccp_${from}_$to.pdf');
@@ -129,8 +130,9 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Erreur export PDF : $e'),
-              backgroundColor: Colors.red),
+            content: Text('Erreur export PDF : $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -155,8 +157,9 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
       );
 
       final bytes = response.data as List<int>?;
-      if (bytes == null || bytes.isEmpty)
+      if (bytes == null || bytes.isEmpty) {
         throw Exception('CSV vide reçu du serveur');
+      }
 
       final tmpDir = await getTemporaryDirectory();
       final file = File('${tmpDir.path}/haccp_${from}_${to}_$type.csv');
@@ -170,16 +173,18 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Erreur export CSV : $e'),
-              backgroundColor: Colors.red),
+            content: Text('Erreur export CSV : $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _exportingCsv = false;
           _csvType = null;
         });
+      }
     }
   }
 
@@ -195,7 +200,7 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           // Infos légales
-          _InfoBanner(
+          const _InfoBanner(
             icon: Icons.info_outline,
             text:
                 'Ces documents constituent le dossier PMS numérique (Règlement CE 852/2004 + arrêté 12/02/2024). '
@@ -227,7 +232,9 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
                         Text(
                           '${_displayDate(_fromDate)} → ${_displayDate(_toDate)}',
                           style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 15),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
                         ),
                         Text(
                           '${_toDate.difference(_fromDate).inDays + 1} jour(s)',
@@ -249,23 +256,31 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
             spacing: AppSpacing.xs,
             children: [
               ActionChip(
-                  label: const Text('7 jours'), onPressed: () => _setLastN(7)),
+                label: const Text('7 jours'),
+                onPressed: () => _setLastN(7),
+              ),
               ActionChip(
-                  label: const Text('30 jours'),
-                  onPressed: () => _setLastN(30)),
+                label: const Text('30 jours'),
+                onPressed: () => _setLastN(30),
+              ),
               ActionChip(
-                  label: const Text('Ce mois'), onPressed: _setCurrentMonth),
+                label: const Text('Ce mois'),
+                onPressed: _setCurrentMonth,
+              ),
               ActionChip(
-                  label: const Text('Mois précédent'),
-                  onPressed: _setLastMonth),
+                label: const Text('Mois précédent'),
+                onPressed: _setLastMonth,
+              ),
             ],
           ),
 
           const SizedBox(height: AppSpacing.xl),
 
           // Export PDF
-          Text('Rapport complet',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Rapport complet',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: AppSpacing.xs),
           const Text(
             'PDF multi-sections : sessions, températures, DLC, nettoyage, NC, '
@@ -282,10 +297,14 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.picture_as_pdf),
               label: Text(
-                  _exportingPdf ? 'Génération en cours…' : 'Exporter en PDF'),
+                _exportingPdf ? 'Génération en cours…' : 'Exporter en PDF',
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.red[700],
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -305,18 +324,20 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          ..._csvOptions.map((opt) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                child: _CsvExportTile(
-                  icon: opt.icon,
-                  label: opt.label,
-                  subtitle: opt.subtitle,
-                  type: opt.type,
-                  loading: _exportingCsv && _csvType == opt.type,
-                  disabled: isExporting,
-                  onTap: () => _exportCsv(opt.type),
-                ),
-              )),
+          ..._csvOptions.map(
+            (opt) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: _CsvExportTile(
+                icon: opt.icon,
+                label: opt.label,
+                subtitle: opt.subtitle,
+                type: opt.type,
+                loading: _exportingCsv && _csvType == opt.type,
+                disabled: isExporting,
+                onTap: () => _exportCsv(opt.type),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -411,21 +432,27 @@ class _CsvExportTile extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
+            color: Colors.green.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: loading
               ? const Padding(
                   padding: EdgeInsets.all(10),
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.green),
+                    strokeWidth: 2,
+                    color: Colors.green,
+                  ),
                 )
               : Icon(icon, color: Colors.green[700], size: 20),
         ),
-        title: Text(label,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: Text(subtitle,
-            style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        title: Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: Colors.grey, fontSize: 12),
+        ),
         trailing: disabled
             ? const SizedBox.shrink()
             : const Icon(Icons.share_outlined, size: 18, color: Colors.grey),
@@ -436,8 +463,11 @@ class _CsvExportTile extends StatelessWidget {
 }
 
 class _InfoBanner extends StatelessWidget {
-  const _InfoBanner(
-      {required this.icon, required this.text, required this.color});
+  const _InfoBanner({
+    required this.icon,
+    required this.text,
+    required this.color,
+  });
 
   final IconData icon;
   final String text;
@@ -448,9 +478,9 @@ class _InfoBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,8 +488,10 @@ class _InfoBanner extends StatelessWidget {
           Icon(icon, color: color, size: 18),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text(text,
-                style: TextStyle(color: color, fontSize: 12, height: 1.4)),
+            child: Text(
+              text,
+              style: TextStyle(color: color, fontSize: 12, height: 1.4),
+            ),
           ),
         ],
       ),

@@ -342,6 +342,7 @@ Future<void> _pumpShell(
       child: RepaintBoundary(
         key: _goldenSurfaceKey,
         child: MaterialApp(
+          debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           home: AdminShell(location: location, child: child),
         ),

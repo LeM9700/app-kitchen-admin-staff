@@ -149,6 +149,31 @@ class HrRepository {
     );
   }
 
+  Future<TimeClockEntry> startBreak() async {
+    final response = await _apiClient.post(ApiEndpoints.hrBreakStart);
+    return TimeClockEntry.fromJson(
+      Map<String, dynamic>.from(response.data as Map),
+    );
+  }
+
+  Future<TimeClockEntry> endBreak() async {
+    final response = await _apiClient.post(ApiEndpoints.hrBreakEnd);
+    return TimeClockEntry.fromJson(
+      Map<String, dynamic>.from(response.data as Map),
+    );
+  }
+
+  Future<HrAlert> reportLate({String? reason, int? shiftId}) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.hrLateReport,
+      data: {
+        if (shiftId != null) 'shift_id': shiftId,
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
+    );
+    return HrAlert.fromJson(Map<String, dynamic>.from(response.data as Map));
+  }
+
   Future<List<TimeClockEntry>> listTimeClockEntries(
     TimeClockEntryQuery query,
   ) async {
@@ -471,6 +496,8 @@ class TimeClockEntry {
   final String status;
 
   bool get isOpen => status == 'open' && clockOutAt == null;
+  bool get isOnBreak => status == 'break' && clockOutAt == null;
+  bool get isActive => (isOpen || isOnBreak) && clockOutAt == null;
 
   factory TimeClockEntry.fromJson(Map<String, dynamic> json) {
     return TimeClockEntry(

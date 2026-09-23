@@ -62,8 +62,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final patches = requests
-          .where((r) =>
-              r.method == 'PATCH' && r.path == ApiEndpoints.loyaltyConfig)
+          .where(
+            (r) => r.method == 'PATCH' && r.path == ApiEndpoints.loyaltyConfig,
+          )
           .toList();
       expect(patches, hasLength(1));
       expect(patches.single.data['is_active'], isFalse);
@@ -113,8 +114,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       final patches = requests
-          .where((r) =>
-              r.method == 'PATCH' && r.path == ApiEndpoints.loyaltyReward(5))
+          .where(
+            (r) =>
+                r.method == 'PATCH' && r.path == ApiEndpoints.loyaltyReward(5),
+          )
           .toList();
       expect(patches, hasLength(1));
       expect(patches.single.data['is_active'], isFalse);
@@ -231,8 +234,8 @@ class _MemoryTokenStore extends TokenStore {
 class _AdminSessionController extends SessionController {
   @override
   Future<SessionState> build() async {
-    return SessionState.authenticated(
-      user: const StaffUser(
+    return const SessionState.authenticated(
+      user: StaffUser(
         id: 1,
         email: 'admin@test.com',
         role: 'admin',

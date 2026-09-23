@@ -2,6 +2,7 @@ import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
 import 'package:app_admin_staff/core/api/paginated.dart';
 import 'package:app_admin_staff/core/utils/json.dart';
+import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
@@ -9,18 +10,25 @@ final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
 });
 
 final paymentsSummaryProvider =
-    FutureProvider.autoDispose<PaymentSummary>((ref) {
-  return ref.watch(paymentsRepositoryProvider).summary();
+    FutureProvider.autoDispose<PaymentSummary>((ref) async {
+  final currentEstablishment =
+      await ref.watch(currentEstablishmentProvider.future);
+  return ref
+      .watch(paymentsRepositoryProvider)
+      .summary(establishmentId: currentEstablishment?.id);
 });
 
 final paymentStatusFilterProvider = StateProvider<String?>((ref) => null);
 
 final paymentsProvider =
-    FutureProvider.autoDispose<List<PaymentListItem>>((ref) {
+    FutureProvider.autoDispose<List<PaymentListItem>>((ref) async {
   final status = ref.watch(paymentStatusFilterProvider);
+  final currentEstablishment =
+      await ref.watch(currentEstablishmentProvider.future);
   return ref.watch(paymentsRepositoryProvider).listPayments(
         pageSize: 50,
         status: status,
+        establishmentId: currentEstablishment?.id,
       );
 });
 
@@ -38,8 +46,13 @@ class PaymentsRepository {
 
   final ApiClient _apiClient;
 
-  Future<PaymentSummary> summary() async {
-    final response = await _apiClient.get(ApiEndpoints.paymentSummary);
+  Future<PaymentSummary> summary({int? establishmentId}) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.paymentSummary,
+      queryParameters: {
+        if (establishmentId != null) 'establishment_id': establishmentId,
+      },
+    );
     return PaymentSummary.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -47,6 +60,7 @@ class PaymentsRepository {
     int page = 1,
     int pageSize = 50,
     String? status,
+    int? establishmentId,
   }) async {
     final response = await _apiClient.get(
       ApiEndpoints.payments,
@@ -54,6 +68,7 @@ class PaymentsRepository {
         'page': page,
         'page_size': pageSize,
         if (status != null && status.isNotEmpty) 'status': status,
+        if (establishmentId != null) 'establishment_id': establishmentId,
       },
     );
     final result = PaginatedResult.fromJson(

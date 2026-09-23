@@ -29,6 +29,10 @@ final topProductsProvider =
   return ref.watch(dashboardRepositoryProvider).topProducts();
 });
 
+final groupOverviewProvider = FutureProvider.autoDispose<GroupOverview>((ref) {
+  return ref.watch(dashboardRepositoryProvider).groupOverview();
+});
+
 class DashboardRepository {
   const DashboardRepository(this._apiClient);
 
@@ -74,6 +78,11 @@ class DashboardRepository {
           (value) => TopProductStats.fromJson(Map<String, dynamic>.from(value)),
         )
         .toList();
+  }
+
+  Future<GroupOverview> groupOverview() async {
+    final response = await _apiClient.get(ApiEndpoints.adminStatsGroupOverview);
+    return GroupOverview.fromJson(response.data as Map<String, dynamic>);
   }
 }
 
@@ -196,6 +205,76 @@ class TopProductStats {
       productName: json['product_name']?.toString() ?? '',
       quantity: readInt(json['quantity']),
       revenue: readDouble(json['revenue']),
+    );
+  }
+}
+
+class GroupOverview {
+  const GroupOverview({
+    required this.establishmentCount,
+    required this.okCount,
+    required this.warningCount,
+    required this.criticalCount,
+    required this.items,
+  });
+
+  final int establishmentCount;
+  final int okCount;
+  final int warningCount;
+  final int criticalCount;
+  final List<GroupOverviewItem> items;
+
+  factory GroupOverview.fromJson(Map<String, dynamic> json) {
+    return GroupOverview(
+      establishmentCount: readInt(json['establishment_count']),
+      okCount: readInt(json['ok_count']),
+      warningCount: readInt(json['warning_count']),
+      criticalCount: readInt(json['critical_count']),
+      items: (json['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map(
+            (value) =>
+                GroupOverviewItem.fromJson(Map<String, dynamic>.from(value)),
+          )
+          .toList(),
+    );
+  }
+}
+
+class GroupOverviewItem {
+  const GroupOverviewItem({
+    required this.establishmentId,
+    required this.establishmentName,
+    required this.status,
+    required this.activeOrders,
+    required this.pendingOrders,
+    required this.lateOrders,
+    required this.revenueToday,
+    required this.staffPresent,
+    required this.staffExpected,
+  });
+
+  final int establishmentId;
+  final String establishmentName;
+  final String status;
+  final int activeOrders;
+  final int pendingOrders;
+  final int lateOrders;
+  final double revenueToday;
+  final int staffPresent;
+  final int staffExpected;
+
+  factory GroupOverviewItem.fromJson(Map<String, dynamic> json) {
+    return GroupOverviewItem(
+      establishmentId: readInt(json['establishment_id']),
+      establishmentName: json['establishment_name']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'ok',
+      activeOrders: readInt(json['active_orders']),
+      pendingOrders: readInt(json['pending_orders']),
+      lateOrders: readInt(json['late_orders']),
+      revenueToday: readDouble(json['revenue_today']),
+      staffPresent: readInt(json['staff_present']),
+      staffExpected: readInt(json['staff_expected']),
     );
   }
 }

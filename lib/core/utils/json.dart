@@ -21,6 +21,19 @@ int readInt(Object? value, {int fallback = 0}) {
   return int.tryParse(value?.toString() ?? '') ?? fallback;
 }
 
+int? readNullableInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return int.tryParse(value.toString());
+}
+
 bool readBool(Object? value, {bool fallback = false}) {
   if (value is bool) {
     return value;

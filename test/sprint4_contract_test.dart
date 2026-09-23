@@ -210,7 +210,10 @@ void main() {
       ),
     );
 
-    final payments = await repository.listPayments(status: 'paid');
+    final payments = await repository.listPayments(
+      status: 'paid',
+      establishmentId: 7,
+    );
     final refund = await repository.refund(
       orderId: 142,
       amountCents: 1200,
@@ -218,6 +221,7 @@ void main() {
     );
 
     expect(seen.first.queryParameters['status'], 'paid');
+    expect(seen.first.queryParameters['establishment_id'], 7);
     expect(payments.single.orderId, 142);
     expect(seen.last.path, ApiEndpoints.paymentRefund(142));
     expect((seen.last.data as Map)['amount'], 1200);

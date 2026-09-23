@@ -115,22 +115,52 @@ class _AdminEmployeesTab extends ConsumerWidget {
     return _ScreenPadding(
       child: employees.when(
         data: (items) {
-          if (items.isEmpty) {
-            return const EmptyState(
-              icon: Icons.badge_outlined,
-              title: 'Aucun profil RH',
-            );
-          }
-          return ListView.separated(
-            itemBuilder: (context, index) {
-              final employee = items[index];
-              return _EmployeeTile(
-                employee: employee,
-                user: userMap[employee.userId],
-              );
-            },
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemCount: items.length,
+          final candidates = _employeeProfileCandidates(
+            items,
+            users.valueOrNull?.items ?? const <AdminUser>[],
+          );
+          return ListView(
+            children: [
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    'Profils RH',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  FilledButton.icon(
+                    onPressed: candidates.isEmpty
+                        ? null
+                        : () => _showCreateEmployeeProfileDialog(
+                              context,
+                              ref,
+                              candidates,
+                            ),
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Creer profil RH'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (items.isEmpty)
+                const EmptyState(
+                  icon: Icons.badge_outlined,
+                  title: 'Aucun profil RH',
+                  subtitle:
+                      'Creez un profil RH pour un compte staff avant de planifier un shift.',
+                )
+              else
+                for (var index = 0; index < items.length; index++) ...[
+                  _EmployeeTile(
+                    employee: items[index],
+                    user: userMap[items[index].userId],
+                  ),
+                  if (index != items.length - 1) const SizedBox(height: 12),
+                ],
+            ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -1559,6 +1589,177 @@ class _InlineError extends StatelessWidget {
       _errorMessage(error),
       style: TextStyle(color: Theme.of(context).colorScheme.error),
     );
+  }
+}
+
+List<AdminUser> _employeeProfileCandidates(
+  List<EmployeeProfile> employees,
+  List<AdminUser> users,
+) {
+  final attachedUserIds = employees.map((employee) => employee.userId).toSet();
+  return [
+    for (final user in users)
+      if ((user.role == 'staff' || user.role == 'admin') &&
+          user.isActive &&
+          !attachedUserIds.contains(user.id))
+        user,
+  ];
+}
+
+Future<void> _showCreateEmployeeProfileDialog(
+  BuildContext context,
+  WidgetRef ref,
+  List<AdminUser> candidates,
+) async {
+  var userId = candidates.first.id;
+  final establishmentController = TextEditingController(text: '1');
+  final weeklyHoursController = TextEditingController(text: '35');
+  final hourlyRateController = TextEditingController();
+  final hireDateController = TextEditingController();
+  String? localError;
+
+  final result = await showDialog<EmployeeProfileCreateDraft>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('Creer un profil RH'),
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int>(
+                initialValue: userId,
+                decoration: const InputDecoration(labelText: 'Compte staff'),
+                items: [
+                  for (final user in candidates)
+                    DropdownMenuItem(
+                      value: user.id,
+                      child: Text(user.displayName),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => userId = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: establishmentController,
+                decoration: const InputDecoration(labelText: 'Etablissement'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: weeklyHoursController,
+                decoration: const InputDecoration(labelText: 'Heures/semaine'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: hourlyRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Cout horaire EUR (optionnel)',
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: hireDateController,
+                decoration: const InputDecoration(
+                  labelText: 'Embauche yyyy-MM-dd (optionnel)',
+                ),
+              ),
+              if (localError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  localError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Annuler'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              final establishmentId =
+                  int.tryParse(establishmentController.text.trim()) ?? 0;
+              final weeklyHours =
+                  int.tryParse(weeklyHoursController.text.trim()) ?? 0;
+              final hourlyRaw =
+                  hourlyRateController.text.trim().replaceAll(',', '.');
+              final hourlyRate = hourlyRaw.isEmpty
+                  ? null
+                  : (double.tryParse(hourlyRaw) == null
+                      ? null
+                      : (double.parse(hourlyRaw) * 100).round());
+              final hireRaw = hireDateController.text.trim();
+              final hireDate =
+                  hireRaw.isEmpty ? null : DateTime.tryParse(hireRaw);
+
+              if (establishmentId <= 0) {
+                setState(() => localError = 'Etablissement requis');
+                return;
+              }
+              if (weeklyHours <= 0) {
+                setState(() => localError = 'Heures/semaine invalides');
+                return;
+              }
+              if (hourlyRaw.isNotEmpty && hourlyRate == null) {
+                setState(() => localError = 'Cout horaire invalide');
+                return;
+              }
+              if (hireRaw.isNotEmpty && hireDate == null) {
+                setState(() => localError = 'Date d embauche invalide');
+                return;
+              }
+
+              Navigator.of(context).pop(
+                EmployeeProfileCreateDraft(
+                  userId: userId,
+                  establishmentId: establishmentId,
+                  weeklyHoursContract: weeklyHours,
+                  hourlyRateCents: hourlyRate,
+                  hireDate: hireDate,
+                ),
+              );
+            },
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  establishmentController.dispose();
+  weeklyHoursController.dispose();
+  hourlyRateController.dispose();
+  hireDateController.dispose();
+
+  if (result == null) {
+    return;
+  }
+  try {
+    await ref.read(hrRepositoryProvider).createEmployee(result);
+    ref.invalidate(employeesProvider);
+    ref.invalidate(myEmployeeProfileProvider);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil RH cree')),
+      );
+    }
+  } catch (error) {
+    if (context.mounted) {
+      _showError(context, error);
+    }
   }
 }
 

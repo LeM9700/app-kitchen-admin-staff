@@ -5,6 +5,7 @@ import 'package:app_admin_staff/core/printing/receipt_builder.dart';
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
+import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:app_admin_staff/features/loyalty/data/loyalty_repository.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/payments/data/payments_repository.dart';
@@ -176,6 +177,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       final draft = ManualOrderDraft(
         idempotencyKey: _newIdempotencyKey(),
         orderType: _orderType,
+        establishmentId: ref.read(currentEstablishmentProvider).valueOrNull?.id,
         tableNumber: _emptyToNull(_tableController.text),
         deliveryAddress: _emptyToNull(_deliveryAddressController.text),
         customerEmail: _emptyToNull(_customerEmailController.text),

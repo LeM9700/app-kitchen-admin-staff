@@ -16,7 +16,7 @@ class NetworkPrinterConfirmationTracker {
     required this.portController,
     bool initiallyConfirmed = false,
     this.onChanged,
-  }) : _confirmed = initiallyConfirmed {
+  }) : confirmed = initiallyConfirmed {
     hostController.addListener(_handleFieldEdited);
     portController.addListener(_handleFieldEdited);
   }
@@ -28,18 +28,14 @@ class NetworkPrinterConfirmationTracker {
   /// called when [confirmed] is set explicitly through its setter.
   final VoidCallback? onChanged;
 
-  bool _confirmed;
-
   /// Whether the current host/port pair has been explicitly confirmed.
   /// Defaults to `false` for any configuration that never recorded an
   /// explicit confirmation (legacy data included).
-  bool get confirmed => _confirmed;
-
-  set confirmed(bool value) => _confirmed = value;
+  bool confirmed;
 
   void _handleFieldEdited() {
-    if (_confirmed) {
-      _confirmed = false;
+    if (confirmed) {
+      confirmed = false;
       onChanged?.call();
     }
   }

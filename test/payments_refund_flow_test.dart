@@ -22,6 +22,10 @@ void main() {
       final requests = <RequestOptions>[];
       final api = _client((options) {
         requests.add(options);
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.tenantEstablishments) {
+          return _jsonResponse(_establishmentsJson());
+        }
         if (options.method == 'GET' && options.path == ApiEndpoints.payments) {
           return _jsonResponse(_paginatedPayments());
         }
@@ -43,10 +47,12 @@ void main() {
         }
         if (options.method == 'POST' &&
             options.path == ApiEndpoints.paymentRefund(42)) {
-          return _jsonResponse(_refundJson(
-            amount: 4590,
-            reason: (options.data as Map)['reason'] as String,
-          ));
+          return _jsonResponse(
+            _refundJson(
+              amount: 4590,
+              reason: (options.data as Map)['reason'] as String,
+            ),
+          );
         }
         throw StateError(
           'requete inattendue ${options.method} ${options.path}',
@@ -85,6 +91,10 @@ void main() {
       final requests = <RequestOptions>[];
       final api = _client((options) {
         requests.add(options);
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.tenantEstablishments) {
+          return _jsonResponse(_establishmentsJson());
+        }
         if (options.method == 'GET' && options.path == ApiEndpoints.payments) {
           return _jsonResponse(_paginatedPayments());
         }
@@ -131,6 +141,10 @@ void main() {
       final requests = <RequestOptions>[];
       final api = _client((options) {
         requests.add(options);
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.tenantEstablishments) {
+          return _jsonResponse(_establishmentsJson());
+        }
         if (options.method == 'GET' && options.path == ApiEndpoints.payments) {
           return _jsonResponse(_paginatedPayments());
         }
@@ -219,6 +233,17 @@ Map<String, dynamic> _paymentListItemJson({
     'created_at': '2026-08-20T10:00:00Z',
     'refunded_amount_cents': refundedAmountCents,
   };
+}
+
+List<Map<String, dynamic>> _establishmentsJson() {
+  return [
+    {
+      'id': 7,
+      'name': 'Centre',
+      'timezone': 'Europe/Paris',
+      'is_active': true,
+    },
+  ];
 }
 
 Map<String, dynamic> _paginatedPayments() {
@@ -334,8 +359,8 @@ class _MemoryTokenStore extends TokenStore {
 class _AdminSessionController extends SessionController {
   @override
   Future<SessionState> build() async {
-    return SessionState.authenticated(
-      user: const StaffUser(
+    return const SessionState.authenticated(
+      user: StaffUser(
         id: 1,
         email: 'admin@test.com',
         role: 'admin',

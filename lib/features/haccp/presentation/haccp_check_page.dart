@@ -108,31 +108,35 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
+              PopupMenuDivider(),
+              PopupMenuItem(
                 value: '/haccp/stats',
                 child: ListTile(
                   dense: true,
                   leading: Icon(Icons.bar_chart_outlined, color: Colors.blue),
-                  title: Text('Scorecard hebdo',
-                      style: TextStyle(color: Colors.blue)),
+                  title: Text(
+                    'Scorecard hebdo',
+                    style: TextStyle(color: Colors.blue),
+                  ),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
+              PopupMenuDivider(),
+              PopupMenuItem(
                 value: '/haccp/export',
                 child: ListTile(
                   dense: true,
                   leading:
                       Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
-                  title: Text('Export PDF / CSV',
-                      style: TextStyle(color: Colors.red)),
+                  title: Text(
+                    'Export PDF / CSV',
+                    style: TextStyle(color: Colors.red),
+                  ),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
+              PopupMenuDivider(),
+              PopupMenuItem(
                 value: '/haccp/equipment',
                 child: ListTile(
                   dense: true,
@@ -141,7 +145,7 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: '/haccp/cleaning-tasks',
                 child: ListTile(
                   dense: true,
@@ -255,9 +259,11 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text('Valider le check $_label'),
-        content: Text(force
-            ? 'Certains éléments sont manquants. Voulez-vous valider quand même (validation incomplète) ?'
-            : 'Confirmer la validation du check $_label ?'),
+        content: Text(
+          force
+              ? 'Certains éléments sont manquants. Voulez-vous valider quand même (validation incomplète) ?'
+              : 'Confirmer la validation du check $_label ?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -296,7 +302,9 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Erreur : $msg'), backgroundColor: Colors.red),
+              content: Text('Erreur : $msg'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -327,8 +335,11 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 children: [
-                  Icon(Icons.play_circle_outline,
-                      size: 48, color: AppColors.infoAlt),
+                  const Icon(
+                    Icons.play_circle_outline,
+                    size: 48,
+                    color: AppColors.infoAlt,
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Check $_label non démarré',
@@ -409,7 +420,9 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
                         ? 'Validé avec réserves'
                         : 'Check $_label validé',
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, color: Colors.green),
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green,
+                    ),
                   ),
                   subtitle: Text(
                     widget.canProceed
@@ -483,7 +496,7 @@ class _ProgressBanner extends StatelessWidget {
             LinearProgressIndicator(
               value: summary.progress,
               color: color,
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
             ),
             const SizedBox(height: AppSpacing.xs),
             Row(
@@ -540,8 +553,8 @@ class _ProgressChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: done
-            ? Colors.green.withOpacity(0.12)
-            : Colors.grey.withOpacity(0.12),
+            ? Colors.green.withValues(alpha: 0.12)
+            : Colors.grey.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -629,9 +642,11 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
         error: (e, _) => Text('Erreur : $e'),
         data: (equipment) {
           final filtered = equipment
-              .where((e) => widget.sessionType == 'opening'
-                  ? e.checkAtOpening
-                  : e.checkAtClosing)
+              .where(
+                (e) => widget.sessionType == 'opening'
+                    ? e.checkAtOpening
+                    : e.checkAtClosing,
+              )
               .toList();
 
           if (filtered.isEmpty) {
@@ -705,9 +720,9 @@ class _EquipmentTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: done
             ? (log?.isCompliant == true
-                ? Colors.green.withOpacity(0.15)
-                : Colors.orange.withOpacity(0.15))
-            : Colors.grey.withOpacity(0.15),
+                ? Colors.green.withValues(alpha: 0.15)
+                : Colors.orange.withValues(alpha: 0.15))
+            : Colors.grey.withValues(alpha: 0.15),
         child: Icon(
           done
               ? (log?.isCompliant == true ? Icons.check : Icons.warning)
@@ -788,7 +803,9 @@ class _TempInputDialogState extends State<_TempInputDialog> {
             TextFormField(
               controller: widget.tempController,
               keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true, signed: true),
+                decimal: true,
+                signed: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Température mesurée (°C)',
                 suffixText: '°C',
@@ -809,9 +826,10 @@ class _TempInputDialogState extends State<_TempInputDialog> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  border:
+                      Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1084,26 +1102,36 @@ class _NonConformitySection extends ConsumerWidget {
           iconColor: Colors.orange,
           child: Column(
             children: sessionNcs
-                .map((nc) => ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.report_problem,
-                          color: Colors.orange, size: 18),
-                      title: Text(nc.description,
-                          style: const TextStyle(fontSize: 13)),
-                      subtitle: nc.correctiveAction != null
-                          ? Text(
-                              'Action : ${nc.correctiveAction}',
-                              style: const TextStyle(
-                                  fontSize: 11, color: Colors.grey),
-                            )
-                          : const Text(
-                              'Action corrective requise',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.orange,
-                                  fontStyle: FontStyle.italic),
+                .map(
+                  (nc) => ListTile(
+                    dense: true,
+                    leading: const Icon(
+                      Icons.report_problem,
+                      color: Colors.orange,
+                      size: 18,
+                    ),
+                    title: Text(
+                      nc.description,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    subtitle: nc.correctiveAction != null
+                        ? Text(
+                            'Action : ${nc.correctiveAction}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
                             ),
-                    ))
+                          )
+                        : const Text(
+                            'Action corrective requise',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.orange,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                  ),
+                )
                 .toList(),
           ),
         );
@@ -1124,7 +1152,9 @@ class _NcBanner extends StatelessWidget {
     return Container(
       color: Colors.orange.shade50,
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       child: Row(
         children: [
           const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
@@ -1169,7 +1199,11 @@ class _SectionCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md, AppSpacing.md, AppSpacing.sm, AppSpacing.xs),
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.xs,
+            ),
             child: Row(
               children: [
                 Icon(icon, size: 18, color: iconColor ?? AppColors.infoAlt),
@@ -1218,11 +1252,16 @@ class _OilSection extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.local_fire_department_outlined,
-                  size: 18, color: Colors.deepOrange),
+              const Icon(
+                Icons.local_fire_department_outlined,
+                size: 18,
+                color: Colors.deepOrange,
+              ),
               const SizedBox(width: 6),
-              Text('Huile friteuse',
-                  style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Huile friteuse',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const Spacer(),
               TextButton.icon(
                 onPressed: () => _showOilForm(context, ref, sessionId),
@@ -1237,8 +1276,10 @@ class _OilSection extends ConsumerWidget {
               padding: EdgeInsets.all(AppSpacing.md),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => Text('Erreur: $e',
-                style: const TextStyle(color: Colors.red, fontSize: 12)),
+            error: (e, _) => Text(
+              'Erreur: $e',
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
             data: (logs) {
               if (logs.isEmpty) {
                 return const Padding(
@@ -1269,13 +1310,16 @@ class _OilSection extends ConsumerWidget {
                         : Text(
                             log.correctiveAction ?? 'NC — huile à changer',
                             style: const TextStyle(
-                                fontSize: 11, color: Colors.orange),
+                              fontSize: 11,
+                              color: Colors.orange,
+                            ),
                           ),
                     trailing: Text(
                       '${log.polarityPercent > 25 ? "⚠️ " : ""}≤ 25% requis',
                       style: TextStyle(
-                          fontSize: 11,
-                          color: compliant ? Colors.grey : Colors.red),
+                        fontSize: 11,
+                        color: compliant ? Colors.grey : Colors.red,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -1377,13 +1421,15 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Relevé huile friteuse',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Relevé huile friteuse',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: AppSpacing.xs),
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.08),
+                color: Colors.orange.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
@@ -1415,8 +1461,9 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Requis';
                 final d = double.tryParse(v.replaceAll(',', '.'));
-                if (d == null || d < 0 || d > 100)
+                if (d == null || d < 0 || d > 100) {
                   return 'Valeur entre 0 et 100';
+                }
                 return null;
               },
             ),
@@ -1425,10 +1472,12 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _color,
+                    initialValue: _color,
                     hint: const Text('Couleur'),
                     decoration: const InputDecoration(
-                        border: OutlineInputBorder(), labelText: 'Couleur'),
+                      border: OutlineInputBorder(),
+                      labelText: 'Couleur',
+                    ),
                     items: _colorOptions
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
@@ -1438,10 +1487,12 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _odor,
+                    initialValue: _odor,
                     hint: const Text('Odeur'),
                     decoration: const InputDecoration(
-                        border: OutlineInputBorder(), labelText: 'Odeur'),
+                      border: OutlineInputBorder(),
+                      labelText: 'Odeur',
+                    ),
                     items: _odorOptions
                         .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                         .toList(),
@@ -1476,7 +1527,8 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.save),
                 label: const Text('Enregistrer'),
                 style: _nonCompliant

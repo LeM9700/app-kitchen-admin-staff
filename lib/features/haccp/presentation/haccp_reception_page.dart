@@ -58,8 +58,11 @@ class HaccpReceptionPage extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.local_shipping_outlined,
-                      size: 56, color: Colors.grey[300]),
+                  Icon(
+                    Icons.local_shipping_outlined,
+                    size: 56,
+                    color: Colors.grey[300],
+                  ),
                   const SizedBox(height: AppSpacing.md),
                   const Text(
                     'Aucune réception aujourd\'hui',
@@ -79,7 +82,11 @@ class HaccpReceptionPage extends ConsumerWidget {
             onRefresh: () async => ref.invalidate(haccpReceptionTodayProvider),
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md, AppSpacing.md, AppSpacing.md, 100),
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                100,
+              ),
               itemCount: receptions.length,
               separatorBuilder: (_, __) =>
                   const SizedBox(height: AppSpacing.sm),
@@ -138,7 +145,9 @@ class _ReceptionCard extends StatelessWidget {
                 child: Text(
                   reception.productName,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 15),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
               ),
               Text(
@@ -175,13 +184,16 @@ class _ReceptionCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.build_outlined,
-                      size: 13, color: Colors.orange),
+                  const Icon(
+                    Icons.build_outlined,
+                    size: 13,
+                    color: Colors.orange,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
@@ -216,11 +228,14 @@ class _CheckChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Chip(
       label: Text(label, style: const TextStyle(fontSize: 11)),
-      backgroundColor:
-          ok ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+      backgroundColor: ok
+          ? Colors.green.withValues(alpha: 0.1)
+          : Colors.red.withValues(alpha: 0.1),
       side: BorderSide(
-          color:
-              ok ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3)),
+        color: ok
+            ? Colors.green.withValues(alpha: 0.3)
+            : Colors.red.withValues(alpha: 0.3),
+      ),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
     );
@@ -316,15 +331,19 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Contrôle réception',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Contrôle réception',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: AppSpacing.lg),
 
               // Fournisseur + produit
               TextFormField(
                 controller: _supplierCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Fournisseur *', border: OutlineInputBorder()),
+                  labelText: 'Fournisseur *',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Requis' : null,
               ),
@@ -332,7 +351,9 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
               TextFormField(
                 controller: _productCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Produit *', border: OutlineInputBorder()),
+                  labelText: 'Produit *',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Requis' : null,
               ),
@@ -340,7 +361,9 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
               TextFormField(
                 controller: _batchCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Référence lot', border: OutlineInputBorder()),
+                  labelText: 'Référence lot',
+                  border: OutlineInputBorder(),
+                ),
               ),
 
               const SizedBox(height: AppSpacing.md),
@@ -352,7 +375,9 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
                     child: TextFormField(
                       controller: _tempCtrl,
                       keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true, signed: true),
+                        decimal: true,
+                        signed: true,
+                      ),
                       decoration: const InputDecoration(
                         labelText: 'Temp. livraison (°C)',
                         border: OutlineInputBorder(),
@@ -394,8 +419,10 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
               const SizedBox(height: AppSpacing.md),
 
               // Checklist conformité
-              Text('Points de contrôle',
-                  style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Points de contrôle',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: AppSpacing.xs),
               _ConformityRow(
                 label: '📦 Emballage intact',
@@ -442,7 +469,8 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.save),
                   label: const Text('Enregistrer'),
                 ),

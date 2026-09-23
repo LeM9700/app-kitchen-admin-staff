@@ -157,8 +157,8 @@ void main() {
       ),
     );
 
-    expect(redirectForSession(staffSession, '/bootstrap'), '/orders');
-    expect(redirectForSession(adminSession, '/bootstrap'), '/dashboard');
+    expect(redirectForSession(staffSession, '/bootstrap'), '/home');
+    expect(redirectForSession(adminSession, '/bootstrap'), '/home');
   });
 
   test('must change password is forced to dedicated route', () {
@@ -224,7 +224,7 @@ void main() {
     );
   });
 
-  test('dashboard, admin users and admin HR routes require admin role', () {
+  test('admin users and admin HR routes require admin role', () {
     final staffSession = AsyncData(
       SessionState.authenticated(
         user: _user(role: 'staff', permissions: {AppPermission.ordersRead}),
@@ -233,9 +233,21 @@ void main() {
       ),
     );
 
-    expect(redirectForSession(staffSession, '/dashboard'), '/forbidden');
     expect(redirectForSession(staffSession, '/team'), '/forbidden');
     expect(redirectForSession(staffSession, '/hr/admin'), '/forbidden');
+  });
+
+  test('home and dashboard compatibility are available to staff', () {
+    final staffSession = AsyncData(
+      SessionState.authenticated(
+        user: _user(role: 'staff', permissions: null),
+        tenantSlug: 'pizza',
+        sessionId: 1,
+      ),
+    );
+
+    expect(redirectForSession(staffSession, '/home'), isNull);
+    expect(redirectForSession(staffSession, '/dashboard'), isNull);
   });
 
   test('staff can access self HR route', () {

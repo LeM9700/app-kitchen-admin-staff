@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/app/permissions/permissions.dart';
+import 'package:app_admin_staff/app/navigation/navigation_capabilities.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/auth/session_models.dart';
 import 'package:app_admin_staff/core/widgets/admin_shell.dart';
@@ -7,6 +8,7 @@ import 'package:app_admin_staff/features/auth/presentation/login_page.dart';
 import 'package:app_admin_staff/features/admin_users/presentation/admin_users_page.dart';
 import 'package:app_admin_staff/features/catalog/presentation/catalog_page.dart';
 import 'package:app_admin_staff/features/checkout/presentation/checkout_page.dart';
+import 'package:app_admin_staff/features/customers/presentation/customers_page.dart';
 import 'package:app_admin_staff/features/dashboard/presentation/dashboard_page.dart';
 import 'package:app_admin_staff/features/delivery/presentation/delivery_page.dart';
 import 'package:app_admin_staff/features/hr/presentation/hr_page.dart';
@@ -87,6 +89,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
         routes: [
           GoRoute(
+            path: '/home',
+            builder: (context, state) => const DashboardPage(),
+          ),
+          GoRoute(
             path: '/dashboard',
             builder: (context, state) => const DashboardPage(),
           ),
@@ -119,6 +125,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/team',
             builder: (context, state) => const AdminUsersPage(),
+          ),
+          GoRoute(
+            path: '/customers',
+            builder: (context, state) => const CustomersPage(),
+            routes: [
+              GoRoute(
+                path: ':customerId',
+                builder: (context, state) {
+                  final customerId =
+                      int.tryParse(state.pathParameters['customerId'] ?? '');
+                  return CustomersPage(initialCustomerId: customerId);
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: '/hr/admin',
@@ -239,21 +259,11 @@ String? redirectForSession(
 }
 
 String? routePermission(String location) {
-  for (final entry in _routePermissions.entries) {
-    if (location == entry.key || location.startsWith('${entry.key}/')) {
-      return entry.value;
-    }
-  }
-  return null;
+  return navigationForLocation(location)?.permission;
 }
 
 String? routeRequiredRole(String location) {
-  for (final entry in _routeRoles.entries) {
-    if (location == entry.key || location.startsWith('${entry.key}/')) {
-      return entry.value;
-    }
-  }
-  return null;
+  return navigationForLocation(location)?.requiredRole;
 }
 
 String _landingFor(StaffUser? user) {
@@ -261,8 +271,7 @@ String _landingFor(StaffUser? user) {
     role: user?.role ?? 'staff',
     permissions: user?.permissions,
   );
-  final routes =
-      permissions.hasRole('admin') ? _adminDefaultRoutes : _staffDefaultRoutes;
+  const routes = _defaultRoutes;
   for (final route in routes) {
     final role = routeRequiredRole(route);
     if (role != null && !permissions.hasRole(role)) {
@@ -286,14 +295,17 @@ const _authPaths = {
 const _bootstrapPath = '/bootstrap';
 
 const _adminDefaultRoutes = [
-  '/dashboard',
+  '/home',
   '/orders',
   '/kitchen',
   '/checkout',
   '/catalog',
   '/stock',
+  '/team',
+  '/customers',
   '/haccp',
   '/hr',
+  '/hr/admin',
   '/payments',
   '/delivery',
   '/loyalty',
@@ -301,34 +313,7 @@ const _adminDefaultRoutes = [
   '/settings',
 ];
 
-const _staffDefaultRoutes = [
-  '/orders',
-  '/kitchen',
-  '/checkout',
-  '/stock',
-  '/hr',
-  '/settings',
-];
-
-const _routePermissions = {
-  '/dashboard': AppPermission.ordersRead,
-  '/orders': AppPermission.ordersRead,
-  '/kitchen': AppPermission.ordersPreparation,
-  '/checkout': AppPermission.ordersManual,
-  '/catalog': AppPermission.catalogRead,
-  '/stock': AppPermission.stockRead,
-  '/haccp': AppPermission.haccpRead,
-  '/payments': AppPermission.paymentsRead,
-  '/delivery': AppPermission.deliveryRead,
-  '/loyalty': AppPermission.loyaltyRead,
-  '/promotions': AppPermission.promotionsRead,
-};
-
-const _routeRoles = {
-  '/dashboard': 'admin',
-  '/team': 'admin',
-  '/hr/admin': 'admin',
-};
+const _defaultRoutes = _adminDefaultRoutes;
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() {

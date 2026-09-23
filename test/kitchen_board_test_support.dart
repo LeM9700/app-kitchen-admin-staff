@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_admin_staff/app/theme/app_theme.dart';
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/auth/token_store.dart';
+import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_ticket_mapper.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
@@ -21,6 +22,13 @@ const testKitchenProfile = KitchenScreenProfile(
   station: 'kitchen',
 );
 
+const testEstablishment = Establishment(
+  id: 7,
+  name: 'Centre',
+  timezone: 'Europe/Paris',
+  isActive: true,
+);
+
 ProviderContainer createKitchenContainer(
   TestKitchenRepository repository, {
   List<Override> overrides = const [],
@@ -28,6 +36,9 @@ ProviderContainer createKitchenContainer(
   return ProviderContainer(
     overrides: [
       ordersRepositoryProvider.overrideWithValue(repository),
+      availableEstablishmentsProvider.overrideWith(
+        (ref) async => const [testEstablishment],
+      ),
       tenantConfigProvider.overrideWith((ref) async => testTenantConfig()),
       ...overrides,
     ],
@@ -291,7 +302,7 @@ class TestKitchenRepository extends OrdersRepository {
   }
 
   @override
-  Future<List<OrderSummary>> listActiveOrders() async {
+  Future<List<OrderSummary>> listActiveOrders({int? establishmentId}) async {
     listCalls++;
     final error = listError;
     if (error != null) {

@@ -70,14 +70,16 @@ void main() {
 
     test('summary tolerates a missing last_day block', () async {
       final repository = DashboardRepository(
-        _client((_) => _jsonResponse({
-              'live': {
-                'orders_last_24h': 0,
-                'revenue_last_24h': '0',
-                'avg_order_value_24h': '0',
-                'pending_orders': 0,
-              },
-            })),
+        _client(
+          (_) => _jsonResponse({
+            'live': {
+              'orders_last_24h': 0,
+              'revenue_last_24h': '0',
+              'avg_order_value_24h': '0',
+              'pending_orders': 0,
+            },
+          }),
+        ),
       );
 
       final summary = await repository.summary();

@@ -83,8 +83,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final deletes = requests
-          .where((r) =>
-              r.method == 'DELETE' && r.path == ApiEndpoints.promotion(11))
+          .where(
+            (r) => r.method == 'DELETE' && r.path == ApiEndpoints.promotion(11),
+          )
           .toList();
       expect(deletes, hasLength(1));
       expect(find.text('Promotion supprimee'), findsOneWidget);
@@ -203,8 +204,8 @@ class _MemoryTokenStore extends TokenStore {
 class _AdminSessionController extends SessionController {
   @override
   Future<SessionState> build() async {
-    return SessionState.authenticated(
-      user: const StaffUser(
+    return const SessionState.authenticated(
+      user: StaffUser(
         id: 1,
         email: 'admin@test.com',
         role: 'admin',

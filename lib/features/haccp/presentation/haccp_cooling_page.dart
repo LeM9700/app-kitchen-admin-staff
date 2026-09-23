@@ -68,15 +68,18 @@ class HaccpCoolingPage extends ConsumerWidget {
                 children: [
                   Icon(Icons.ac_unit, size: 56, color: Colors.blue[100]),
                   const SizedBox(height: AppSpacing.md),
-                  const Text('Aucun suivi de refroidissement',
-                      style: TextStyle(color: Colors.grey)),
+                  const Text(
+                    'Aucun suivi de refroidissement',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   const Text(
                     'Objectif légal : < 10°C en moins de 2h',
                     style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic),
+                      color: Colors.grey,
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
               ),
@@ -87,7 +90,11 @@ class HaccpCoolingPage extends ConsumerWidget {
             onRefresh: () async => ref.invalidate(haccpAllCoolingProvider),
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md, AppSpacing.md, AppSpacing.md, 100),
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                100,
+              ),
               children: [
                 if (active.isNotEmpty) ...[
                   _SectionHeader(
@@ -96,15 +103,17 @@ class HaccpCoolingPage extends ConsumerWidget {
                     color: Colors.orange,
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  ...active.map((l) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: _CoolingCard(
-                          log: l,
-                          onComplete: () {
-                            _showCompleteForm(context, ref, l);
-                          },
-                        ),
-                      )),
+                  ...active.map(
+                    (l) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: _CoolingCard(
+                        log: l,
+                        onComplete: () {
+                          _showCompleteForm(context, ref, l);
+                        },
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.md),
                 ],
                 if (done.isNotEmpty) ...[
@@ -114,10 +123,12 @@ class HaccpCoolingPage extends ConsumerWidget {
                     color: Colors.grey,
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  ...done.map((l) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: _CoolingCard(log: l),
-                      )),
+                  ...done.map(
+                    (l) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: _CoolingCard(log: l),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -142,7 +153,10 @@ class HaccpCoolingPage extends ConsumerWidget {
   }
 
   void _showCompleteForm(
-      BuildContext context, WidgetRef ref, HaccpCoolingLog log) {
+    BuildContext context,
+    WidgetRef ref,
+    HaccpCoolingLog log,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -207,7 +221,9 @@ class _CoolingCard extends StatelessWidget {
                 child: Text(
                   log.productName,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 15),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
               ),
               if (isActive && elapsed != null) ...[
@@ -216,15 +232,16 @@ class _CoolingCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       '⚠️ ${elapsed}min',
                       style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.red,
-                          fontWeight: FontWeight.w600),
+                        fontSize: 11,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   )
                 else
@@ -263,7 +280,7 @@ class _CoolingCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.08),
+                color: Colors.red.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Row(
@@ -314,27 +331,34 @@ class _TempBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: ok ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        color: ok
+            ? Colors.green.withValues(alpha: 0.1)
+            : Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-            color: ok
-                ? Colors.green.withOpacity(0.3)
-                : Colors.red.withOpacity(0.3)),
+          color: ok
+              ? Colors.green.withValues(alpha: 0.3)
+              : Colors.red.withValues(alpha: 0.3),
+        ),
       ),
       child: Text(
         '$label: ${temp.toStringAsFixed(1)}°C',
         style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: ok ? Colors.green[700] : Colors.red[700]),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: ok ? Colors.green[700] : Colors.red[700],
+        ),
       ),
     );
   }
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(
-      {required this.icon, required this.label, required this.color});
+  const _SectionHeader({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   final IconData icon;
   final String label;
@@ -346,9 +370,14 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 6),
-        Text(label,
-            style: TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 13, color: color)),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: color,
+          ),
+        ),
       ],
     );
   }
@@ -417,13 +446,15 @@ class _StartCoolingFormState extends ConsumerState<_StartCoolingForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Démarrer un suivi',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Démarrer un suivi',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: AppSpacing.xs),
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.08),
+                color: Colors.blue.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
@@ -435,15 +466,18 @@ class _StartCoolingFormState extends ConsumerState<_StartCoolingForm> {
             TextFormField(
               controller: _productCtrl,
               decoration: const InputDecoration(
-                  labelText: 'Produit / préparation *',
-                  border: OutlineInputBorder()),
+                labelText: 'Produit / préparation *',
+                border: OutlineInputBorder(),
+              ),
               validator: (v) => v == null || v.trim().isEmpty ? 'Requis' : null,
             ),
             const SizedBox(height: AppSpacing.sm),
             TextFormField(
               controller: _tempCtrl,
               keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true, signed: true),
+                decimal: true,
+                signed: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Température initiale (°C) *',
                 border: OutlineInputBorder(),
@@ -466,7 +500,8 @@ class _StartCoolingFormState extends ConsumerState<_StartCoolingForm> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.play_arrow),
                 label: const Text('Démarrer'),
               ),
@@ -549,8 +584,10 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Enregistrer T° finale',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Enregistrer T° finale',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               '${widget.log.productName} — T° init. ${widget.log.tempInitial.toStringAsFixed(1)}°C',
@@ -561,7 +598,9 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
               controller: _tempCtrl,
               autofocus: true,
               keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true, signed: true),
+                decimal: true,
+                signed: true,
+              ),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: 'Température finale (°C) *',
@@ -612,7 +651,8 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.check),
                 label: const Text('Valider'),
                 style: _nonCompliant

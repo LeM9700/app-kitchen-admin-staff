@@ -62,15 +62,21 @@ class HaccpTrainingPage extends ConsumerWidget {
               // Bannière alerte
               if (expired.isNotEmpty || expiring.isNotEmpty)
                 _AlertBanner(
-                    expired: expired.length, expiring: expiring.length),
+                  expired: expired.length,
+                  expiring: expiring.length,
+                ),
 
               // Info légale
               Container(
                 margin: const EdgeInsets.fromLTRB(
-                    AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  0,
+                ),
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.08),
+                  color: Colors.blue.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Row(
@@ -94,8 +100,11 @@ class HaccpTrainingPage extends ConsumerWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.school_outlined,
-                                size: 56, color: Colors.grey[300]),
+                            Icon(
+                              Icons.school_outlined,
+                              size: 56,
+                              color: Colors.grey[300],
+                            ),
                             const SizedBox(height: AppSpacing.md),
                             const Text(
                               'Aucune formation enregistrée',
@@ -109,7 +118,11 @@ class HaccpTrainingPage extends ConsumerWidget {
                             ref.invalidate(haccpTrainingProvider),
                         child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.md, AppSpacing.sm, AppSpacing.md, 100),
+                            AppSpacing.md,
+                            AppSpacing.sm,
+                            AppSpacing.md,
+                            100,
+                          ),
                           itemCount: records.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: AppSpacing.sm),
@@ -152,13 +165,13 @@ class _AlertBanner extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: expired > 0
-            ? Colors.red.withOpacity(0.1)
-            : Colors.orange.withOpacity(0.1),
+            ? Colors.red.withValues(alpha: 0.1)
+            : Colors.orange.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: expired > 0
-              ? Colors.red.withOpacity(0.3)
-              : Colors.orange.withOpacity(0.3),
+              ? Colors.red.withValues(alpha: 0.3)
+              : Colors.orange.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -177,17 +190,19 @@ class _AlertBanner extends StatelessWidget {
                   Text(
                     '$expired formation(s) expirée(s)',
                     style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: Colors.red,
-                        fontSize: 13),
+                      fontWeight: FontWeight.w700,
+                      color: Colors.red,
+                      fontSize: 13,
+                    ),
                   ),
                 if (expiring > 0)
                   Text(
                     '$expiring formation(s) expirant dans moins de 30j',
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange,
-                        fontSize: 13),
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange,
+                      fontSize: 13,
+                    ),
                   ),
               ],
             ),
@@ -240,21 +255,24 @@ class _TrainingCard extends StatelessWidget {
                 child: Text(
                   record.trainingTypeLabel,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 14),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   statusLabel,
                   style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: statusColor),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
                 ),
               ),
             ],
@@ -269,20 +287,23 @@ class _TrainingCard extends StatelessWidget {
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
               if (record.expiryDate != null) ...[
-                const Text(' · ',
-                    style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const Text(
+                  ' · ',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
                 Text(
                   'Expire le ${_dateLabel(record.expiryDate!)}',
                   style: TextStyle(
-                      color: record.isExpired
-                          ? Colors.red
-                          : record.expiresWithin30Days
-                              ? Colors.orange
-                              : Colors.grey,
-                      fontSize: 12,
-                      fontWeight: record.isExpired || record.expiresWithin30Days
-                          ? FontWeight.w600
-                          : FontWeight.normal),
+                    color: record.isExpired
+                        ? Colors.red
+                        : record.expiresWithin30Days
+                            ? Colors.orange
+                            : Colors.grey,
+                    fontSize: 12,
+                    fontWeight: record.isExpired || record.expiresWithin30Days
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
                 ),
               ],
             ],
@@ -425,22 +446,26 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Ajouter une formation',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Ajouter une formation',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: AppSpacing.lg),
 
               // Type formation
               DropdownButtonFormField<String>(
-                value: _type,
+                initialValue: _type,
                 decoration: const InputDecoration(
-                    labelText: 'Type de formation *',
-                    border: OutlineInputBorder()),
+                  labelText: 'Type de formation *',
+                  border: OutlineInputBorder(),
+                ),
                 items: _types
-                    .map((t) => DropdownMenuItem(
-                          value: t.$1,
-                          child:
-                              Text(t.$2, style: const TextStyle(fontSize: 13)),
-                        ))
+                    .map(
+                      (t) => DropdownMenuItem(
+                        value: t.$1,
+                        child: Text(t.$2, style: const TextStyle(fontSize: 13)),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) => setState(() => _type = v ?? _type),
               ),
@@ -458,8 +483,10 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
                           border: OutlineInputBorder(),
                           suffixIcon: Icon(Icons.calendar_today, size: 16),
                         ),
-                        child: Text(_fmt(_trainingDate),
-                            style: const TextStyle(fontSize: 14)),
+                        child: Text(
+                          _fmt(_trainingDate),
+                          style: const TextStyle(fontSize: 14),
+                        ),
                       ),
                     ),
                   ),
@@ -486,21 +513,26 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
               TextFormField(
                 controller: _trainerCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Formateur', border: OutlineInputBorder()),
+                  labelText: 'Formateur',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
                 controller: _certCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Référence certificat',
-                    border: OutlineInputBorder()),
+                  labelText: 'Référence certificat',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
                 controller: _notesCtrl,
                 maxLines: 2,
                 decoration: const InputDecoration(
-                    labelText: 'Notes', border: OutlineInputBorder()),
+                  labelText: 'Notes',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               SizedBox(
@@ -511,7 +543,8 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.save),
                   label: const Text('Enregistrer'),
                 ),

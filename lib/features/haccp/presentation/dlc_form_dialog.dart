@@ -130,9 +130,11 @@ class _DlcFormDialogState extends ConsumerState<DlcFormDialog> {
     );
 
     return AlertDialog(
-      title: Text(widget.existing == null
-          ? 'Vérification DLC'
-          : 'Modifier la vérification DLC'),
+      title: Text(
+        widget.existing == null
+            ? 'Vérification DLC'
+            : 'Modifier la vérification DLC',
+      ),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -147,7 +149,7 @@ class _DlcFormDialogState extends ConsumerState<DlcFormDialog> {
                     loading: () => const LinearProgressIndicator(),
                     error: (e, _) => Text('Erreur chargement ingrédients : $e'),
                     data: (ingredients) => DropdownButtonFormField<int>(
-                      value: _selectedIngredientId,
+                      initialValue: _selectedIngredientId,
                       decoration: const InputDecoration(
                         labelText: 'Ingrédient (Stock) *',
                       ),
@@ -190,7 +192,7 @@ class _DlcFormDialogState extends ConsumerState<DlcFormDialog> {
                   const LinearProgressIndicator()
                 else if (_batches.isNotEmpty)
                   DropdownButtonFormField<int>(
-                    value: _selectedBatchId,
+                    initialValue: _selectedBatchId,
                     decoration: const InputDecoration(
                       labelText: 'Lot (optionnel — pré-remplit la date DLC)',
                     ),
@@ -215,20 +217,26 @@ class _DlcFormDialogState extends ConsumerState<DlcFormDialog> {
               ],
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<int>(
-                value: _dlcLevel,
+                initialValue: _dlcLevel,
                 decoration: const InputDecoration(labelText: 'Niveau DLC'),
                 items: const [
                   DropdownMenuItem(value: 1, child: Text('DLC 1 — Emballage')),
                   DropdownMenuItem(
-                      value: 2, child: Text('DLC 2 — Conservation')),
+                    value: 2,
+                    child: Text('DLC 2 — Conservation'),
+                  ),
                   DropdownMenuItem(
-                      value: 3, child: Text('DLC 3 — Utilisation')),
+                    value: 3,
+                    child: Text('DLC 3 — Utilisation'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _dlcLevel = v!),
               ),
               const SizedBox(height: AppSpacing.xs),
-              Text(_levelLabel,
-                  style: const TextStyle(color: Colors.grey, fontSize: 11)),
+              Text(
+                _levelLabel,
+                style: const TextStyle(color: Colors.grey, fontSize: 11),
+              ),
               const SizedBox(height: AppSpacing.sm),
               InkWell(
                 onTap: _pickDate,

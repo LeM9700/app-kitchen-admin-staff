@@ -30,25 +30,7 @@ class AppPermission {
   static const haccpRead = 'haccp:read';
   static const haccpWrite = 'haccp:write';
 
-  static const staffDefaults = <String>{
-    ordersRead,
-    ordersManual,
-    ordersWrite,
-    ordersPreparation,
-    paymentsRead,
-    paymentsTerminal,
-    stockRead,
-    stockWrite,
-    stockAdjustmentCreate,
-    catalogRead,
-    catalogAvailability,
-    printRead,
-    deliveryRead,
-    promotionsRead,
-    loyaltyRead,
-    haccpRead,
-    haccpWrite,
-  };
+  static const staffDefaults = <String>{};
 }
 
 class PermissionSet {
@@ -68,7 +50,7 @@ class PermissionSet {
       return false;
     }
     if (permissions == null) {
-      return AppPermission.staffDefaults.contains(permission);
+      return false;
     }
     return permissions!.contains('*') || permissions!.contains(permission);
   }

@@ -204,6 +204,7 @@ class ApiEndpoints {
   static const adminStatsDaily = '/admin/stats/daily';
   static const adminStatsMonthly = '/admin/stats/monthly';
   static const adminStatsTopProducts = '/admin/stats/top-products';
+  static const adminStatsGroupOverview = '/admin/stats/group-overview';
 
   static const adminUsers = '/admin/users';
   static String adminUserPermissions(int userId) {
@@ -222,6 +223,23 @@ class ApiEndpoints {
     return '/admin/users/$userId/reset-password';
   }
 
+  static const adminCustomers = '/admin/customers';
+  static const adminCustomersExportCsv = '/admin/customers/export/csv';
+  static const adminCustomerMessageTemplates =
+      '/admin/customers/message-templates';
+  static const adminCustomersBulkMessages = '/admin/customers/messages/bulk';
+  static String adminCustomer(int customerId) {
+    return '/admin/customers/$customerId';
+  }
+
+  static String adminCustomerOrder(int customerId, int orderId) {
+    return '/admin/customers/$customerId/orders/$orderId';
+  }
+
+  static String adminCustomerCommunications(int customerId) {
+    return '/admin/customers/$customerId/communications';
+  }
+
   static const hrEmployees = '/hr/employees';
   static const hrEmployeeMe = '/hr/employees/me';
   static String hrEmployee(int employeeId) => '/hr/employees/$employeeId';
@@ -232,6 +250,8 @@ class ApiEndpoints {
 
   static const hrClockIn = '/hr/timeclock/clock-in';
   static const hrClockOut = '/hr/timeclock/clock-out';
+  static const hrBreakStart = '/hr/timeclock/break/start';
+  static const hrBreakEnd = '/hr/timeclock/break/end';
   static const hrTimeClockEntries = '/hr/timeclock/entries';
   static const hrTimeClockEntriesMe = '/hr/timeclock/entries/me';
   static String hrTimeClockEntry(int entryId) {
@@ -239,6 +259,7 @@ class ApiEndpoints {
   }
 
   static const hrAlerts = '/hr/alerts';
+  static const hrLateReport = '/hr/alerts/late-report';
   static String hrAlertResolve(int alertId) => '/hr/alerts/$alertId/resolve';
 
   static const notificationsWs = '/ws/notifications';

@@ -27,9 +27,12 @@ class HaccpRepository {
 
   /// Démarre (ou récupère) la session du jour pour [sessionType] (opening|closing).
   Future<HaccpCheckSession> startSession(String sessionType) async {
-    final response = await _api.post(ApiEndpoints.haccpSessions, data: {
-      'session_type': sessionType,
-    });
+    final response = await _api.post(
+      ApiEndpoints.haccpSessions,
+      data: {
+        'session_type': sessionType,
+      },
+    );
     return HaccpCheckSession.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -76,7 +79,9 @@ class HaccpRepository {
   }
 
   Future<HaccpEquipment> updateEquipment(
-      int id, Map<String, dynamic> body) async {
+    int id,
+    Map<String, dynamic> body,
+  ) async {
     final response =
         await _api.patch(ApiEndpoints.haccpEquipmentItem(id), data: body);
     return HaccpEquipment.fromJson(response.data as Map<String, dynamic>);
@@ -147,13 +152,16 @@ class HaccpRepository {
 
   /// Crée une vérification DLC hors session (onglet Stock).
   Future<HaccpDlcCheck> createStandaloneDlcCheck(
-      Map<String, dynamic> body) async {
+    Map<String, dynamic> body,
+  ) async {
     final response = await _api.post(ApiEndpoints.haccpDlc, data: body);
     return HaccpDlcCheck.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<HaccpDlcCheck> updateDlcCheck(
-      int id, Map<String, dynamic> body) async {
+    int id,
+    Map<String, dynamic> body,
+  ) async {
     final response =
         await _api.patch(ApiEndpoints.haccpDlcItem(id), data: body);
     return HaccpDlcCheck.fromJson(response.data as Map<String, dynamic>);
@@ -180,14 +188,17 @@ class HaccpRepository {
   }
 
   Future<HaccpCleaningTask> createCleaningTask(
-      Map<String, dynamic> body) async {
+    Map<String, dynamic> body,
+  ) async {
     final response =
         await _api.post(ApiEndpoints.haccpCleaningTasks, data: body);
     return HaccpCleaningTask.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<HaccpCleaningTask> updateCleaningTask(
-      int id, Map<String, dynamic> body) async {
+    int id,
+    Map<String, dynamic> body,
+  ) async {
     final response =
         await _api.patch(ApiEndpoints.haccpCleaningTask(id), data: body);
     return HaccpCleaningTask.fromJson(response.data as Map<String, dynamic>);
@@ -249,11 +260,13 @@ class HaccpRepository {
   // ── Reception Controls ────────────────────────────────────────────────────
 
   Future<HaccpReceptionControl> createReceptionControl(
-      Map<String, dynamic> body) async {
+    Map<String, dynamic> body,
+  ) async {
     final response =
         await _api.post(ApiEndpoints.haccpReceptionControls, data: body);
     return HaccpReceptionControl.fromJson(
-        response.data as Map<String, dynamic>);
+      response.data as Map<String, dynamic>,
+    );
   }
 
   Future<List<HaccpReceptionControl>> listReceptionControls({
@@ -294,8 +307,9 @@ class HaccpRepository {
     return HaccpCoolingLog.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<List<HaccpCoolingLog>> listCoolingLogs(
-      {bool activeOnly = false}) async {
+  Future<List<HaccpCoolingLog>> listCoolingLogs({
+    bool activeOnly = false,
+  }) async {
     final response = await _api.get(
       ApiEndpoints.haccpCooling,
       queryParameters: {if (activeOnly) 'active_only': true},
@@ -308,7 +322,8 @@ class HaccpRepository {
   // ── Training Records ──────────────────────────────────────────────────────
 
   Future<HaccpTrainingRecord> createTrainingRecord(
-      Map<String, dynamic> body) async {
+    Map<String, dynamic> body,
+  ) async {
     final response = await _api.post(ApiEndpoints.haccpTraining, data: body);
     return HaccpTrainingRecord.fromJson(response.data as Map<String, dynamic>);
   }

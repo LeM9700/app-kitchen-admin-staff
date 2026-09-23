@@ -212,9 +212,11 @@ class _EquipmentFormDialogState extends State<_EquipmentFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.existing == null
-          ? 'Nouvel équipement'
-          : 'Modifier l\'équipement'),
+      title: Text(
+        widget.existing == null
+            ? 'Nouvel équipement'
+            : 'Modifier l\'équipement',
+      ),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -230,18 +232,26 @@ class _EquipmentFormDialogState extends State<_EquipmentFormDialog> {
               ),
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<String>(
-                value: _type,
+                initialValue: _type,
                 decoration: const InputDecoration(labelText: 'Type'),
                 items: const [
                   DropdownMenuItem(value: 'fridge', child: Text('Frigo')),
                   DropdownMenuItem(
-                      value: 'freezer', child: Text('Congélateur')),
+                    value: 'freezer',
+                    child: Text('Congélateur'),
+                  ),
                   DropdownMenuItem(
-                      value: 'cold_room', child: Text('Chambre froide')),
+                    value: 'cold_room',
+                    child: Text('Chambre froide'),
+                  ),
                   DropdownMenuItem(
-                      value: 'hot_hold', child: Text('Maintien au chaud')),
+                    value: 'hot_hold',
+                    child: Text('Maintien au chaud'),
+                  ),
                   DropdownMenuItem(
-                      value: 'ambient', child: Text('Température ambiante')),
+                    value: 'ambient',
+                    child: Text('Température ambiante'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _type = v!),
               ),
@@ -295,15 +305,19 @@ class _EquipmentFormDialogState extends State<_EquipmentFormDialog> {
                 dense: true,
                 value: _checkAtOpening,
                 onChanged: (v) => setState(() => _checkAtOpening = v),
-                title: const Text('Contrôlé à l\'ouverture',
-                    style: TextStyle(fontSize: 13)),
+                title: const Text(
+                  'Contrôlé à l\'ouverture',
+                  style: TextStyle(fontSize: 13),
+                ),
               ),
               SwitchListTile(
                 dense: true,
                 value: _checkAtClosing,
                 onChanged: (v) => setState(() => _checkAtClosing = v),
-                title: const Text('Contrôlé à la fermeture',
-                    style: TextStyle(fontSize: 13)),
+                title: const Text(
+                  'Contrôlé à la fermeture',
+                  style: TextStyle(fontSize: 13),
+                ),
               ),
             ],
           ),

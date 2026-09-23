@@ -15,7 +15,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
@@ -232,7 +231,9 @@ void main() {
     await _settle();
     expect(container.read(syncQueueProvider), hasLength(1));
     expect(
-        container.read(syncQueueProvider).single.endpoint, '/orders/1/status');
+      container.read(syncQueueProvider).single.endpoint,
+      '/orders/1/status',
+    );
 
     await container
         .read(syncWorkerProvider)

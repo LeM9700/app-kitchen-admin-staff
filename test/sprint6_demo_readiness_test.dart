@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/auth/token_store.dart';
+import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_page.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/orders/presentation/orders_board_page.dart';
@@ -22,6 +23,9 @@ void main() {
       ProviderScope(
         overrides: [
           ordersRepositoryProvider.overrideWithValue(repository),
+          availableEstablishmentsProvider.overrideWith(
+            (ref) async => const [_testEstablishment],
+          ),
         ],
         child: const MaterialApp(home: Scaffold(body: OrdersBoardPage())),
       ),
@@ -52,6 +56,9 @@ void main() {
       ProviderScope(
         overrides: [
           ordersRepositoryProvider.overrideWithValue(repository),
+          availableEstablishmentsProvider.overrideWith(
+            (ref) async => const [_testEstablishment],
+          ),
         ],
         child: const MaterialApp(home: Scaffold(body: KitchenPage())),
       ),
@@ -65,6 +72,13 @@ void main() {
   });
 }
 
+const _testEstablishment = Establishment(
+  id: 7,
+  name: 'Centre',
+  timezone: 'Europe/Paris',
+  isActive: true,
+);
+
 class _SlowStatusRepository extends OrdersRepository {
   _SlowStatusRepository() : super(_unusedClient());
 
@@ -73,7 +87,7 @@ class _SlowStatusRepository extends OrdersRepository {
   int statusCalls = 0;
 
   @override
-  Future<List<OrderSummary>> listActiveOrders() async {
+  Future<List<OrderSummary>> listActiveOrders({int? establishmentId}) async {
     return const [
       OrderSummary(
         id: 10,
@@ -120,7 +134,7 @@ class _ReadOnlyKitchenRepository extends OrdersRepository {
   String itemStatus = 'pending';
 
   @override
-  Future<List<OrderSummary>> listActiveOrders() async {
+  Future<List<OrderSummary>> listActiveOrders({int? establishmentId}) async {
     return [
       OrderSummary(
         id: 20,

@@ -274,6 +274,18 @@ class _OrdersApi {
   }
 
   FutureOr<ResponseBody> handle(RequestOptions options) {
+    if (options.method == 'GET' &&
+        options.path == ApiEndpoints.tenantEstablishments) {
+      return _jsonResponse([
+        {
+          'id': 7,
+          'name': 'Centre',
+          'timezone': 'Europe/Paris',
+          'is_active': true,
+        },
+      ]);
+    }
+
     if (options.method == 'GET' && options.path == ApiEndpoints.orders) {
       return _jsonResponse({
         'items': summaries,
@@ -370,7 +382,7 @@ Map<String, dynamic> _itemJson({
 }
 
 ResponseBody _jsonResponse(
-  Map<String, dynamic> body, {
+  Object? body, {
   int statusCode = 200,
 }) {
   return ResponseBody.fromString(

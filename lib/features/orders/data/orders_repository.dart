@@ -2,6 +2,7 @@ import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
 import 'package:app_admin_staff/core/api/paginated.dart';
 import 'package:app_admin_staff/core/utils/json.dart';
+import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:app_admin_staff/features/payments/data/payments_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,8 +11,12 @@ final ordersRepositoryProvider = Provider<OrdersRepository>((ref) {
 });
 
 final activeOrdersProvider =
-    FutureProvider.autoDispose<List<OrderSummary>>((ref) {
-  return ref.watch(ordersRepositoryProvider).listActiveOrders();
+    FutureProvider.autoDispose<List<OrderSummary>>((ref) async {
+  final currentEstablishment =
+      await ref.watch(currentEstablishmentProvider.future);
+  return ref
+      .watch(ordersRepositoryProvider)
+      .listActiveOrders(establishmentId: currentEstablishment?.id);
 });
 
 final orderDetailProvider =
@@ -24,15 +29,17 @@ class OrdersRepository {
 
   final ApiClient _apiClient;
 
-  Future<List<OrderSummary>> listActiveOrders() {
+  Future<List<OrderSummary>> listActiveOrders({int? establishmentId}) {
     return listOrders(
       status: 'pending,queued,confirmed,preparing,ready,out_for_delivery',
       pageSize: 100,
+      establishmentId: establishmentId,
     );
   }
 
   Future<List<OrderSummary>> listOrders({
     String? status,
+    int? establishmentId,
     int page = 1,
     int pageSize = 50,
   }) async {
@@ -42,6 +49,7 @@ class OrdersRepository {
         'page': page,
         'page_size': pageSize,
         if (status != null) 'status': status,
+        if (establishmentId != null) 'establishment_id': establishmentId,
       },
     );
     final result = PaginatedResult.fromJson(
@@ -148,6 +156,7 @@ class OrderSummary {
     this.customerEmail,
     this.customerName,
     this.customerPhone,
+    this.establishmentId,
     this.deliveryAddress,
     this.tableNumber,
     this.createdAt,
@@ -157,6 +166,7 @@ class OrderSummary {
   final String? customerEmail;
   final String? customerName;
   final String? customerPhone;
+  final int? establishmentId;
   final String orderType;
   final String status;
   final String paymentStatus;
@@ -173,6 +183,7 @@ class OrderSummary {
       customerEmail: json['customer_email']?.toString(),
       customerName: json['customer_name']?.toString(),
       customerPhone: json['customer_phone']?.toString(),
+      establishmentId: readNullableInt(json['establishment_id']),
       orderType: json['order_type']?.toString() ?? 'delivery',
       status: json['status']?.toString() ?? 'pending',
       paymentStatus: json['payment_status']?.toString() ?? 'pending',
@@ -201,6 +212,7 @@ class OrderDetail extends OrderSummary {
     super.customerEmail,
     super.customerName,
     super.customerPhone,
+    super.establishmentId,
     super.deliveryAddress,
     super.tableNumber,
     super.createdAt,
@@ -217,6 +229,7 @@ class OrderDetail extends OrderSummary {
       customerEmail: summary.customerEmail,
       customerName: summary.customerName,
       customerPhone: summary.customerPhone,
+      establishmentId: summary.establishmentId,
       orderType: summary.orderType,
       status: summary.status,
       paymentStatus: summary.paymentStatus,
@@ -450,6 +463,7 @@ class ManualOrderDraft {
     this.customerEmail,
     this.customerName,
     this.customerPhone,
+    this.establishmentId,
     this.externalReference,
     this.amountReceived,
     this.promoCode,
@@ -468,6 +482,7 @@ class ManualOrderDraft {
   final String? customerEmail;
   final String? customerName;
   final String? customerPhone;
+  final int? establishmentId;
   final String? externalReference;
   final double? amountReceived;
   final String? promoCode;
@@ -479,6 +494,7 @@ class ManualOrderDraft {
     final isDelivery = orderType == 'delivery';
     return {
       'order_type': orderType,
+      if (establishmentId != null) 'establishment_id': establishmentId,
       'items': items.map((item) => item.toJson()).toList(),
       'delivery_fee': isDelivery ? null : 0,
       if (isDelivery && deliveryAddress != null)

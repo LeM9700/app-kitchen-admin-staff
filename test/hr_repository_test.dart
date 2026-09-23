@@ -109,6 +109,8 @@ void main() {
       const ClockInDraft(method: 'web', establishmentId: 1, shiftId: 2),
     );
     await repository.clockOut();
+    await repository.startBreak();
+    await repository.endBreak();
     await repository.correctTimeClockEntry(
       5,
       TimeClockCorrectionDraft(
@@ -120,6 +122,8 @@ void main() {
 
     expect(seenPaths, contains('POST ${ApiEndpoints.hrClockIn}'));
     expect(seenPaths, contains('POST ${ApiEndpoints.hrClockOut}'));
+    expect(seenPaths, contains('POST ${ApiEndpoints.hrBreakStart}'));
+    expect(seenPaths, contains('POST ${ApiEndpoints.hrBreakEnd}'));
     expect(seenPaths, contains('PATCH ${ApiEndpoints.hrTimeClockEntry(5)}'));
   });
 
@@ -155,11 +159,17 @@ void main() {
 
     final alerts =
         await repository.listAlerts(const HrAlertsQuery(resolved: false));
+    final reported = await repository.reportLate(
+      reason: 'Metro bloque',
+      shiftId: 3,
+    );
     final resolved = await repository.resolveAlert(9);
 
     expect(alerts.single.type, 'late');
+    expect(reported.type, 'late');
     expect(resolved.isResolved, isTrue);
     expect(seenPaths, contains('GET ${ApiEndpoints.hrAlerts}'));
+    expect(seenPaths, contains('POST ${ApiEndpoints.hrLateReport}'));
     expect(seenPaths, contains('PATCH ${ApiEndpoints.hrAlertResolve(9)}'));
   });
 }

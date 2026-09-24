@@ -1,9 +1,11 @@
+import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/application/kds_active_screens_provider.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_controller.dart';
 import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kds_screen_profile_mapper.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,6 +39,14 @@ class KitchenScreenSelector extends StatelessWidget {
     return IconButton.filledTonal(
       key: const Key('kitchen-screen-selector'),
       tooltip: 'Écran KDS',
+      style: IconButton.styleFrom(
+        backgroundColor: KitchenVisuals.ticketSurface,
+        foregroundColor: KitchenVisuals.graphite,
+        side: const BorderSide(color: KitchenVisuals.warmBorder),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+      ),
       onPressed: () => _showSelector(context),
       icon: const Icon(Icons.display_settings_outlined),
     );
@@ -75,7 +85,12 @@ class _KitchenScreenSelectorSheet extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('ÉCRAN KDS', style: KitchenTypography.meta(context)),
+          Text(
+            'ÉCRAN KDS',
+            style: KitchenTypography.meta(context).copyWith(
+              color: KitchenVisuals.graphite,
+            ),
+          ),
           const SizedBox(height: 12),
           screensAsync.when(
             data: (screens) => _ScreenOptions(
@@ -143,6 +158,12 @@ class _ScreenOptions extends StatelessWidget {
             selected: selectedScreen?.id == screen.id,
             onSelected: (_) => onSelected(screen),
             showCheckmark: true,
+            selectedColor: KitchenVisuals.recessedSurface,
+            backgroundColor: KitchenVisuals.ticketSurface,
+            side: const BorderSide(color: KitchenVisuals.warmBorder),
+            labelStyle: KitchenTypography.meta(context).copyWith(
+              color: KitchenVisuals.graphite,
+            ),
           ),
       ],
     );

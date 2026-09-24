@@ -1,4 +1,7 @@
+import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:flutter/material.dart';
 
 /// Duree de maintien requise pour repasser une station "prete" en
@@ -90,7 +93,6 @@ class _KitchenHoldToReopenActionState extends State<KitchenHoldToReopenAction>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final height = widget.compact ? 46.0 : 54.0;
 
     return Padding(
@@ -115,9 +117,21 @@ class _KitchenHoldToReopenActionState extends State<KitchenHoldToReopenAction>
           builder: (context, _) {
             return DecoratedBox(
               decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: scheme.primary),
+                color: AppColors.successBg,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(color: AppColors.success),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    offset: const Offset(-1, -1),
+                    blurRadius: 3,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    offset: const Offset(1, 2),
+                    blurRadius: 4,
+                  ),
+                ],
               ),
               child: SizedBox(
                 height: height,
@@ -129,7 +143,7 @@ class _KitchenHoldToReopenActionState extends State<KitchenHoldToReopenAction>
                       widthFactor: _progress.value.clamp(0, 1),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: scheme.primary.withValues(alpha: 0.24),
+                          color: AppColors.success.withValues(alpha: 0.24),
                         ),
                       ),
                     ),
@@ -137,9 +151,9 @@ class _KitchenHoldToReopenActionState extends State<KitchenHoldToReopenAction>
                       child: widget.busy
                           ? SizedBox.square(
                               dimension: widget.compact ? 17 : 19,
-                              child: CircularProgressIndicator(
+                              child: const CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: scheme.onPrimaryContainer,
+                                color: KitchenVisuals.graphite,
                               ),
                             )
                           : Column(
@@ -151,7 +165,7 @@ class _KitchenHoldToReopenActionState extends State<KitchenHoldToReopenAction>
                                   overflow: TextOverflow.ellipsis,
                                   style:
                                       KitchenTypography.meta(context).copyWith(
-                                    color: scheme.onPrimaryContainer,
+                                    color: KitchenVisuals.graphite,
                                     fontSize: widget.compact ? 12 : 14,
                                   ),
                                 ),
@@ -161,8 +175,7 @@ class _KitchenHoldToReopenActionState extends State<KitchenHoldToReopenAction>
                                   overflow: TextOverflow.ellipsis,
                                   style:
                                       KitchenTypography.meta(context).copyWith(
-                                    color: scheme.onPrimaryContainer
-                                        .withValues(alpha: 0.72),
+                                    color: KitchenVisuals.mutedText,
                                     fontSize: widget.compact ? 8 : 9,
                                   ),
                                 ),

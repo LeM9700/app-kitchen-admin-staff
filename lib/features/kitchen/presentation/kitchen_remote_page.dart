@@ -11,6 +11,7 @@ import 'package:app_admin_staff/features/kitchen/application/kitchen_time.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_remote_session.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_hold_to_reopen_action.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_offline_banner.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_station_status.dart';
@@ -29,7 +30,7 @@ class KitchenRemotePage extends ConsumerWidget {
     final remote = ref.watch(kitchenRemoteSessionProvider);
 
     return Material(
-      color: Theme.of(context).colorScheme.surface,
+      color: KitchenVisuals.boardBackground,
       child: remote.when(
         loading: () => const _KitchenRemoteRestoringView(),
         error: (_, __) {
@@ -460,18 +461,19 @@ class _KitchenRemoteTicketPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     final actionsState = ref.watch(kitchenActionsProvider);
     final actionsController = ref.read(kitchenActionsProvider.notifier);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Material(
-        color: scheme.surface,
+        color: KitchenVisuals.ticketSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          side: BorderSide(color: scheme.primary, width: 2),
+          side: const BorderSide(color: KitchenVisuals.focusBorder, width: 2),
         ),
+        elevation: 3,
+        shadowColor: Colors.black.withValues(alpha: 0.24),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -596,8 +598,6 @@ class _RemoteActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: SizedBox(
@@ -605,18 +605,20 @@ class _RemoteActionButton extends StatelessWidget {
         child: FilledButton.icon(
           onPressed: busy ? null : onPressed,
           style: FilledButton.styleFrom(
+            backgroundColor: KitchenVisuals.graphite,
+            foregroundColor: Colors.white,
             minimumSize: const Size.fromHeight(52),
             textStyle: KitchenTypography.meta(context),
             disabledBackgroundColor:
-                scheme.primaryContainer.withValues(alpha: 0.72),
-            disabledForegroundColor: scheme.onPrimaryContainer,
+                KitchenVisuals.recessedSurface.withValues(alpha: 0.92),
+            disabledForegroundColor: KitchenVisuals.mutedText,
           ),
           icon: busy
-              ? SizedBox.square(
+              ? const SizedBox.square(
                   dimension: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: scheme.onPrimaryContainer,
+                    color: KitchenVisuals.mutedText,
                   ),
                 )
               : Icon(icon),
@@ -648,9 +650,11 @@ class _KitchenRemoteNavigationBar extends ConsumerWidget {
         );
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+      decoration: const BoxDecoration(
+        color: KitchenVisuals.headerSurface,
+        border: Border(
+          top: BorderSide(color: KitchenVisuals.warmBorder),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -712,9 +716,11 @@ class _RemoteSessionHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+      decoration: const BoxDecoration(
+        color: KitchenVisuals.headerSurface,
+        border: Border(
+          bottom: BorderSide(color: KitchenVisuals.warmBorder),
+        ),
       ),
       child: SafeArea(
         bottom: false,
@@ -924,15 +930,17 @@ class _RemoteTicketMeta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final tableNumber = ticket.order.tableNumber?.trim();
     final label = tableNumber != null && tableNumber.isNotEmpty
         ? 'TABLE $tableNumber'
         : humanOrderType(ticket.order.orderType).toUpperCase();
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: scheme.outlineVariant)),
+      decoration: const BoxDecoration(
+        color: KitchenVisuals.ticketHeaderSurface,
+        border: Border(
+          top: BorderSide(color: KitchenVisuals.warmBorder),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -943,7 +951,7 @@ class _RemoteTicketMeta extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: KitchenTypography.meta(context).copyWith(
-              color: scheme.onSurface.withValues(alpha: 0.70),
+              color: KitchenVisuals.mutedText,
               fontSize: 12,
             ),
           ),
@@ -1139,13 +1147,13 @@ _ConnectionColors _connectionColors(KitchenConnectionStatus status) {
     KitchenConnectionStatus.online => const _ConnectionColors(
         background: AppColors.successBg,
         border: AppColors.success,
-        foreground: AppColors.textPrimary,
+        foreground: KitchenVisuals.graphite,
         icon: Icons.wifi_outlined,
       ),
     KitchenConnectionStatus.reconnecting => const _ConnectionColors(
         background: AppColors.warningSoftBg,
         border: AppColors.warning,
-        foreground: AppColors.textPrimary,
+        foreground: KitchenVisuals.graphite,
         icon: Icons.sync_outlined,
       ),
     KitchenConnectionStatus.offline => const _ConnectionColors(

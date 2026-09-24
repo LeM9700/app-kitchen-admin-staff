@@ -53,6 +53,24 @@ void main() {
     );
   });
 
+  testWidgets('1280px affiche 4 tickets sans overflow', (tester) async {
+    await _expectResponsiveTickets(
+      tester,
+      size: const Size(1280, 900),
+      visibleIds: [101, 102, 103, 104],
+      ticketsPerPage: 4,
+    );
+  });
+
+  testWidgets('1440px affiche 4 tickets sans overflow', (tester) async {
+    await _expectResponsiveTickets(
+      tester,
+      size: const Size(1440, 1024),
+      visibleIds: [101, 102, 103, 104],
+      ticketsPerPage: 4,
+    );
+  });
+
   testWidgets('1920x1080 affiche 4 tickets sans overflow', (tester) async {
     await _expectResponsiveTickets(
       tester,

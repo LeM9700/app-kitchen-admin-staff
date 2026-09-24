@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter/material.dart';
 
@@ -19,7 +20,9 @@ class KitchenTicketItems extends StatelessWidget {
         child: Text(
           'AUCUN PRODUIT POUR CE POSTE',
           textAlign: TextAlign.center,
-          style: KitchenTypography.meta(context),
+          style: KitchenTypography.meta(context).copyWith(
+            color: KitchenVisuals.mutedText,
+          ),
         ),
       );
     }
@@ -114,13 +117,13 @@ class _OversizedKitchenOrderLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: scheme.tertiaryContainer,
+        color: KitchenVisuals.statusBackground(KitchenTone.preparing),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: scheme.tertiary),
+        border: Border.all(
+          color: KitchenVisuals.statusColor(KitchenTone.preparing),
+        ),
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
@@ -130,7 +133,7 @@ class _OversizedKitchenOrderLabel extends StatelessWidget {
         child: Text(
           'COMMANDE VOLUMINEUSE',
           style: KitchenTypography.meta(context).copyWith(
-            color: scheme.onTertiaryContainer,
+            color: KitchenVisuals.graphite,
           ),
         ),
       ),
@@ -181,7 +184,9 @@ class _KitchenItemBlock extends StatelessWidget {
         Text(
           '${item.quantity} × ${_productName(item)}',
           softWrap: true,
-          style: KitchenTypography.product(context, compact: compact),
+          style: KitchenTypography.product(context, compact: compact).copyWith(
+            color: KitchenVisuals.graphite,
+          ),
         ),
         if (variantName != null && variantName.isNotEmpty) ...[
           const SizedBox(height: 4),
@@ -190,7 +195,10 @@ class _KitchenItemBlock extends StatelessWidget {
             child: Text(
               variantName.toUpperCase(),
               softWrap: true,
-              style: KitchenTypography.variant(context, compact: compact),
+              style:
+                  KitchenTypography.variant(context, compact: compact).copyWith(
+                color: KitchenVisuals.mutedText,
+              ),
             ),
           ),
         ],
@@ -201,7 +209,10 @@ class _KitchenItemBlock extends StatelessWidget {
             child: Text(
               _extraLabel(extra),
               softWrap: true,
-              style: KitchenTypography.extra(context, compact: compact),
+              style:
+                  KitchenTypography.extra(context, compact: compact).copyWith(
+                color: KitchenVisuals.statusColor(KitchenTone.preparing),
+              ),
             ),
           ),
         ],

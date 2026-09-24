@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:flutter/material.dart';
 
 class KitchenPaginationBar extends StatelessWidget {
@@ -17,14 +18,15 @@ class KitchenPaginationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final canGoPrevious = state.currentPage > 0;
     final canGoNext = state.currentPage < state.totalPages - 1;
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(top: BorderSide(color: scheme.outlineVariant)),
+      decoration: const BoxDecoration(
+        color: KitchenVisuals.headerSurface,
+        border: Border(
+          top: BorderSide(color: KitchenVisuals.warmBorder),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -36,6 +38,10 @@ class KitchenPaginationBar extends StatelessWidget {
                 key: const Key('kitchen-previous-page'),
                 tooltip: 'Page précédente',
                 onPressed: canGoPrevious ? onPrevious : null,
+                style: IconButton.styleFrom(
+                  foregroundColor: KitchenVisuals.graphite,
+                  disabledForegroundColor: KitchenVisuals.mutedText,
+                ),
                 icon: const Icon(Icons.arrow_back),
               ),
               const SizedBox(width: 8),
@@ -48,7 +54,9 @@ class KitchenPaginationBar extends StatelessWidget {
                     if (state.totalPages == 0)
                       Text(
                         '0 PAGE',
-                        style: Theme.of(context).textTheme.labelLarge,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: KitchenVisuals.mutedText,
+                            ),
                       )
                     else
                       for (var page = 0; page < state.totalPages; page++)
@@ -57,7 +65,10 @@ class KitchenPaginationBar extends StatelessWidget {
                       Text(
                         '+${state.remainingItems}',
                         key: const Key('kitchen-remaining-items'),
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: KitchenVisuals.graphite),
                       ),
                     if (state.queueChangedWhileBrowsing)
                       const _QueueChangedBadge(),
@@ -69,6 +80,10 @@ class KitchenPaginationBar extends StatelessWidget {
                 key: const Key('kitchen-next-page'),
                 tooltip: 'Page suivante',
                 onPressed: canGoNext ? onNext : null,
+                style: IconButton.styleFrom(
+                  foregroundColor: KitchenVisuals.graphite,
+                  disabledForegroundColor: KitchenVisuals.mutedText,
+                ),
                 icon: const Icon(Icons.arrow_forward),
               ),
             ],
@@ -86,17 +101,15 @@ class _PageDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       width: active ? 13 : 10,
       height: active ? 13 : 10,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active ? scheme.primary : Colors.transparent,
+        color: active ? KitchenVisuals.graphite : Colors.transparent,
         border: Border.all(
-          color: active ? scheme.primary : scheme.outline,
+          color: active ? KitchenVisuals.graphite : KitchenVisuals.strongBorder,
           width: 2,
         ),
       ),

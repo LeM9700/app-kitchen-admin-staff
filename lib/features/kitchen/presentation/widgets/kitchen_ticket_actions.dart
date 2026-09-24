@@ -1,6 +1,9 @@
+import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_hold_to_reopen_action.dart';
 import 'package:flutter/material.dart';
 
@@ -100,7 +103,6 @@ class _KitchenActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final height = compact ? 48.0 : 54.0;
 
     return Padding(
@@ -115,20 +117,26 @@ class _KitchenActionButton extends StatelessWidget {
         child: FilledButton.icon(
           onPressed: busy ? null : onPressed,
           style: FilledButton.styleFrom(
+            backgroundColor: KitchenVisuals.graphite,
+            foregroundColor: Colors.white,
             minimumSize: Size.fromHeight(height),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            elevation: 1.5,
             textStyle: KitchenTypography.meta(context).copyWith(
               fontSize: compact ? 12 : 14,
             ),
             disabledBackgroundColor:
-                scheme.primaryContainer.withValues(alpha: 0.72),
-            disabledForegroundColor: scheme.onPrimaryContainer,
+                KitchenVisuals.recessedSurface.withValues(alpha: 0.92),
+            disabledForegroundColor: KitchenVisuals.mutedText,
           ),
           icon: busy
               ? SizedBox.square(
                   dimension: compact ? 17 : 19,
-                  child: CircularProgressIndicator(
+                  child: const CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: scheme.onPrimaryContainer,
+                    color: KitchenVisuals.mutedText,
                   ),
                 )
               : Icon(icon),
@@ -150,8 +158,6 @@ class _ActionStateLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Padding(
       padding: EdgeInsets.fromLTRB(
         compact ? 12 : 16,
@@ -161,9 +167,9 @@ class _ActionStateLabel extends StatelessWidget {
       ),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: scheme.primary),
+          color: AppColors.successBg,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(color: AppColors.success),
         ),
         child: SizedBox(
           height: compact ? 42 : 48,
@@ -173,7 +179,7 @@ class _ActionStateLabel extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: KitchenTypography.meta(context).copyWith(
-                color: scheme.onPrimaryContainer,
+                color: KitchenVisuals.graphite,
                 fontSize: compact ? 12 : 14,
               ),
             ),

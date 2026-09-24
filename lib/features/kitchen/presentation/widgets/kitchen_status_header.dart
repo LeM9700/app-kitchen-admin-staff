@@ -5,6 +5,7 @@ import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_screen_selector.dart';
 import 'package:flutter/material.dart';
 
@@ -37,7 +38,6 @@ class KitchenStatusHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final screen = selectedScreen;
     final title = screen != null
         ? screen.name.toUpperCase()
@@ -50,10 +50,10 @@ class KitchenStatusHeader extends StatelessWidget {
           );
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surface,
+      decoration: const BoxDecoration(
+        color: KitchenVisuals.headerSurface,
         border: Border(
-          bottom: BorderSide(color: scheme.outlineVariant),
+          bottom: BorderSide(color: KitchenVisuals.warmBorder),
         ),
       ),
       child: SafeArea(
@@ -89,7 +89,8 @@ class KitchenStatusHeader extends StatelessWidget {
                         Expanded(
                           child: Text(
                             title,
-                            style: KitchenTypography.headerTitle(context),
+                            style: KitchenTypography.headerTitle(context)
+                                .copyWith(color: KitchenVisuals.graphite),
                           ),
                         ),
                         if (selector != null) selector,
@@ -114,7 +115,9 @@ class KitchenStatusHeader extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: KitchenTypography.headerTitle(context),
+                    style: KitchenTypography.headerTitle(context).copyWith(
+                      color: KitchenVisuals.graphite,
+                    ),
                   ),
                   const SizedBox(width: 28),
                   Expanded(
@@ -186,13 +189,13 @@ _ConnectionColors _connectionColors(KitchenConnectionStatus status) {
     KitchenConnectionStatus.online => const _ConnectionColors(
         background: AppColors.successBg,
         border: AppColors.success,
-        foreground: AppColors.textPrimary,
+        foreground: KitchenVisuals.graphite,
         icon: Icons.wifi_outlined,
       ),
     KitchenConnectionStatus.reconnecting => const _ConnectionColors(
         background: AppColors.warningSoftBg,
         border: AppColors.warning,
-        foreground: AppColors.textPrimary,
+        foreground: KitchenVisuals.graphite,
         icon: Icons.sync_outlined,
       ),
     KitchenConnectionStatus.offline => const _ConnectionColors(
@@ -243,27 +246,39 @@ class _KitchenHeaderCounter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final foreground =
         ThemeData.estimateBrightnessForColor(color) == Brightness.dark
             ? Colors.white
-            : AppColors.textPrimary;
+            : KitchenVisuals.graphite;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: color,
+        color: _counterBackground(color),
         borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(color: color.withValues(alpha: 0.48)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(
           '$value $label',
           style: KitchenTypography.headerCounter(context).copyWith(
-            color: foreground,
+            color: foreground == Colors.white ? foreground : color,
           ),
         ),
       ),
     );
   }
+}
+
+Color _counterBackground(Color color) {
+  if (color == AppColors.success) {
+    return AppColors.successBg;
+  }
+  if (color == AppColors.warning) {
+    return AppColors.warningSoftBg;
+  }
+  if (color == AppColors.infoAlt) {
+    return AppColors.infoBg;
+  }
+  return AppColors.neutralBg;
 }

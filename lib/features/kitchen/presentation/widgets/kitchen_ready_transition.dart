@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
+import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:flutter/material.dart';
 
 class KitchenReadyTransition extends StatefulWidget {
@@ -64,8 +65,6 @@ class _KitchenReadyTransitionState extends State<KitchenReadyTransition>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -88,16 +87,20 @@ class _KitchenReadyTransitionState extends State<KitchenReadyTransition>
                 },
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: scheme.primary,
+                    color: AppColors.success,
                     shape: BoxShape.circle,
-                    boxShadow: AppGlow.ready(scheme.primary),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      width: 1.5,
+                    ),
+                    boxShadow: KitchenVisuals.ticketShadow(focused: false),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
                     child: Icon(
                       Icons.check_rounded,
                       size: 24,
-                      color: scheme.onPrimary,
+                      color: Colors.white,
                     ),
                   ),
                 ),

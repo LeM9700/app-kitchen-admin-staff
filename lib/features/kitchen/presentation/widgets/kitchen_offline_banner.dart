@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_connection.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:flutter/material.dart';
 
 class KitchenOfflineBanner extends StatelessWidget {
@@ -19,7 +20,7 @@ class KitchenOfflineBanner extends StatelessWidget {
           icon: Icons.sync_outlined,
           label: _connectionLabel(connection),
           background: AppColors.warningSoftBg,
-          foreground: AppColors.textPrimary,
+          foreground: KitchenVisuals.graphite,
           border: AppColors.warning,
         ),
       KitchenConnectionStatus.offline => _KitchenConnectionBanner(

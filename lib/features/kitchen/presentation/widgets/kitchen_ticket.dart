@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
-import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_actions_controller.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_time.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_status_ui.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ready_transition.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_station_status.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_ticket_actions.dart';
@@ -76,7 +76,6 @@ class _KitchenTicketState extends State<KitchenTicket> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final statusUi = KitchenStatusUi.from(widget.ticket.state);
     final urgency = resolveKitchenUrgency(
       confirmedAt: widget.ticket.confirmedAt,
@@ -87,24 +86,29 @@ class _KitchenTicketState extends State<KitchenTicket> {
     final borderColor = isLate
         ? AppColors.danger
         : widget.focused
-            ? scheme.primary
-            : scheme.outlineVariant;
+            ? KitchenVisuals.focusBorder
+            : KitchenVisuals.warmBorder;
     final borderWidth = isLate ? 2.0 : (widget.focused ? 3.0 : 1.0);
     final surface = widget.focused
         ? Color.alphaBlend(
-            scheme.primary.withValues(alpha: 0.08),
-            scheme.surface,
+            KitchenVisuals.focusBorder.withValues(alpha: 0.06),
+            KitchenVisuals.ticketSurface,
           )
-        : scheme.surface;
+        : KitchenVisuals.ticketSurface;
 
     final card = KitchenReadyTransition(
       active: widget.ticket.state == KitchenTicketState.ready,
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          boxShadow: widget.focused
-              ? AppGlow.urgent(scheme.primary, spread: isLate ? 3 : 2)
-              : const [],
+          boxShadow: [
+            ...KitchenVisuals.ticketShadow(focused: widget.focused),
+            if (isLate)
+              BoxShadow(
+                color: AppColors.danger.withValues(alpha: 0.18),
+                spreadRadius: 1,
+              ),
+          ],
         ),
         child: Material(
           color: surface,
@@ -131,10 +135,12 @@ class _KitchenTicketState extends State<KitchenTicket> {
                     decoration: BoxDecoration(
                       border: Border(
                         left: BorderSide(
-                          color: widget.ticket.isLocked
-                              ? statusUi.color
-                              : Colors.transparent,
-                          width: widget.ticket.isLocked ? 4 : 0,
+                          color: isLate
+                              ? AppColors.danger
+                              : widget.ticket.isLocked
+                                  ? statusUi.color
+                                  : Colors.transparent,
+                          width: isLate || widget.ticket.isLocked ? 4 : 0,
                         ),
                       ),
                     ),
@@ -217,15 +223,17 @@ class _KitchenTicketMeta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final tableNumber = ticket.order.tableNumber?.trim();
     final label = tableNumber != null && tableNumber.isNotEmpty
         ? 'TABLE $tableNumber'
         : humanOrderType(ticket.order.orderType).toUpperCase();
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: scheme.outlineVariant)),
+      decoration: const BoxDecoration(
+        color: KitchenVisuals.ticketHeaderSurface,
+        border: Border(
+          top: BorderSide(color: KitchenVisuals.warmBorder),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -236,7 +244,7 @@ class _KitchenTicketMeta extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: KitchenTypography.meta(context).copyWith(
-              color: scheme.onSurface.withValues(alpha: 0.72),
+              color: KitchenVisuals.mutedText,
             ),
           ),
         ),

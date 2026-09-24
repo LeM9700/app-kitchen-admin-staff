@@ -7,6 +7,7 @@ import 'package:app_admin_staff/features/kitchen/application/kitchen_queue_contr
 import 'package:app_admin_staff/features/kitchen/application/kitchen_time.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_layout_policy.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_offline_banner.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_pagination_bar.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kitchen_status_header.dart';
@@ -46,12 +47,15 @@ class KitchenPage extends ConsumerWidget {
 
           final queue = ref.watch(kitchenQueueProvider);
 
-          return queue.when(
-            data: (state) => _KitchenBoard(state: state, policy: policy),
-            loading: () => _KitchenLoadingBoard(profile: profile),
-            error: (error, stackTrace) => _KitchenErrorBoard(
-              error: error,
-              profile: profile,
+          return ColoredBox(
+            color: KitchenVisuals.boardBackground,
+            child: queue.when(
+              data: (state) => _KitchenBoard(state: state, policy: policy),
+              loading: () => _KitchenLoadingBoard(profile: profile),
+              error: (error, stackTrace) => _KitchenErrorBoard(
+                error: error,
+                profile: profile,
+              ),
             ),
           );
         },

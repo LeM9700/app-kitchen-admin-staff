@@ -2,6 +2,7 @@ import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_typography.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kitchen_visuals.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter/material.dart';
 
@@ -22,11 +23,12 @@ class KitchenStationStatus extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final scheme = Theme.of(context).colorScheme;
-
     return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: scheme.outlineVariant)),
+      decoration: const BoxDecoration(
+        color: KitchenVisuals.ticketHeaderSurface,
+        border: Border(
+          top: BorderSide(color: KitchenVisuals.warmBorder),
+        ),
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
@@ -134,7 +136,7 @@ class _KitchenStationStatusChip extends StatelessWidget {
             Icon(
               isReady ? Icons.check_circle_outline : Icons.sync_outlined,
               size: compact ? 14 : 16,
-              color: AppColors.textPrimary,
+              color: KitchenVisuals.graphite,
             ),
             const SizedBox(width: 6),
             Text(
@@ -143,7 +145,10 @@ class _KitchenStationStatusChip extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: KitchenTypography.meta(
                 context,
-              ).copyWith(fontSize: compact ? 11 : 12),
+              ).copyWith(
+                color: KitchenVisuals.graphite,
+                fontSize: compact ? 11 : 12,
+              ),
             ),
           ],
         ),

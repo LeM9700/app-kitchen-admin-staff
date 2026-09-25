@@ -172,7 +172,9 @@ void main() {
       child: const CatalogPage(),
       overrides: _adminOverrides(),
     );
-    await tester.tap(find.byTooltip('Modifier produit').first);
+    await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modifier').last);
     await tester.pumpAndSettle();
 
     await expectLater(

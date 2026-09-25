@@ -37,7 +37,7 @@ final catalogAvailabilityFilterProvider =
   return CatalogAvailabilityFilter.all;
 });
 
-enum CatalogAvailabilityFilter { all, available, unavailable }
+enum CatalogAvailabilityFilter { all, available, unavailable, incomplete }
 
 class CatalogRepository {
   const CatalogRepository(this._apiClient, this._tokenStore);

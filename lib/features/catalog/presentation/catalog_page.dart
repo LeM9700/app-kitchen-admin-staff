@@ -1,15 +1,15 @@
 import 'package:app_admin_staff/app/permissions/permissions.dart';
 import 'package:app_admin_staff/app/responsive/breakpoints.dart';
-import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/core/widgets/empty_state.dart';
 import 'package:app_admin_staff/design_system/components/badges/status_badge.dart';
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
-import 'package:app_admin_staff/design_system/components/cards/stat_card.dart';
 import 'package:app_admin_staff/design_system/components/forms/pill_filter_bar.dart';
 import 'package:app_admin_staff/design_system/theme/staggered_entrance.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
+import 'package:app_admin_staff/features/catalog/application/catalog_view_state.dart';
 import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,107 +39,148 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     final categories = ref.watch(catalogCategoriesProvider);
     final selectedCategoryId = ref.watch(catalogCategoryFilterProvider);
     final availabilityFilter = ref.watch(catalogAvailabilityFilterProvider);
-    final user = ref.watch(sessionControllerProvider).valueOrNull?.user;
-    final permissions = PermissionSet(
-      role: user?.role ?? 'staff',
-      permissions: user?.permissions,
-    );
-    final isAdmin = user?.role == 'admin' || user?.role == 'super-admin';
+    final permissions = ref.watch(currentPermissionSetProvider);
+    final canWrite = permissions.can(AppPermission.catalogWrite);
+    final canManageAvailability =
+        permissions.can(AppPermission.catalogAvailability);
     final isMobile = Breakpoints.isMobile(context);
 
     return RefreshIndicator(
       onRefresh: _refreshCatalog,
-      child: ListView(
-        padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.xxl),
-        children: [
-          _CatalogHeader(
-            isMobile: isMobile,
-            canAdmin: isAdmin,
-            onRefresh: _refreshCatalog,
-            onCreateProduct: () =>
-                _productDialog(categories.valueOrNull ?? const []),
-            onCreateCategory: () => _categoryDialog(),
-            onImport: _importCsvDialog,
-            onExport: _exportCsv,
-            onCompleteness: _completenessDialog,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          products.when(
-            data: (items) => _CatalogStatsRow(
-              products: items,
-              categoryCount: categories.valueOrNull?.length,
+      child: ColoredBox(
+        color: const Color(0xFFE8E2D8),
+        child: ListView(
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.xxl),
+          children: [
+            _CatalogHeader(
+              isMobile: isMobile,
+              canWrite: canWrite,
+              onRefresh: _refreshCatalog,
+              onCreateProduct: () =>
+                  _productDialog(categories.valueOrNull ?? const []),
+              onCreateCategory: () => _categoryDialog(),
+              onImport: _importCsvDialog,
+              onExport: _exportCsv,
+              onCompleteness: _completenessDialog,
             ),
-            loading: () => const LinearProgressIndicator(),
-            error: (error, stackTrace) => EmptyState(
-              icon: Icons.error_outline,
-              title: 'Indicateurs indisponibles',
-              subtitle: error.toString(),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          categories.when(
-            data: (items) => _CatalogToolbar(
-              controller: _filterController,
-              categories: items,
-              selectedCategoryId: selectedCategoryId,
-              availabilityFilter: availabilityFilter,
-              onSearchChanged: (value) {
-                ref.read(catalogSearchProvider.notifier).state = value;
-              },
-              onCategorySelected: (value) {
-                ref.read(catalogCategoryFilterProvider.notifier).state = value;
-              },
-              onAvailabilitySelected: (value) {
-                ref.read(catalogAvailabilityFilterProvider.notifier).state =
-                    value;
-              },
-              onEditCategory: isAdmin
-                  ? (category) => _categoryDialog(category: category)
-                  : null,
-            ),
-            loading: () => const LinearProgressIndicator(),
-            error: (error, stackTrace) => EmptyState(
-              icon: Icons.category_outlined,
-              title: 'Categories indisponibles',
-              subtitle: error.toString(),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          products.when(
-            data: (items) {
-              final filtered = _applyAvailabilityFilter(
-                items,
-                availabilityFilter,
-              );
-              return _ProductTable(
-                products: filtered,
-                isAdmin: isAdmin,
-                permissions: permissions,
-                busyIds: _availabilityBusy,
-                onOpen: _detail,
-                onEdit: (product) => _productDialog(
-                  categories.valueOrNull ?? const [],
-                  product: product,
-                ),
-                onDelete: _deleteProduct,
-                onStation: _editStation,
-                onAvailability: (product, available) =>
-                    _availability(product, available),
-              );
-            },
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacing.xxl),
-                child: CircularProgressIndicator(),
+            const SizedBox(height: AppSpacing.md),
+            products.when(
+              data: (items) => _CatalogStatsRow(
+                products: items,
+                categoryCount: categories.valueOrNull?.length,
+                onFilter: (filter) {
+                  ref.read(catalogAvailabilityFilterProvider.notifier).state =
+                      filter;
+                },
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (error, stackTrace) => const EmptyState(
+                icon: Icons.error_outline,
+                title: 'Indicateurs indisponibles',
+                subtitle:
+                    'Les indicateurs catalogue ne peuvent pas etre charges.',
               ),
             ),
-            error: (error, stackTrace) => EmptyState(
-              icon: Icons.error_outline,
-              title: 'Catalogue indisponible',
-              subtitle: error.toString(),
+            const SizedBox(height: AppSpacing.md),
+            categories.when(
+              data: (items) => _CatalogToolbar(
+                controller: _filterController,
+                categories: items,
+                selectedCategoryId: selectedCategoryId,
+                availabilityFilter: availabilityFilter,
+                onSearchChanged: (value) {
+                  ref.read(catalogSearchProvider.notifier).state = value;
+                },
+                onCategorySelected: (value) {
+                  ref.read(catalogCategoryFilterProvider.notifier).state =
+                      value;
+                },
+                onAvailabilitySelected: (value) {
+                  ref.read(catalogAvailabilityFilterProvider.notifier).state =
+                      value;
+                },
+                onEditCategory: canWrite
+                    ? (category) => _categoryDialog(category: category)
+                    : null,
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (error, stackTrace) => const EmptyState(
+                icon: Icons.category_outlined,
+                title: 'Categories indisponibles',
+                subtitle: 'Les categories ne peuvent pas etre chargees.',
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.md),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 1180;
+                final productPaneWidth = wide
+                    ? constraints.maxWidth - 370 - AppSpacing.md
+                    : constraints.maxWidth;
+                final compactProducts = productPaneWidth < 1040;
+                final productList = products.when(
+                  data: (items) {
+                    final filtered = _applyAvailabilityFilter(
+                      items,
+                      availabilityFilter,
+                    );
+                    return _ProductTable(
+                      products: filtered,
+                      compactCards: compactProducts,
+                      canWrite: canWrite,
+                      canManageAvailability: canManageAvailability,
+                      busyIds: _availabilityBusy,
+                      onOpen: _detail,
+                      onEdit: (product) => _productDialog(
+                        categories.valueOrNull ?? const [],
+                        product: product,
+                      ),
+                      onDelete: _deleteProduct,
+                      onStation: _editStation,
+                      onAvailability: (product, available) =>
+                          _availability(product, available),
+                    );
+                  },
+                  loading: () => const _CatalogSkeleton(),
+                  error: (error, stackTrace) => const EmptyState(
+                    icon: Icons.error_outline,
+                    title: 'Catalogue indisponible',
+                    subtitle: 'Les produits ne peuvent pas etre charges.',
+                  ),
+                );
+                final contextPanel = _CatalogContextPanel(
+                  products: products.valueOrNull ?? const [],
+                  categories: categories.valueOrNull ?? const [],
+                  onIncomplete: () {
+                    ref.read(catalogAvailabilityFilterProvider.notifier).state =
+                        CatalogAvailabilityFilter.incomplete;
+                  },
+                  onEditCategory: canWrite
+                      ? (category) => _categoryDialog(category: category)
+                      : null,
+                );
+
+                if (!wide) {
+                  return Column(
+                    children: [
+                      productList,
+                      const SizedBox(height: AppSpacing.md),
+                      contextPanel,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 7, child: productList),
+                    const SizedBox(width: AppSpacing.md),
+                    SizedBox(width: 370, child: contextPanel),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -160,15 +201,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     List<CatalogProduct> products,
     CatalogAvailabilityFilter filter,
   ) {
-    return switch (filter) {
-      CatalogAvailabilityFilter.all => products,
-      CatalogAvailabilityFilter.available => products
-          .where((product) => product.available ?? product.isActive)
-          .toList(),
-      CatalogAvailabilityFilter.unavailable => products
-          .where((product) => !(product.available ?? product.isActive))
-          .toList(),
-    };
+    return products
+        .where((product) => matchesCatalogFilter(product, filter))
+        .toList();
   }
 
   Future<void> _availability(CatalogProduct product, bool available) async {
@@ -498,8 +533,8 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
 
   Future<void> _detail(CatalogProduct product) async {
     try {
-      final user = ref.read(sessionControllerProvider).valueOrNull?.user;
-      final isAdmin = user?.role == 'admin' || user?.role == 'super-admin';
+      final permissions = ref.read(currentPermissionSetProvider);
+      final canWrite = permissions.can(AppPermission.catalogWrite);
       final detail =
           await ref.read(catalogRepositoryProvider).getProduct(product.id);
       final history = await ref
@@ -517,7 +552,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
             child: ListView(
               shrinkWrap: true,
               children: [
-                if (isAdmin) ...[
+                _ProductDetailHero(detail: detail),
+                const SizedBox(height: 16),
+                if (canWrite) ...[
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -641,7 +678,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                       trailing: Text(
                         formatMoney(detail.basePrice + variant.priceDelta),
                       ),
-                      onTap: isAdmin
+                      onTap: canWrite
                           ? () {
                               Navigator.pop(context);
                               _variantDialog(detail, variant: variant);
@@ -659,7 +696,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                       contentPadding: EdgeInsets.zero,
                       title: Text(extra.name),
                       trailing: Text(formatMoney(extra.price)),
-                      onTap: isAdmin
+                      onTap: canWrite
                           ? () {
                               Navigator.pop(context);
                               _extraDialog(detail, extra: extra);
@@ -1853,10 +1890,297 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   }
 }
 
+class _ProductDetailHero extends StatelessWidget {
+  const _ProductDetailHero({required this.detail});
+
+  final CatalogProduct detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = catalogProductAvailable(detail);
+    final imageUrl = catalogListImageUrl(detail);
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F4EC),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: const Color(0xFFD8D0C3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: imageUrl == null
+                ? Container(
+                    width: 92,
+                    height: 92,
+                    color: const Color(0xFFE8E2D8),
+                    child: const Icon(Icons.restaurant_menu_outlined),
+                  )
+                : Image.network(
+                    imageUrl,
+                    width: 92,
+                    height: 92,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 92,
+                        height: 92,
+                        color: const Color(0xFFE8E2D8),
+                        child: const Icon(Icons.broken_image_outlined),
+                      );
+                    },
+                  ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  detail.name,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                Text(
+                  detail.categoryName ?? 'Sans categorie',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    StatusBadge(
+                      label: available ? 'Disponible' : 'Indisponible',
+                      tone: available ? StatusTone.success : StatusTone.danger,
+                      compact: true,
+                    ),
+                    if (!detail.isActive)
+                      const StatusBadge(
+                        label: 'Inactif catalogue',
+                        tone: StatusTone.neutral,
+                        compact: true,
+                      ),
+                    _StationBadge(product: detail),
+                    StatusBadge(
+                      label:
+                          detail.regulatoryComplete ? 'Conforme' : 'Incomplet',
+                      tone: detail.regulatoryComplete
+                          ? StatusTone.success
+                          : StatusTone.warning,
+                      compact: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  formatMoney(detail.basePrice),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CatalogSkeleton extends StatelessWidget {
+  const _CatalogSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return DsCard(
+      child: Column(
+        children: List.generate(
+          5,
+          (index) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8E2D8),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogContextPanel extends StatelessWidget {
+  const _CatalogContextPanel({
+    required this.products,
+    required this.categories,
+    required this.onIncomplete,
+    required this.onEditCategory,
+  });
+
+  final List<CatalogProduct> products;
+  final List<CatalogCategory> categories;
+  final VoidCallback onIncomplete;
+  final ValueChanged<CatalogCategory>? onEditCategory;
+
+  @override
+  Widget build(BuildContext context) {
+    final incomplete = products
+        .where((product) => !product.regulatoryComplete)
+        .take(5)
+        .toList();
+    final unavailable = products
+        .where((product) => !catalogProductAvailable(product))
+        .take(4)
+        .toList();
+    final counts = catalogProductCountsByCategory(products);
+
+    return Column(
+      children: [
+        DsCard(
+          backgroundColor: const Color(0xFFF8F4EC),
+          borderColor: const Color(0xFFD8D0C3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'A traiter',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              if (incomplete.isEmpty)
+                const StatusBadge(
+                  label: 'Toutes les fiches sont conformes',
+                  tone: StatusTone.success,
+                  icon: Icons.check_circle_outline,
+                )
+              else ...[
+                StatusBadge(
+                  label: '${incomplete.length} fiche(s) incomplete(s)',
+                  tone: StatusTone.warning,
+                  icon: Icons.fact_check_outlined,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                for (final product in incomplete)
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.fact_check_outlined),
+                    title: Text(product.name),
+                    subtitle: Text(product.categoryName ?? 'Sans categorie'),
+                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: onIncomplete,
+                    icon: const Icon(Icons.filter_alt_outlined),
+                    label: const Text('Filtrer les incomplets'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        DsCard(
+          backgroundColor: const Color(0xFFF8F4EC),
+          borderColor: const Color(0xFFD8D0C3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Disponibilites',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              if (unavailable.isEmpty)
+                const StatusBadge(
+                  label: 'Tout est disponible',
+                  tone: StatusTone.success,
+                  icon: Icons.visibility_outlined,
+                )
+              else
+                for (final product in unavailable)
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.visibility_off_outlined),
+                    title: Text(product.name),
+                    subtitle: Text(
+                      (product.availabilityReason ?? '').isEmpty
+                          ? 'Sans raison renseignee'
+                          : product.availabilityReason!,
+                    ),
+                  ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        DsCard(
+          backgroundColor: const Color(0xFFF8F4EC),
+          borderColor: const Color(0xFFD8D0C3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Categories',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              if (categories.isEmpty)
+                const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.category_outlined),
+                  title: Text('Aucune categorie'),
+                )
+              else
+                for (final category in categories.take(6))
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      category.isActive
+                          ? Icons.category_outlined
+                          : Icons.block_outlined,
+                    ),
+                    title: Text(category.name),
+                    subtitle: Text(
+                      '${catalogStationLabel(category.preparationStation)} - ${counts[category.id] ?? 0} produit(s)',
+                    ),
+                    trailing: onEditCategory == null
+                        ? null
+                        : IconButton(
+                            tooltip: 'Modifier categorie',
+                            onPressed: () => onEditCategory!(category),
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                  ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CatalogHeader extends StatelessWidget {
   const _CatalogHeader({
     required this.isMobile,
-    required this.canAdmin,
+    required this.canWrite,
     required this.onRefresh,
     required this.onCreateProduct,
     required this.onCreateCategory,
@@ -1866,7 +2190,7 @@ class _CatalogHeader extends StatelessWidget {
   });
 
   final bool isMobile;
-  final bool canAdmin;
+  final bool canWrite;
   final Future<void> Function() onRefresh;
   final VoidCallback onCreateProduct;
   final VoidCallback onCreateCategory;
@@ -1879,10 +2203,16 @@ class _CatalogHeader extends StatelessWidget {
     final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Catalogue', style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          'Catalogue',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+              ),
+        ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Produits, categories et disponibilite operationnelle',
+          'Carte, disponibilites, stations et conformite menu',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -1900,7 +2230,7 @@ class _CatalogHeader extends StatelessWidget {
           onPressed: onRefresh,
           icon: const Icon(Icons.refresh),
         ),
-        if (canAdmin) ...[
+        if (canWrite) ...[
           if (isMobile)
             PopupMenuButton<String>(
               tooltip: 'Actions catalogue',
@@ -1986,53 +2316,121 @@ class _CatalogStatsRow extends StatelessWidget {
   const _CatalogStatsRow({
     required this.products,
     required this.categoryCount,
+    required this.onFilter,
   });
 
   final List<CatalogProduct> products;
   final int? categoryCount;
+  final ValueChanged<CatalogAvailabilityFilter> onFilter;
 
   @override
   Widget build(BuildContext context) {
-    final unavailable = products
-        .where((product) => !(product.available ?? product.isActive))
-        .length;
+    final unavailable =
+        products.where((product) => !catalogProductAvailable(product)).length;
     final complete =
         products.where((product) => product.regulatoryComplete).length;
+    final incomplete = products.length - complete;
     return Wrap(
-      spacing: AppSpacing.md,
-      runSpacing: AppSpacing.md,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
       children: [
-        AppStatCard(
-          label: 'Produits',
+        _CatalogMetric(
           value: products.length.toString(),
-          subtitle: 'Charges depuis API',
+          label: 'produits',
           icon: Icons.restaurant_menu_outlined,
-          accentColor: AppColors.accent,
+          color: AppColors.accent,
+          onTap: () => onFilter(CatalogAvailabilityFilter.all),
         ),
-        AppStatCard(
-          label: 'Indisponibles',
+        _CatalogMetric(
           value: unavailable.toString(),
-          subtitle: 'Disponibilite effective',
+          label: 'indisponibles',
           icon: Icons.visibility_off_outlined,
-          accentColor: unavailable == 0 ? AppColors.success : AppColors.danger,
+          color: unavailable == 0 ? AppColors.success : AppColors.danger,
+          onTap: () => onFilter(CatalogAvailabilityFilter.unavailable),
         ),
-        AppStatCard(
-          label: 'Categories',
+        _CatalogMetric(
           value: categoryCount?.toString() ?? '-',
-          subtitle: 'Station heritee',
+          label: 'categories',
           icon: Icons.category_outlined,
-          accentColor: AppColors.infoAlt,
+          color: AppColors.infoAlt,
         ),
-        AppStatCard(
-          label: 'Fiches completes',
+        _CatalogMetric(
           value: products.isEmpty
               ? '0%'
               : '${(complete * 100 / products.length).round()}%',
-          subtitle: '$complete/${products.length} produit(s)',
+          label: incomplete == 0 ? 'conformes' : '$incomplete a corriger',
           icon: Icons.fact_check_outlined,
-          accentColor: AppColors.success,
+          color: incomplete == 0 ? AppColors.success : AppColors.warning,
+          onTap: () => onFilter(CatalogAvailabilityFilter.incomplete),
         ),
       ],
+    );
+  }
+}
+
+class _CatalogMetric extends StatelessWidget {
+  const _CatalogMetric({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+
+  final String value;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 170,
+      child: DsCard(
+        onTap: onTap,
+        backgroundColor: const Color(0xFFF8F4EC),
+        borderColor: const Color(0xFFD8D0C3),
+        borderRadius: AppRadius.md,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                        ),
+                  ),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -2126,6 +2524,11 @@ class _CatalogToolbar extends StatelessWidget {
                     label: 'Indisponibles',
                     icon: Icons.visibility_off_outlined,
                   ),
+                  PillFilterOption<CatalogAvailabilityFilter>(
+                    value: CatalogAvailabilityFilter.incomplete,
+                    label: 'Incomplets',
+                    icon: Icons.fact_check_outlined,
+                  ),
                 ],
               ),
               if (onEditCategory != null && categories.isNotEmpty)
@@ -2151,8 +2554,9 @@ class _CatalogToolbar extends StatelessWidget {
 class _ProductTable extends StatelessWidget {
   const _ProductTable({
     required this.products,
-    required this.isAdmin,
-    required this.permissions,
+    required this.compactCards,
+    required this.canWrite,
+    required this.canManageAvailability,
     required this.busyIds,
     required this.onOpen,
     required this.onEdit,
@@ -2162,8 +2566,9 @@ class _ProductTable extends StatelessWidget {
   });
 
   final List<CatalogProduct> products;
-  final bool isAdmin;
-  final PermissionSet permissions;
+  final bool compactCards;
+  final bool canWrite;
+  final bool canManageAvailability;
   final Set<int> busyIds;
   final ValueChanged<CatalogProduct> onOpen;
   final ValueChanged<CatalogProduct> onEdit;
@@ -2178,7 +2583,30 @@ class _ProductTable extends StatelessWidget {
         child: EmptyState(
           icon: Icons.inventory_2_outlined,
           title: 'Aucun produit',
+          subtitle: 'Aucun produit ne correspond aux filtres actifs.',
         ),
+      );
+    }
+
+    if (compactCards) {
+      return Column(
+        children: [
+          for (final (index, product) in products.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _ProductCard(
+                product: product,
+                canWrite: canWrite,
+                canManageAvailability: canManageAvailability,
+                busy: busyIds.contains(product.id),
+                onOpen: onOpen,
+                onEdit: onEdit,
+                onDelete: onDelete,
+                onStation: onStation,
+                onAvailability: onAvailability,
+              ).staggeredEntrance(index),
+            ),
+        ],
       );
     }
 
@@ -2199,8 +2627,8 @@ class _ProductTable extends StatelessWidget {
                   for (final (index, product) in products.indexed) ...[
                     _ProductTableRow(
                       product: product,
-                      isAdmin: isAdmin,
-                      permissions: permissions,
+                      canWrite: canWrite,
+                      canManageAvailability: canManageAvailability,
                       busy: busyIds.contains(product.id),
                       onOpen: onOpen,
                       onEdit: onEdit,
@@ -2246,8 +2674,8 @@ class _ProductTableHeader extends StatelessWidget {
 class _ProductTableRow extends StatelessWidget {
   const _ProductTableRow({
     required this.product,
-    required this.isAdmin,
-    required this.permissions,
+    required this.canWrite,
+    required this.canManageAvailability,
     required this.busy,
     required this.onOpen,
     required this.onEdit,
@@ -2257,8 +2685,8 @@ class _ProductTableRow extends StatelessWidget {
   });
 
   final CatalogProduct product;
-  final bool isAdmin;
-  final PermissionSet permissions;
+  final bool canWrite;
+  final bool canManageAvailability;
   final bool busy;
   final ValueChanged<CatalogProduct> onOpen;
   final ValueChanged<CatalogProduct> onEdit;
@@ -2268,7 +2696,7 @@ class _ProductTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final available = product.available ?? product.isActive;
+    final available = catalogProductAvailable(product);
     return InkWell(
       onTap: () => onOpen(product),
       child: Padding(
@@ -2322,11 +2750,7 @@ class _ProductTableRow extends StatelessWidget {
             SizedBox(width: 100, child: Text(formatMoney(product.basePrice))),
             SizedBox(
               width: 130,
-              child: StatusBadge(
-                label: _stationLabel(product.effectivePreparationStation),
-                tone: _stationTone(product.effectivePreparationStation),
-                compact: true,
-              ),
+              child: _StationBadge(product: product),
             ),
             SizedBox(
               width: 170,
@@ -2350,50 +2774,16 @@ class _ProductTableRow extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Wrap(
-                spacing: AppSpacing.xs,
-                alignment: WrapAlignment.end,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  if (isAdmin)
-                    IconButton(
-                      tooltip: 'Modifier produit',
-                      onPressed: () => onEdit(product),
-                      icon: const Icon(Icons.edit_outlined),
-                    ),
-                  if (isAdmin)
-                    IconButton(
-                      tooltip: 'Station',
-                      onPressed: () => onStation(product),
-                      icon: const Icon(Icons.restaurant_menu_outlined),
-                    ),
-                  if (permissions.can(AppPermission.catalogAvailability))
-                    IconButton(
-                      tooltip: available
-                          ? 'Rendre indisponible'
-                          : 'Rendre disponible',
-                      onPressed: busy
-                          ? null
-                          : () => onAvailability(product, !available),
-                      icon: busy
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              available
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                            ),
-                    ),
-                  if (isAdmin)
-                    IconButton(
-                      tooltip: 'Supprimer produit',
-                      onPressed: () => onDelete(product),
-                      icon: const Icon(Icons.delete_outline),
-                    ),
-                ],
+              child: _ProductActions(
+                product: product,
+                canWrite: canWrite,
+                canManageAvailability: canManageAvailability,
+                busy: busy,
+                onOpen: onOpen,
+                onEdit: onEdit,
+                onDelete: onDelete,
+                onStation: onStation,
+                onAvailability: onAvailability,
               ),
             ),
           ],
@@ -2401,24 +2791,263 @@ class _ProductTableRow extends StatelessWidget {
       ),
     );
   }
+}
 
-  static String _stationLabel(String value) {
-    return switch (value) {
-      'kitchen' => 'Cuisine',
-      'counter' => 'Comptoir',
-      'none' => 'Aucune',
-      _ => value,
-    };
-  }
+class _ProductCard extends StatelessWidget {
+  const _ProductCard({
+    required this.product,
+    required this.canWrite,
+    required this.canManageAvailability,
+    required this.busy,
+    required this.onOpen,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onStation,
+    required this.onAvailability,
+  });
 
-  static StatusTone _stationTone(String value) {
-    return switch (value) {
-      'kitchen' => StatusTone.info,
-      'counter' => StatusTone.neutral,
-      'none' => StatusTone.warning,
-      _ => StatusTone.neutral,
-    };
+  final CatalogProduct product;
+  final bool canWrite;
+  final bool canManageAvailability;
+  final bool busy;
+  final ValueChanged<CatalogProduct> onOpen;
+  final ValueChanged<CatalogProduct> onEdit;
+  final ValueChanged<CatalogProduct> onDelete;
+  final ValueChanged<CatalogProduct> onStation;
+  final void Function(CatalogProduct product, bool available) onAvailability;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = catalogProductAvailable(product);
+    return DsCard(
+      onTap: () => onOpen(product),
+      backgroundColor: const Color(0xFFFCF8F0),
+      borderColor: const Color(0xFFD8D0C3),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _ProductThumb(product: product, available: available),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    Text(
+                      product.categoryName ?? 'Sans categorie',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                formatMoney(product.basePrice),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: [
+              StatusBadge(
+                label: available ? 'Disponible' : 'Indisponible',
+                tone: available ? StatusTone.success : StatusTone.danger,
+                compact: true,
+              ),
+              if (!product.isActive)
+                const StatusBadge(
+                  label: 'Inactif',
+                  tone: StatusTone.neutral,
+                  compact: true,
+                ),
+              _StationBadge(product: product),
+              StatusBadge(
+                label: product.regulatoryComplete ? 'Conforme' : 'Incomplet',
+                tone: product.regulatoryComplete
+                    ? StatusTone.success
+                    : StatusTone.warning,
+                compact: true,
+              ),
+            ],
+          ),
+          if ((product.availabilityReason ?? '').isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              product.availabilityReason!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          _ProductActions(
+            product: product,
+            canWrite: canWrite,
+            canManageAvailability: canManageAvailability,
+            busy: busy,
+            onOpen: onOpen,
+            onEdit: onEdit,
+            onDelete: onDelete,
+            onStation: onStation,
+            onAvailability: onAvailability,
+          ),
+        ],
+      ),
+    );
   }
+}
+
+class _ProductActions extends StatelessWidget {
+  const _ProductActions({
+    required this.product,
+    required this.canWrite,
+    required this.canManageAvailability,
+    required this.busy,
+    required this.onOpen,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onStation,
+    required this.onAvailability,
+  });
+
+  final CatalogProduct product;
+  final bool canWrite;
+  final bool canManageAvailability;
+  final bool busy;
+  final ValueChanged<CatalogProduct> onOpen;
+  final ValueChanged<CatalogProduct> onEdit;
+  final ValueChanged<CatalogProduct> onDelete;
+  final ValueChanged<CatalogProduct> onStation;
+  final void Function(CatalogProduct product, bool available) onAvailability;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = catalogProductAvailable(product);
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      alignment: WrapAlignment.end,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () => onOpen(product),
+          icon: const Icon(Icons.open_in_new_outlined),
+          label: const Text('Ouvrir'),
+        ),
+        if (canManageAvailability)
+          FilledButton.tonalIcon(
+            onPressed: busy ? null : () => onAvailability(product, !available),
+            icon: busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    available
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+            label: Text(available ? 'Indispo' : 'Dispo'),
+          ),
+        if (canWrite)
+          PopupMenuButton<_ProductAction>(
+            key: ValueKey('catalog-product-actions-${product.id}'),
+            tooltip: 'Actions produit',
+            onSelected: (action) {
+              switch (action) {
+                case _ProductAction.edit:
+                  onEdit(product);
+                case _ProductAction.station:
+                  onStation(product);
+                case _ProductAction.delete:
+                  onDelete(product);
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _ProductAction.edit,
+                child: ListTile(
+                  leading: Icon(Icons.edit_outlined),
+                  title: Text('Modifier'),
+                ),
+              ),
+              PopupMenuItem(
+                value: _ProductAction.station,
+                child: ListTile(
+                  leading: Icon(Icons.restaurant_menu_outlined),
+                  title: Text('Station'),
+                ),
+              ),
+              PopupMenuItem(
+                value: _ProductAction.delete,
+                child: ListTile(
+                  leading: Icon(Icons.delete_outline),
+                  title: Text('Supprimer'),
+                ),
+              ),
+            ],
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8E2D8),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: const Color(0xFFD8D0C3)),
+              ),
+              child: const Icon(Icons.more_horiz),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+enum _ProductAction { edit, station, delete }
+
+class _StationBadge extends StatelessWidget {
+  const _StationBadge({required this.product});
+
+  final CatalogProduct product;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message:
+          'Station effective : ${catalogStationLabel(product.effectivePreparationStation)} - Source : ${catalogStationSource(product)}',
+      child: StatusBadge(
+        label: catalogStationLabel(product.effectivePreparationStation),
+        tone: _stationTone(product.effectivePreparationStation),
+        compact: true,
+      ),
+    );
+  }
+}
+
+StatusTone _stationTone(String value) {
+  return switch (value) {
+    'kitchen' => StatusTone.info,
+    'counter' => StatusTone.neutral,
+    'none' => StatusTone.warning,
+    _ => StatusTone.neutral,
+  };
 }
 
 class _TableLabel extends StatelessWidget {
@@ -2456,13 +3085,20 @@ class _ProductThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = product.primaryImage?.urlThumbnail ?? product.imageUrl;
+    final url = catalogListImageUrl(product);
     if (url == null || url.isEmpty) {
-      return Icon(
-        available ? Icons.check_circle_outline : Icons.pause_circle_outline,
-        color: available
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.error,
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8E2D8),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(color: const Color(0xFFD8D0C3)),
+        ),
+        child: Icon(
+          Icons.restaurant_menu_outlined,
+          color: available ? AppColors.infoAlt : AppColors.textSecondary,
+        ),
       );
     }
     return Stack(

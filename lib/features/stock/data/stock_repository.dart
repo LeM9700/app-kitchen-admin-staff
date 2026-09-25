@@ -39,7 +39,7 @@ final adjustmentRequestsProvider =
       .listAdjustmentRequests(pageSize: 50);
 });
 
-enum StockLevelFilter { all, low }
+enum StockLevelFilter { all, low, out }
 
 class StockRepository {
   const StockRepository(this._apiClient);

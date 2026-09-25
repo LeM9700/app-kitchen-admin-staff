@@ -8,11 +8,14 @@ import 'package:app_admin_staff/design_system/components/cards/stat_card.dart';
 import 'package:app_admin_staff/design_system/components/feedback/app_feedback.dart';
 import 'package:app_admin_staff/design_system/components/forms/pill_filter_bar.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
+import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/admin_users/data/admin_users_repository.dart';
 import 'package:app_admin_staff/features/hr/data/hr_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 final hrWeekStartProvider = StateProvider<DateTime>((ref) {
@@ -35,20 +38,7 @@ class HrAdminPage extends StatelessWidget {
       length: 4,
       child: Column(
         children: [
-          Material(
-            child: TabBar(
-              isScrollable: true,
-              tabs: [
-                Tab(icon: Icon(Icons.groups_2_outlined), text: 'Employes'),
-                Tab(
-                  icon: Icon(Icons.calendar_month_outlined),
-                  text: 'Planning',
-                ),
-                Tab(icon: Icon(Icons.punch_clock_outlined), text: 'Pointages'),
-                Tab(icon: Icon(Icons.warning_amber_outlined), text: 'Alertes'),
-              ],
-            ),
-          ),
+          _HrAdminNavigation(),
           Expanded(
             child: TabBarView(
               children: [
@@ -74,17 +64,7 @@ class StaffHrPage extends StatelessWidget {
       length: 2,
       child: Column(
         children: [
-          Material(
-            child: TabBar(
-              tabs: [
-                Tab(
-                  icon: Icon(Icons.calendar_today_outlined),
-                  text: 'Planning',
-                ),
-                Tab(icon: Icon(Icons.timer_outlined), text: 'Activite'),
-              ],
-            ),
-          ),
+          _StaffHrNavigation(),
           Expanded(
             child: TabBarView(
               children: [
@@ -99,6 +79,137 @@ class StaffHrPage extends StatelessWidget {
   }
 }
 
+class _HrAdminNavigation extends StatelessWidget {
+  const _HrAdminNavigation();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          Breakpoints.isMobile(context) ? AppSpacing.md : AppSpacing.xxl,
+          AppSpacing.md,
+          Breakpoints.isMobile(context) ? AppSpacing.md : AppSpacing.xxl,
+          0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Equipe & RH',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Planning, presence et anomalies humaines du service.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            DsCard(
+              padding: const EdgeInsets.all(6),
+              borderRadius: AppRadius.xl,
+              backgroundColor: AppColors.adminSurfaceMuted,
+              intensity: NeumorphicIntensity.subtle,
+              child: TabBar(
+                isScrollable: true,
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: AppColors.adminSurface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  boxShadow: AppElevation.raisedSm(
+                    AppColors.adminSurface,
+                    intensity: .55,
+                  ),
+                ),
+                tabs: const [
+                  Tab(icon: Icon(Icons.groups_2_outlined), text: 'Equipe'),
+                  Tab(
+                    icon: Icon(Icons.calendar_month_outlined),
+                    text: 'Planning',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.punch_clock_outlined),
+                    text: 'Pointages',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.warning_amber_outlined),
+                    text: 'Alertes',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StaffHrNavigation extends StatelessWidget {
+  const _StaffHrNavigation();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          Breakpoints.isMobile(context) ? AppSpacing.md : AppSpacing.xxl,
+          AppSpacing.md,
+          Breakpoints.isMobile(context) ? AppSpacing.md : AppSpacing.xxl,
+          0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Mon RH',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Vos services, votre pointage et votre activite recente.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const DsCard(
+              padding: EdgeInsets.all(6),
+              borderRadius: AppRadius.xl,
+              backgroundColor: AppColors.adminSurfaceMuted,
+              intensity: NeumorphicIntensity.subtle,
+              child: TabBar(
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                tabs: [
+                  Tab(
+                    icon: Icon(Icons.calendar_today_outlined),
+                    text: 'Planning',
+                  ),
+                  Tab(icon: Icon(Icons.timer_outlined), text: 'Activite'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AdminEmployeesTab extends ConsumerWidget {
   const _AdminEmployeesTab();
 
@@ -107,9 +218,22 @@ class _AdminEmployeesTab extends ConsumerWidget {
     final employees = ref.watch(employeesProvider);
     final users =
         ref.watch(adminUsersProvider(const AdminUsersQuery(pageSize: 100)));
+    final today = _today();
+    final timeEntries = ref.watch(
+      timeClockEntriesProvider(
+        TimeClockEntryQuery(
+          dateFrom: today,
+          dateTo: today.add(const Duration(days: 1)),
+        ),
+      ),
+    );
     final userMap = {
       for (final user in users.valueOrNull?.items ?? const <AdminUser>[])
         user.id: user,
+    };
+    final activeEntries = <int, TimeClockEntry>{
+      for (final entry in timeEntries.valueOrNull ?? const <TimeClockEntry>[])
+        if (entry.isActive) entry.employeeId: entry,
     };
 
     return _ScreenPadding(
@@ -127,9 +251,18 @@ class _AdminEmployeesTab extends ConsumerWidget {
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text(
-                    'Profils RH',
-                    style: Theme.of(context).textTheme.titleLarge,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Annuaire operationnel',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Text(
+                        'Compte utilisateur et profil RH restent separes.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
                   ),
                   FilledButton.icon(
                     onPressed: candidates.isEmpty
@@ -153,20 +286,193 @@ class _AdminEmployeesTab extends ConsumerWidget {
                       'Creez un profil RH pour un compte staff avant de planifier un shift.',
                 )
               else
-                for (var index = 0; index < items.length; index++) ...[
-                  _EmployeeTile(
-                    employee: items[index],
-                    user: userMap[items[index].userId],
-                  ),
-                  if (index != items.length - 1) const SizedBox(height: 12),
-                ],
+                _EmployeeDirectory(
+                  employees: items,
+                  users: userMap,
+                  activeEntries: activeEntries,
+                ),
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _SkeletonList(rows: 5),
         error: (error, stackTrace) => _ErrorPanel(
           error: error,
           onRetry: () => ref.invalidate(employeesProvider),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmployeeDirectory extends StatelessWidget {
+  const _EmployeeDirectory({
+    required this.employees,
+    required this.users,
+    required this.activeEntries,
+  });
+
+  final List<EmployeeProfile> employees;
+  final Map<int, AdminUser> users;
+  final Map<int, TimeClockEntry> activeEntries;
+
+  @override
+  Widget build(BuildContext context) {
+    if (Breakpoints.isMobile(context)) {
+      return Column(
+        children: [
+          for (var index = 0; index < employees.length; index++) ...[
+            _EmployeeTile(
+              employee: employees[index],
+              user: users[employees[index].userId],
+              activeEntry: activeEntries[employees[index].id],
+            ),
+            if (index != employees.length - 1) const SizedBox(height: 12),
+          ],
+        ],
+      );
+    }
+
+    return DsCard(
+      padding: EdgeInsets.zero,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 980),
+          child: Column(
+            children: [
+              const _EmployeeHeaderRow(),
+              for (var index = 0; index < employees.length; index++)
+                _EmployeeTableRow(
+                  employee: employees[index],
+                  user: users[employees[index].userId],
+                  activeEntry: activeEntries[employees[index].id],
+                  showDivider: index != employees.length - 1,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmployeeHeaderRow extends StatelessWidget {
+  const _EmployeeHeaderRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      color: AppColors.adminSurfaceMuted,
+      child: const Row(
+        children: [
+          SizedBox(width: 260, child: _ColumnLabel('Employe')),
+          SizedBox(width: 140, child: _ColumnLabel('Etablissement')),
+          SizedBox(width: 150, child: _ColumnLabel('Contrat')),
+          SizedBox(width: 130, child: _ColumnLabel('Presence')),
+          SizedBox(width: 130, child: _ColumnLabel('Profil RH')),
+          SizedBox(width: 150, child: _ColumnLabel('Compte')),
+          SizedBox(width: 40),
+        ],
+      ),
+    );
+  }
+}
+
+class _ColumnLabel extends StatelessWidget {
+  const _ColumnLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w900,
+          ),
+    );
+  }
+}
+
+class _EmployeeTableRow extends ConsumerWidget {
+  const _EmployeeTableRow({
+    required this.employee,
+    required this.user,
+    required this.activeEntry,
+    required this.showDivider,
+  });
+
+  final EmployeeProfile employee;
+  final AdminUser? user;
+  final TimeClockEntry? activeEntry;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return InkWell(
+      onTap: () => _showEmployeeDetailSheet(
+        context,
+        ref,
+        employee: employee,
+        user: user,
+        activeEntry: activeEntry,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          border: showDivider
+              ? const Border(
+                  bottom: BorderSide(color: AppColors.adminBorder),
+                )
+              : null,
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 260,
+              child: _EmployeeIdentity(employee: employee, user: user),
+            ),
+            SizedBox(
+              width: 140,
+              child: Text('Etab. ${employee.establishmentId}'),
+            ),
+            SizedBox(
+              width: 150,
+              child: Text(_weeklyContractLabel(employee)),
+            ),
+            SizedBox(width: 130, child: _PresenceBadge(entry: activeEntry)),
+            SizedBox(
+              width: 130,
+              child: StatusBadge(
+                label: employee.isActive ? 'Actif' : 'Inactif',
+                tone:
+                    employee.isActive ? StatusTone.success : StatusTone.neutral,
+                compact: true,
+              ),
+            ),
+            SizedBox(
+              width: 150,
+              child: StatusBadge(
+                label: user?.isActive == true ? 'Compte actif' : 'Compte lie',
+                tone: user?.isActive == true
+                    ? StatusTone.success
+                    : StatusTone.neutral,
+                compact: true,
+              ),
+            ),
+            const SizedBox(
+              width: 40,
+              child: Icon(Icons.chevron_right, color: AppColors.textMuted),
+            ),
+          ],
         ),
       ),
     );
@@ -177,62 +483,129 @@ class _EmployeeTile extends ConsumerWidget {
   const _EmployeeTile({
     required this.employee,
     required this.user,
+    required this.activeEntry,
+  });
+
+  final EmployeeProfile employee;
+  final AdminUser? user;
+  final TimeClockEntry? activeEntry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return DsCard(
+      onTap: () => _showEmployeeDetailSheet(
+        context,
+        ref,
+        employee: employee,
+        user: user,
+        activeEntry: activeEntry,
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _EmployeeIdentity(employee: employee, user: user),
+              ),
+              _PresenceBadge(entry: activeEntry),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _MetricChip(
+                icon: Icons.storefront_outlined,
+                label: 'Etab. ${employee.establishmentId}',
+              ),
+              _MetricChip(
+                icon: Icons.schedule_outlined,
+                label: _weeklyContractLabel(employee),
+              ),
+              StatusBadge(
+                label: employee.isActive ? 'Profil actif' : 'Profil inactif',
+                tone:
+                    employee.isActive ? StatusTone.success : StatusTone.neutral,
+                compact: true,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmployeeIdentity extends StatelessWidget {
+  const _EmployeeIdentity({
+    required this.employee,
+    required this.user,
   });
 
   final EmployeeProfile employee;
   final AdminUser? user;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hourly = employee.hourlyRateCents == null
-        ? 'Non renseigne'
-        : _currency(employee.hourlyRateCents! / 100);
-    return DsCard(
-      padding: const EdgeInsets.all(16),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          CircleAvatar(child: Text(_avatarLabel(user?.displayName))),
-          SizedBox(
-            width: 260,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user?.displayName ?? 'Employe #${employee.id}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(user?.email ?? 'Utilisateur #${employee.userId}'),
-              ],
-            ),
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: AppColors.adminSurfaceMuted,
+          foregroundColor: AppColors.textPrimary,
+          child: Text(_avatarLabel(user?.displayName)),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user?.displayName ?? 'Employe #${employee.id}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              Text(
+                user?.email ?? 'Utilisateur #${employee.userId}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ),
-          _MetricChip(
-            icon: Icons.storefront_outlined,
-            label: 'Etab. ${employee.establishmentId}',
-          ),
-          _MetricChip(
-            icon: Icons.schedule_outlined,
-            label: '${employee.weeklyHoursContract}h/semaine',
-          ),
-          _MetricChip(icon: Icons.euro_outlined, label: hourly),
-          Chip(
-            avatar: Icon(
-              employee.isActive
-                  ? Icons.check_circle_outline
-                  : Icons.block_outlined,
-              size: 18,
-            ),
-            label: Text(employee.isActive ? 'Actif' : 'Inactif'),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => _showEmployeeDialog(context, ref, employee),
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Modifier'),
-          ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PresenceBadge extends StatelessWidget {
+  const _PresenceBadge({required this.entry});
+
+  final TimeClockEntry? entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = entry;
+    if (current == null) {
+      return const StatusBadge(
+        label: 'Non pointee',
+        tone: StatusTone.neutral,
+        compact: true,
+      );
+    }
+    return StatusBadge(
+      label: _timeClockStatusLabel(current.status),
+      tone: _timeClockStatusTone(current),
+      compact: true,
     );
   }
 }
@@ -297,6 +670,14 @@ class _AdminPlanningTab extends ConsumerWidget {
                       weekStart.add(const Duration(days: 7));
                 },
                 icon: const Icon(Icons.chevron_right),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  ref.read(hrWeekStartProvider.notifier).state =
+                      _startOfWeek(DateTime.now());
+                },
+                icon: const Icon(Icons.today_outlined),
+                label: const Text('Aujourd hui'),
               ),
               FilledButton.icon(
                 onPressed: () => _showShiftDialog(context, ref),
@@ -421,8 +802,7 @@ class _PlanningBoard extends StatelessWidget {
     }
     final days =
         List.generate(7, (index) => weekStart.add(Duration(days: index)));
-    final compact = Breakpoints.isCompactDesktop(context);
-    if (compact || Breakpoints.isMobile(context)) {
+    if (Breakpoints.isMobile(context) || Breakpoints.isTablet(context)) {
       return ListView(
         children: [
           for (final day in days)
@@ -589,39 +969,122 @@ class _ShiftStack extends StatelessWidget {
       spacing: 6,
       runSpacing: 6,
       children: [
-        for (final shift in shifts) _ShiftPill(shift: shift),
+        for (final shift in shifts)
+          _ShiftBlock(
+            shift: shift,
+            hasConflict: _hasShiftConflict(shift, shifts),
+          ),
       ],
     );
   }
 }
 
-class _ShiftPill extends ConsumerWidget {
-  const _ShiftPill({required this.shift});
+class _ShiftBlock extends ConsumerWidget {
+  const _ShiftBlock({
+    required this.shift,
+    required this.hasConflict,
+  });
 
   final HrShift shift;
+  final bool hasConflict;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tone = shift.isCancelled
         ? StatusTone.danger
-        : shift.startsAt.hour >= 15
+        : hasConflict
             ? StatusTone.warning
             : StatusTone.info;
     final colors = StatusBadgeColors.fromTone(tone);
-    return ActionChip(
-      tooltip: shift.isCancelled ? 'Shift annule' : 'Modifier ce shift',
-      backgroundColor: colors.background,
-      side: BorderSide(color: colors.foreground.withValues(alpha: 0.28)),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      label: Text(
-        '${_timeFormat.format(shift.startsAt)}-${_timeFormat.format(shift.endsAt)}',
-        style: TextStyle(
-          color: colors.foreground,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: () => _showShiftActions(context, ref, shift),
+        child: Container(
+          width: Breakpoints.isMobile(context) ? double.infinity : 118,
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: colors.background,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: colors.foreground.withValues(alpha: 0.24),
+            ),
+            boxShadow: AppElevation.raisedSm(colors.background, intensity: .35),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _timeFormat.format(shift.startsAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.foreground,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+                  if (hasConflict)
+                    Icon(
+                      Icons.warning_amber_outlined,
+                      color: colors.foreground,
+                      size: 15,
+                    ),
+                ],
+              ),
+              Text(
+                _timeFormat.format(shift.endsAt),
+                style: TextStyle(
+                  color: colors.foreground,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Etab. ${shift.establishmentId}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: colors.foreground.withValues(alpha: .78),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (shift.breakMinutes > 0)
+                Text(
+                  'Pause ${shift.breakMinutes} min',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colors.foreground.withValues(alpha: .72),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              if (hasConflict)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Conflit horaire',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.foreground,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
-      onPressed: () => _showShiftActions(context, ref, shift),
     );
   }
 }
@@ -686,6 +1149,15 @@ class _AdminTimeClockTab extends ConsumerWidget {
                 accentColor: AppColors.success,
               ),
               AppStatCard(
+                label: 'En pause',
+                value: entryItems
+                    .where((entry) => entry.isOnBreak)
+                    .length
+                    .toString(),
+                icon: Icons.coffee_outlined,
+                accentColor: AppColors.warning,
+              ),
+              AppStatCard(
                 label: 'Anomalies',
                 value: _timeClockAnomalyCount(entryItems).toString(),
                 icon: Icons.warning_amber_outlined,
@@ -731,6 +1203,7 @@ class _AdminTimeClockTab extends ConsumerWidget {
                     options: const [
                       PillFilterOption(value: 'all', label: 'Aujourd hui'),
                       PillFilterOption(value: 'open', label: 'En service'),
+                      PillFilterOption(value: 'break', label: 'En pause'),
                       PillFilterOption(value: 'corrected', label: 'Corriges'),
                     ],
                     selected: status ?? 'all',
@@ -776,7 +1249,7 @@ class _AdminTimeClockTab extends ConsumerWidget {
                   itemCount: items.length,
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const _SkeletonList(rows: 5),
               error: (error, stackTrace) => _ErrorPanel(
                 error: error,
                 onRetry: () => ref.invalidate(timeClockEntriesProvider(query)),
@@ -835,21 +1308,34 @@ class _StaffScheduleTab extends ConsumerWidget {
           Expanded(
             child: shifts.when(
               data: (items) {
-                if (items.isEmpty) {
+                final visible = [
+                  for (final shift in items)
+                    if (!shift.isCancelled) shift,
+                ]..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+                if (visible.isEmpty) {
                   return const EmptyState(
                     icon: Icons.calendar_today_outlined,
                     title: 'Aucun shift planifie',
                   );
                 }
-                return ListView.separated(
-                  itemBuilder: (context, index) =>
-                      _StaffShiftCard(shift: items[index]),
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemCount: items.length,
+                return ListView(
+                  children: [
+                    _NextShiftPanel(shift: visible.first),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Prochains shifts',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    for (final shift in visible.take(5))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _StaffShiftCard(shift: shift),
+                      ),
+                  ],
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const _SkeletonList(rows: 4),
               error: (error, stackTrace) => _ErrorPanel(
                 error: error,
                 onRetry: () => ref.invalidate(myShiftsProvider(query)),
@@ -898,9 +1384,26 @@ class _StaffActivityTab extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          openEntry == null ? 'Hors service' : 'En service',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                openEntry == null
+                                    ? 'Hors service'
+                                    : openEntry.isOnBreak
+                                        ? 'En pause'
+                                        : 'En service',
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
+                              ),
+                            ),
+                            if (openEntry != null)
+                              StatusBadge(
+                                label: _timeClockStatusLabel(openEntry.status),
+                                tone: _timeClockStatusTone(openEntry),
+                                compact: true,
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -909,34 +1412,73 @@ class _StaffActivityTab extends ConsumerWidget {
                               : 'Offline',
                         ),
                         const SizedBox(height: 16),
-                        FilledButton.icon(
-                          key: const ValueKey('staff-clock-action'),
-                          onPressed: !online || loading
-                              ? null
-                              : () => _runClockAction(
-                                    context,
-                                    ref,
-                                    openEntry: openEntry,
-                                    profile: profile,
-                                    shift: currentShift,
-                                    query: entriesQuery,
-                                  ),
-                          icon: loading
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : Icon(
-                                  openEntry == null
-                                      ? Icons.login_outlined
-                                      : Icons.logout_outlined,
-                                ),
-                          label: Text(
-                            openEntry == null
-                                ? 'Pointer entree'
-                                : 'Pointer sortie',
-                          ),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            FilledButton.icon(
+                              key: const ValueKey('staff-clock-action'),
+                              onPressed: !online || loading
+                                  ? null
+                                  : () => _runClockAction(
+                                        context,
+                                        ref,
+                                        intent: openEntry == null
+                                            ? _ClockIntent.clockIn
+                                            : _ClockIntent.clockOut,
+                                        profile: profile,
+                                        shift: currentShift,
+                                        query: entriesQuery,
+                                      ),
+                              icon: loading
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Icon(
+                                      openEntry == null
+                                          ? Icons.login_outlined
+                                          : Icons.logout_outlined,
+                                    ),
+                              label: Text(
+                                openEntry == null
+                                    ? 'Pointer entree'
+                                    : 'Pointer sortie',
+                              ),
+                            ),
+                            if (openEntry?.isOpen == true)
+                              OutlinedButton.icon(
+                                onPressed: !online || loading
+                                    ? null
+                                    : () => _runClockAction(
+                                          context,
+                                          ref,
+                                          intent: _ClockIntent.startBreak,
+                                          profile: profile,
+                                          shift: currentShift,
+                                          query: entriesQuery,
+                                        ),
+                                icon: const Icon(Icons.coffee_outlined),
+                                label: const Text('Demarrer pause'),
+                              ),
+                            if (openEntry?.isOnBreak == true)
+                              OutlinedButton.icon(
+                                onPressed: !online || loading
+                                    ? null
+                                    : () => _runClockAction(
+                                          context,
+                                          ref,
+                                          intent: _ClockIntent.endBreak,
+                                          profile: profile,
+                                          shift: currentShift,
+                                          query: entriesQuery,
+                                        ),
+                                icon: const Icon(Icons.play_arrow_outlined),
+                                label: const Text('Reprendre'),
+                              ),
+                          ],
                         ),
                       ],
                     ),
@@ -1208,6 +1750,14 @@ class _HrAlertTile extends ConsumerWidget {
               )
             : OutlinedButton.icon(
                 onPressed: () async {
+                  final confirmed = await _confirm(
+                    context,
+                    title: 'Resoudre l alerte',
+                    content: 'L alerte restera visible dans l historique RH.',
+                  );
+                  if (!context.mounted || !confirmed) {
+                    return;
+                  }
                   try {
                     await ref.read(hrRepositoryProvider).resolveAlert(alert.id);
                     ref.invalidate(hrAlertsProvider(query));
@@ -1285,6 +1835,14 @@ class _HrAlertDetailCard extends ConsumerWidget {
           if (!alert.isResolved)
             FilledButton.icon(
               onPressed: () async {
+                final confirmed = await _confirm(
+                  context,
+                  title: 'Resoudre l alerte',
+                  content: 'L alerte restera visible dans l historique RH.',
+                );
+                if (!context.mounted || !confirmed) {
+                  return;
+                }
                 try {
                   await ref.read(hrRepositoryProvider).resolveAlert(alert.id);
                   ref.invalidate(hrAlertsProvider(query));
@@ -1348,22 +1906,140 @@ class _StaffShiftCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StaffDsCard(
-      child: ListTile(
-        leading: Icon(
-          shift.isCancelled ? Icons.event_busy_outlined : Icons.event_outlined,
-          color: shift.isCancelled ? AppColors.danger : AppColors.info,
-        ),
-        title: Text(_weekdayFormat.format(shift.startsAt)),
-        subtitle: Text(
-          '${_timeFormat.format(shift.startsAt)} - ${_timeFormat.format(shift.endsAt)}'
-          ' - pause ${shift.breakMinutes} min',
-        ),
-        trailing: StatusBadge(
-          label: shift.status,
-          tone: shift.isCancelled ? StatusTone.danger : StatusTone.info,
-          compact: true,
-        ),
+      child: Row(
+        children: [
+          _RaisedScheduleIcon(
+            icon: shift.isCancelled
+                ? Icons.event_busy_outlined
+                : Icons.event_outlined,
+            color: shift.isCancelled ? AppColors.danger : AppColors.infoAlt,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _weekdayFormat.format(shift.startsAt),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.staffText,
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                Text(
+                  '${_timeFormat.format(shift.startsAt)} -> ${_timeFormat.format(shift.endsAt)}',
+                  style: const TextStyle(
+                    color: AppColors.staffMuted,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'Etablissement ${shift.establishmentId}'
+                  '${shift.breakMinutes > 0 ? ' - pause ${shift.breakMinutes} min' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.staffMuted,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          StatusBadge(
+            label: shift.status,
+            tone: shift.isCancelled ? StatusTone.danger : StatusTone.info,
+            compact: true,
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _NextShiftPanel extends StatelessWidget {
+  const _NextShiftPanel({required this.shift});
+
+  final HrShift shift;
+
+  @override
+  Widget build(BuildContext context) {
+    return StaffDsCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const _RaisedScheduleIcon(
+                icon: Icons.room_service_outlined,
+                color: AppColors.success,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Prochain service',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.staffText,
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            _weekdayFormat.format(shift.startsAt),
+            style: const TextStyle(
+              color: AppColors.staffMuted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${_timeFormat.format(shift.startsAt)} -> ${_timeFormat.format(shift.endsAt)}',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: AppColors.staffText,
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Etablissement ${shift.establishmentId}',
+            style: const TextStyle(
+              color: AppColors.staffMuted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RaisedScheduleIcon extends StatelessWidget {
+  const _RaisedScheduleIcon({
+    required this.icon,
+    required this.color,
+  });
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 42,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.staffSurface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: color.withValues(alpha: .28)),
+        boxShadow: AppElevation.raisedSm(AppColors.staffSurface, intensity: .5),
+      ),
+      child: Icon(icon, color: color, size: 21),
     );
   }
 }
@@ -1403,8 +2079,16 @@ class _TimeClockEntryTile extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  entry.isOpen ? Icons.timer_outlined : Icons.task_alt_outlined,
-                  color: entry.isOpen ? AppColors.success : AppColors.neutral,
+                  entry.isOnBreak
+                      ? Icons.coffee_outlined
+                      : entry.isOpen
+                          ? Icons.timer_outlined
+                          : Icons.task_alt_outlined,
+                  color: entry.isOnBreak
+                      ? AppColors.warning
+                      : entry.isOpen
+                          ? AppColors.success
+                          : AppColors.neutral,
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
@@ -1437,8 +2121,16 @@ class _TimeClockEntryTile extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            entry.isOpen ? Icons.timer_outlined : Icons.task_alt_outlined,
-            color: entry.isOpen ? AppColors.success : AppColors.neutral,
+            entry.isOnBreak
+                ? Icons.coffee_outlined
+                : entry.isOpen
+                    ? Icons.timer_outlined
+                    : Icons.task_alt_outlined,
+            color: entry.isOnBreak
+                ? AppColors.warning
+                : entry.isOpen
+                    ? AppColors.success
+                    : AppColors.neutral,
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -1592,6 +2284,52 @@ class _InlineError extends StatelessWidget {
   }
 }
 
+class _SkeletonList extends StatelessWidget {
+  const _SkeletonList({required this.rows});
+
+  final int rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      itemBuilder: (context, index) => DsCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        intensity: NeumorphicIntensity.subtle,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SkeletonBox(width: index.isEven ? 220 : 170),
+            const SizedBox(height: AppSpacing.sm),
+            const _SkeletonBox(width: double.infinity),
+            const SizedBox(height: AppSpacing.xs),
+            const _SkeletonBox(width: 260),
+          ],
+        ),
+      ),
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemCount: rows,
+    );
+  }
+}
+
+class _SkeletonBox extends StatelessWidget {
+  const _SkeletonBox({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: 16,
+      decoration: BoxDecoration(
+        color: AppColors.adminSurfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+    );
+  }
+}
+
 List<AdminUser> _employeeProfileCandidates(
   List<EmployeeProfile> employees,
   List<AdminUser> users,
@@ -1604,6 +2342,226 @@ List<AdminUser> _employeeProfileCandidates(
           !attachedUserIds.contains(user.id))
         user,
   ];
+}
+
+Future<void> _showEmployeeDetailSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required EmployeeProfile employee,
+  required AdminUser? user,
+  required TimeClockEntry? activeEntry,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: Breakpoints.isMobile(context) ? .88 : .74,
+        maxChildSize: .94,
+        minChildSize: .44,
+        builder: (context, scrollController) => ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _EmployeeIdentity(employee: employee, user: user),
+                ),
+                IconButton.outlined(
+                  tooltip: 'Fermer',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _DetailSection(
+              title: 'Identite',
+              rows: [
+                _DetailRow(
+                  label: 'Nom',
+                  value: user?.displayName ?? 'Employe #${employee.id}',
+                ),
+                _DetailRow(
+                  label: 'Email',
+                  value: user?.email ?? 'Utilisateur #${employee.userId}',
+                ),
+                _DetailRow(label: 'User ID', value: '#${employee.userId}'),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _DetailSection(
+              title: 'Profil RH',
+              rows: [
+                _DetailRow(
+                  label: 'Profil',
+                  value: employee.isActive ? 'Actif' : 'Inactif',
+                ),
+                _DetailRow(
+                  label: 'Etablissement',
+                  value: 'Etab. ${employee.establishmentId}',
+                ),
+                _DetailRow(
+                  label: 'Contrat',
+                  value: _weeklyContractLabel(employee),
+                ),
+                _DetailRow(
+                  label: 'Taux horaire',
+                  value: employee.hourlyRateCents == null
+                      ? 'Non renseigne'
+                      : _currency(employee.hourlyRateCents! / 100),
+                ),
+                if (employee.hireDate != null)
+                  _DetailRow(
+                    label: 'Embauche',
+                    value: _dayFormat.format(employee.hireDate!),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _DetailSection(
+              title: 'Presence',
+              rows: [
+                _DetailRow(
+                  label: 'Etat',
+                  value: activeEntry == null
+                      ? 'Non pointee'
+                      : _timeClockStatusLabel(activeEntry.status),
+                ),
+                if (activeEntry != null)
+                  _DetailRow(
+                    label: 'Entree',
+                    value: _dateTimeFormat.format(activeEntry.clockInAt),
+                  ),
+                if (activeEntry?.shiftId != null)
+                  _DetailRow(label: 'Shift', value: '#${activeEntry!.shiftId}'),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _DetailSection(
+              title: 'Compte / acces',
+              rows: [
+                _DetailRow(
+                  label: 'Compte',
+                  value: user == null
+                      ? 'Compte non charge'
+                      : user.isActive
+                          ? 'Actif'
+                          : 'Inactif',
+                ),
+                if (user != null) _DetailRow(label: 'Role', value: user.role),
+                if (user != null)
+                  _DetailRow(
+                    label: 'Permissions',
+                    value: user.permissions == null
+                        ? 'Aucune permission implicite'
+                        : '${user.permissions!.length} permission(s)',
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _showEmployeeDialog(context, ref, employee);
+                  },
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Modifier le profil RH'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: user == null
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                          context.go('/team');
+                        },
+                  icon: const Icon(Icons.manage_accounts_outlined),
+                  label: const Text('Gerer les acces'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _DetailSection extends StatelessWidget {
+  const _DetailSection({
+    required this.title,
+    required this.rows,
+  });
+
+  final String title;
+  final List<_DetailRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return DsCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      intensity: NeumorphicIntensity.subtle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (final row in rows) row,
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 Future<void> _showCreateEmployeeProfileDialog(
@@ -2196,30 +3154,34 @@ Future<void> _showCorrectionDialog(
 Future<void> _runClockAction(
   BuildContext context,
   WidgetRef ref, {
-  required TimeClockEntry? openEntry,
+  required _ClockIntent intent,
   required EmployeeProfileSelf profile,
   required HrShift? shift,
   required TimeClockEntryQuery query,
 }) async {
   ref.read(_clockActionLoadingProvider.notifier).state = true;
   try {
-    if (openEntry == null) {
-      await ref.read(hrRepositoryProvider).clockIn(
-            ClockInDraft(
-              method: 'web',
-              establishmentId: profile.establishmentId,
-              shiftId: shift?.id,
-            ),
-          );
-    } else {
-      await ref.read(hrRepositoryProvider).clockOut();
+    switch (intent) {
+      case _ClockIntent.clockIn:
+        await ref.read(hrRepositoryProvider).clockIn(
+              ClockInDraft(
+                method: 'web',
+                establishmentId: profile.establishmentId,
+                shiftId: shift?.id,
+              ),
+            );
+      case _ClockIntent.clockOut:
+        await ref.read(hrRepositoryProvider).clockOut();
+      case _ClockIntent.startBreak:
+        await ref.read(hrRepositoryProvider).startBreak();
+      case _ClockIntent.endBreak:
+        await ref.read(hrRepositoryProvider).endBreak();
     }
     ref.invalidate(myTimeClockEntriesProvider(query));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(openEntry == null ? 'Pointage demarre' : 'Pointage termine'),
+          content: Text(_clockIntentSuccessLabel(intent)),
         ),
       );
     }
@@ -2230,6 +3192,17 @@ Future<void> _runClockAction(
   } finally {
     ref.read(_clockActionLoadingProvider.notifier).state = false;
   }
+}
+
+enum _ClockIntent { clockIn, clockOut, startBreak, endBreak }
+
+String _clockIntentSuccessLabel(_ClockIntent intent) {
+  return switch (intent) {
+    _ClockIntent.clockIn => 'Pointage demarre',
+    _ClockIntent.clockOut => 'Pointage termine',
+    _ClockIntent.startBreak => 'Pause demarree',
+    _ClockIntent.endBreak => 'Pause terminee',
+  };
 }
 
 Future<bool> _confirm(
@@ -2309,8 +3282,27 @@ int _planningConflictCount(List<HrShift> shifts) {
   return conflicts;
 }
 
+bool _hasShiftConflict(HrShift shift, List<HrShift> shifts) {
+  if (shift.isCancelled) {
+    return false;
+  }
+  for (final other in shifts) {
+    if (identical(other, shift) ||
+        other.id == shift.id ||
+        other.isCancelled ||
+        other.employeeId != shift.employeeId) {
+      continue;
+    }
+    if (shift.startsAt.isBefore(other.endsAt) &&
+        other.startsAt.isBefore(shift.endsAt)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 int _timeClockAnomalyCount(List<TimeClockEntry> entries) {
-  const expected = {'open', 'closed', 'corrected'};
+  const expected = {'open', 'break', 'closed', 'corrected'};
   return entries.where((entry) => !expected.contains(entry.status)).length;
 }
 
@@ -2340,6 +3332,7 @@ String _entryDurationLabel(TimeClockEntry entry) {
 String _timeClockStatusLabel(String status) {
   return switch (status) {
     'open' => 'En service',
+    'break' => 'En pause',
     'closed' => 'Termine',
     'corrected' => 'Corrige',
     _ => status,
@@ -2347,7 +3340,10 @@ String _timeClockStatusLabel(String status) {
 }
 
 StatusTone _timeClockStatusTone(TimeClockEntry entry) {
-  if (entry.status == 'open') {
+  if (entry.isOnBreak) {
+    return StatusTone.warning;
+  }
+  if (entry.isOpen) {
     return StatusTone.success;
   }
   if (entry.status == 'corrected') {
@@ -2368,7 +3364,7 @@ StatusTone _alertTone(HrAlert alert) {
 
 TimeClockEntry? _openEntry(List<TimeClockEntry> entries) {
   for (final entry in entries) {
-    if (entry.isOpen) {
+    if (entry.isActive) {
       return entry;
     }
   }
@@ -2404,6 +3400,10 @@ String _avatarLabel(String? value) {
     return '#';
   }
   return raw.characters.first.toUpperCase();
+}
+
+String _weeklyContractLabel(EmployeeProfile employee) {
+  return '${employee.weeklyHoursContract} h / semaine';
 }
 
 String _alertTitle(String type) {
@@ -2445,7 +3445,7 @@ String _errorMessage(Object error) {
     }
     return error.message;
   }
-  return error.toString();
+  return 'Action impossible pour le moment';
 }
 
 DateTime _startOfWeek(DateTime value) {
@@ -2455,6 +3455,11 @@ DateTime _startOfWeek(DateTime value) {
 
 bool _sameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+DateTime _today() {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
 }
 
 DateTime? _parseInputDateTime(String raw) {

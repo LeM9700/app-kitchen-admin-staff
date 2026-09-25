@@ -2,11 +2,13 @@ import 'package:app_admin_staff/app/permissions/permissions.dart';
 import 'package:app_admin_staff/app/navigation/navigation_capabilities.dart';
 import 'package:app_admin_staff/app/responsive/breakpoints.dart';
 import 'package:app_admin_staff/app/service_mode.dart';
+import 'package:app_admin_staff/app/theme/app_theme_mode.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/connectivity/connectivity_status.dart';
 import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:app_admin_staff/core/offline/sync_worker.dart';
 import 'package:app_admin_staff/core/realtime/notification_bus.dart';
+import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/theme/api_kitchen_theme.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
@@ -802,7 +804,7 @@ class _KitchenMoreMenu extends StatelessWidget {
   }
 }
 
-class _AdminMobileShell extends StatelessWidget {
+class _AdminMobileShell extends ConsumerWidget {
   const _AdminMobileShell({
     required this.destinations,
     required this.selectedIndex,
@@ -814,9 +816,12 @@ class _AdminMobileShell extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(appThemeModeProvider);
+    final serviceMode = ref.watch(serviceModeProvider);
+    final darkSelected = serviceMode || themeMode == ThemeMode.dark;
     return Scaffold(
-      backgroundColor: AppColors.adminBackground,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(destinations[selectedIndex].label),
         actions: const [
@@ -831,6 +836,31 @@ class _AdminMobileShell extends StatelessWidget {
             children: [
               const _SidebarBrand(compact: false),
               const SizedBox(height: AppSpacing.lg),
+              DsCard(
+                padding: EdgeInsets.zero,
+                child: SwitchListTile(
+                  key: const ValueKey('mobile-theme-mode-switch'),
+                  secondary: Icon(
+                    darkSelected
+                        ? Icons.dark_mode_outlined
+                        : Icons.light_mode_outlined,
+                  ),
+                  title: const Text('Apparence sombre'),
+                  subtitle: Text(
+                    serviceMode
+                        ? 'Forcee par le mode service'
+                        : 'Basculer light / dark',
+                  ),
+                  value: darkSelected,
+                  onChanged: serviceMode
+                      ? null
+                      : (value) {
+                          ref.read(appThemeModeProvider.notifier).state =
+                              value ? ThemeMode.dark : ThemeMode.light;
+                        },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
               for (var index = 0; index < destinations.length; index++)
                 ListTile(
                   leading: Icon(destinations[index].icon),

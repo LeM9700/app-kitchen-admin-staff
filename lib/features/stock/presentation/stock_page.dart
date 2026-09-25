@@ -1046,45 +1046,190 @@ class _StockToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DsCard(
-      child: Wrap(
-        spacing: AppSpacing.md,
-        runSpacing: AppSpacing.md,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: 340,
-            child: TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Recherche ingredient',
-                prefixIcon: Icon(Icons.search),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final searchWidth =
+            constraints.maxWidth < 460 ? constraints.maxWidth : 340.0;
+        return DsCard(
+          child: Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: searchWidth,
+                child: TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Recherche ingredient',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: onSearchChanged,
+                ),
               ),
-              onChanged: onSearchChanged,
-            ),
-          ),
-          PillFilterBar<StockLevelFilter>(
-            selected: selected,
-            onSelected: onFilterChanged,
-            options: const [
-              PillFilterOption<StockLevelFilter>(
-                value: StockLevelFilter.all,
-                label: 'Tous',
-                icon: Icons.inventory_2_outlined,
-              ),
-              PillFilterOption<StockLevelFilter>(
-                value: StockLevelFilter.low,
-                label: 'Sous seuil',
-                icon: Icons.warning_amber_outlined,
-              ),
-              PillFilterOption<StockLevelFilter>(
-                value: StockLevelFilter.out,
-                label: 'Rupture',
-                icon: Icons.error_outline,
+              PillFilterBar<StockLevelFilter>(
+                selected: selected,
+                onSelected: onFilterChanged,
+                options: const [
+                  PillFilterOption<StockLevelFilter>(
+                    value: StockLevelFilter.all,
+                    label: 'Tous',
+                    icon: Icons.inventory_2_outlined,
+                  ),
+                  PillFilterOption<StockLevelFilter>(
+                    value: StockLevelFilter.low,
+                    label: 'Sous seuil',
+                    icon: Icons.warning_amber_outlined,
+                  ),
+                  PillFilterOption<StockLevelFilter>(
+                    value: StockLevelFilter.out,
+                    label: 'Rupture',
+                    icon: Icons.error_outline,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _IngredientCardHeader extends StatelessWidget {
+  const _IngredientCardHeader({required this.ingredient});
+
+  final Ingredient ingredient;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final veryNarrow = constraints.maxWidth < 320;
+        final title = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(
+                Icons.inventory_2_outlined,
+                color: _stockColor(ingredient),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                ingredient.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ),
+          ],
+        );
+
+        if (veryNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: AppSpacing.xs),
+              _StockStatusBadge(ingredient: ingredient),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: title),
+            const SizedBox(width: AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: _StockStatusBadge(ingredient: ingredient),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _IngredientActionButton extends StatelessWidget {
+  const _IngredientActionButton({
+    required this.child,
+    required this.compact,
+  });
+
+  final Widget child;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!compact) return child;
+    return SizedBox(
+      width: 122,
+      child: child,
+    );
+  }
+}
+
+class _IngredientMoreButton extends StatelessWidget {
+  const _IngredientMoreButton({
+    required this.ingredient,
+    required this.canAdjust,
+    required this.canEdit,
+    required this.onAdjust,
+    required this.onEdit,
+  });
+
+  final Ingredient ingredient;
+  final bool canAdjust;
+  final bool canEdit;
+  final ValueChanged<Ingredient> onAdjust;
+  final ValueChanged<Ingredient> onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_IngredientAction>(
+      tooltip: 'Actions ingredient',
+      onSelected: (action) {
+        switch (action) {
+          case _IngredientAction.adjust:
+            onAdjust(ingredient);
+          case _IngredientAction.edit:
+            onEdit(ingredient);
+        }
+      },
+      itemBuilder: (context) => [
+        if (canAdjust)
+          const PopupMenuItem(
+            value: _IngredientAction.adjust,
+            child: ListTile(
+              leading: Icon(Icons.tune_outlined),
+              title: Text('Demander un ajustement'),
+            ),
+          ),
+        if (canEdit)
+          const PopupMenuItem(
+            value: _IngredientAction.edit,
+            child: ListTile(
+              leading: Icon(Icons.edit_outlined),
+              title: Text('Modifier'),
+            ),
+          ),
+      ],
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8E2D8),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: const Color(0xFFD8D0C3)),
+        ),
+        child: const Icon(Icons.more_horiz),
       ),
     );
   }
@@ -1338,21 +1483,7 @@ class _IngredientCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.inventory_2_outlined, color: _stockColor(ingredient)),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  ingredient.name,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-              ),
-              _StockStatusBadge(ingredient: ingredient),
-            ],
-          ),
+          _IngredientCardHeader(ingredient: ingredient),
           const SizedBox(height: AppSpacing.sm),
           Text(
             '${formatStockQty(ingredient.currentQty)} ${ingredient.unit}',
@@ -1403,63 +1534,42 @@ class _IngredientActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.xs,
-      runSpacing: AppSpacing.xs,
-      alignment: WrapAlignment.end,
-      children: [
-        if (canSupply)
-          FilledButton.icon(
-            onPressed: () => onSupply(ingredient),
-            icon: const Icon(Icons.add),
-            label: const Text('Appro'),
-          ),
-        OutlinedButton.icon(
-          onPressed: () => onBatches(ingredient),
-          icon: const Icon(Icons.event_note_outlined),
-          label: const Text('Lots'),
-        ),
-        if (canAdjust || canEdit)
-          PopupMenuButton<_IngredientAction>(
-            tooltip: 'Actions ingredient',
-            onSelected: (action) {
-              switch (action) {
-                case _IngredientAction.adjust:
-                  onAdjust(ingredient);
-                case _IngredientAction.edit:
-                  onEdit(ingredient);
-              }
-            },
-            itemBuilder: (context) => [
-              if (canAdjust)
-                const PopupMenuItem(
-                  value: _IngredientAction.adjust,
-                  child: ListTile(
-                    leading: Icon(Icons.tune_outlined),
-                    title: Text('Demander un ajustement'),
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 340;
+        return Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          alignment: compact ? WrapAlignment.start : WrapAlignment.end,
+          children: [
+            if (canSupply)
+              _IngredientActionButton(
+                compact: compact,
+                child: FilledButton.icon(
+                  onPressed: () => onSupply(ingredient),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Appro'),
                 ),
-              if (canEdit)
-                const PopupMenuItem(
-                  value: _IngredientAction.edit,
-                  child: ListTile(
-                    leading: Icon(Icons.edit_outlined),
-                    title: Text('Modifier'),
-                  ),
-                ),
-            ],
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8E2D8),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: const Color(0xFFD8D0C3)),
               ),
-              child: const Icon(Icons.more_horiz),
+            _IngredientActionButton(
+              compact: compact,
+              child: OutlinedButton.icon(
+                onPressed: () => onBatches(ingredient),
+                icon: const Icon(Icons.event_note_outlined),
+                label: const Text('Lots'),
+              ),
             ),
-          ),
-      ],
+            if (canAdjust || canEdit)
+              _IngredientMoreButton(
+                ingredient: ingredient,
+                canAdjust: canAdjust,
+                canEdit: canEdit,
+                onAdjust: onAdjust,
+                onEdit: onEdit,
+              ),
+          ],
+        );
+      },
     );
   }
 }

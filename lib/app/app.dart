@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/app/router/app_router.dart';
 import 'package:app_admin_staff/app/service_mode.dart';
 import 'package:app_admin_staff/app/theme/app_theme.dart';
+import 'package:app_admin_staff/app/theme/app_theme_mode.dart';
 import 'package:app_admin_staff/core/realtime/realtime_connector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +14,7 @@ class StaffAdminApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final serviceMode = ref.watch(serviceModeProvider);
+    final themeMode = ref.watch(appThemeModeProvider);
     ref.listen<bool>(serviceModeProvider, (previous, next) {
       if (next) {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -25,7 +27,7 @@ class StaffAdminApp extends ConsumerWidget {
       title: "O'Pizza Staff",
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: serviceMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: serviceMode ? ThemeMode.dark : themeMode,
       routerConfig: router,
       builder: (context, child) {
         return RealtimeConnector(child: child ?? const SizedBox.shrink());

@@ -59,6 +59,10 @@ void main() {
 
       expect(find.text('Stock'), findsOneWidget);
       expect(find.text('Mozzarella'), findsWidgets);
+      expect(
+        find.text('Creme fraiche epaisse fermentation lente'),
+        findsWidgets,
+      );
       expect(tester.takeException(), isNull);
     });
   }
@@ -87,6 +91,14 @@ const _ingredients = [
     unit: 'l',
     currentQty: 2.5,
     alertThreshold: 4,
+    isBelowThreshold: true,
+  ),
+  Ingredient(
+    id: 4,
+    name: 'Creme fraiche epaisse fermentation lente',
+    unit: 'kg',
+    currentQty: 1.75,
+    alertThreshold: 2,
     isBelowThreshold: true,
   ),
 ];

@@ -33,6 +33,7 @@ void main() {
       tableNumber: '12',
       paymentMethod: 'cash_register',
       externalReference: 'REG-99',
+      establishmentId: 7,
       items: [ManualOrderLine(productId: 11, quantity: 1)],
     );
 
@@ -40,6 +41,7 @@ void main() {
 
     expect(json['order_type'], 'dine_in');
     expect(json['table_number'], '12');
+    expect(json['establishment_id'], 7);
     expect(json['delivery_fee'], 0);
     expect(json.containsKey('delivery_zone_id'), isFalse);
     expect(

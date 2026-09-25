@@ -192,13 +192,267 @@ void main() {
       expect(find.text('Montant superieur au remboursable'), findsOneWidget);
       expect(requests.where((r) => r.method == 'POST'), isEmpty);
     });
+
+    testWidgets('remboursement partiel valide envoie le montant en cents',
+        (tester) async {
+      final requests = <RequestOptions>[];
+      final api = _client((options) {
+        requests.add(options);
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.tenantEstablishments) {
+          return _jsonResponse(_establishmentsJson());
+        }
+        if (options.method == 'GET' && options.path == ApiEndpoints.payments) {
+          return _jsonResponse(_paginatedPayments());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.paymentSummary) {
+          return _jsonResponse(_summaryJson());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.terminalReaders) {
+          return _jsonResponse({'readers': <Object?>[]});
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.connectStatus) {
+          return _jsonResponse(_connectStatusJson());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.paymentDetail(42)) {
+          return _jsonResponse(_detailJson(remainingRefundableCents: 4590));
+        }
+        if (options.method == 'POST' &&
+            options.path == ApiEndpoints.paymentRefund(42)) {
+          return _jsonResponse(
+            _refundJson(
+              amount: (options.data as Map)['amount'] as int,
+              reason: (options.data as Map)['reason'] as String,
+            ),
+          );
+        }
+        throw StateError(
+          'requete inattendue ${options.method} ${options.path}',
+        );
+      });
+
+      await _pumpPaymentsPage(tester, api);
+
+      await tester.tap(find.byTooltip('Rembourser'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Partiel'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithIcon(TextField, Icons.euro_outlined),
+        '10',
+      );
+      await tester.enterText(
+        find.widgetWithIcon(TextField, Icons.notes_outlined),
+        'Geste commercial',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Rembourser'));
+      await tester.pumpAndSettle();
+
+      final refundRequests = requests
+          .where((r) => r.path == ApiEndpoints.paymentRefund(42))
+          .toList();
+      expect(refundRequests, hasLength(1));
+      expect(refundRequests.single.data['amount'], 1000);
+      expect(refundRequests.single.data['reason'], 'Geste commercial');
+    });
+
+    testWidgets('montant partiel nul est refuse cote client', (tester) async {
+      final requests = <RequestOptions>[];
+      final api = _client((options) {
+        requests.add(options);
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.tenantEstablishments) {
+          return _jsonResponse(_establishmentsJson());
+        }
+        if (options.method == 'GET' && options.path == ApiEndpoints.payments) {
+          return _jsonResponse(_paginatedPayments());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.paymentSummary) {
+          return _jsonResponse(_summaryJson());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.terminalReaders) {
+          return _jsonResponse({'readers': <Object?>[]});
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.connectStatus) {
+          return _jsonResponse(_connectStatusJson());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.paymentDetail(42)) {
+          return _jsonResponse(_detailJson(remainingRefundableCents: 4590));
+        }
+        throw StateError(
+          'requete inattendue ${options.method} ${options.path} '
+          '(un montant nul ne doit jamais poster)',
+        );
+      });
+
+      await _pumpPaymentsPage(tester, api);
+
+      await tester.tap(find.byTooltip('Rembourser'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Partiel'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithIcon(TextField, Icons.euro_outlined),
+        '0',
+      );
+      await tester.enterText(
+        find.widgetWithIcon(TextField, Icons.notes_outlined),
+        'Erreur de saisie',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Rembourser'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Montant invalide'), findsOneWidget);
+      expect(requests.where((r) => r.method == 'POST'), isEmpty);
+    });
+  });
+
+  group('PaymentsPage — terminal', () {
+    testWidgets('cree un intent et affiche un envoi TPE sans confirmer paye',
+        (tester) async {
+      final requests = <RequestOptions>[];
+      final api = _client((options) {
+        requests.add(options);
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.tenantEstablishments) {
+          return _jsonResponse(_establishmentsJson());
+        }
+        if (options.method == 'GET' && options.path == ApiEndpoints.payments) {
+          return _jsonResponse(_paginatedPayments());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.paymentSummary) {
+          return _jsonResponse(_summaryJson());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.terminalReaders) {
+          return _jsonResponse({
+            'readers': [
+              {
+                'id': 'tmr_1',
+                'label': 'TPE Comptoir 1',
+                'status': 'online',
+              },
+            ],
+          });
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.connectStatus) {
+          return _jsonResponse(_connectStatusJson());
+        }
+        if (options.method == 'POST' &&
+            options.path == ApiEndpoints.terminalIntent) {
+          return _jsonResponse({
+            'client_secret': 'cs_test',
+            'reader_action': {'type': 'process_payment_intent'},
+            'payment': _paymentListItemJson(orderId: 184, status: 'pending'),
+          });
+        }
+        throw StateError(
+          'requete inattendue ${options.method} ${options.path}',
+        );
+      });
+
+      await _pumpPaymentsPage(tester, api);
+      await tester.drag(find.byType(ListView), const Offset(0, -520));
+      await tester.pumpAndSettle();
+      final orderField =
+          find.widgetWithIcon(TextField, Icons.receipt_outlined).last;
+
+      await tester.enterText(
+        orderField,
+        '184',
+      );
+      await tester.ensureVisible(
+        find.widgetWithText(FilledButton, 'Envoyer au TPE'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Envoyer au TPE'));
+      await tester.pumpAndSettle();
+
+      final intentRequests =
+          requests.where((r) => r.path == ApiEndpoints.terminalIntent).toList();
+      expect(intentRequests, hasLength(1));
+      expect(intentRequests.single.data['order_id'], 184);
+      expect(intentRequests.single.data['reader_id'], 'tmr_1');
+      expect(intentRequests.single.data['process_on_reader'], isTrue);
+      expect(
+        find.text('Paiement envoye au TPE - Commande #184'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Payé'), findsNothing);
+    });
+  });
+
+  group('PaymentsPage — responsive', () {
+    for (final width in [390.0, 768.0, 1024.0, 1280.0, 1440.0, 1920.0]) {
+      testWidgets('finance responsive ${width.toInt()}', (tester) async {
+        final api = _client((options) {
+          if (options.method == 'GET' &&
+              options.path == ApiEndpoints.tenantEstablishments) {
+            return _jsonResponse(_establishmentsJson());
+          }
+          if (options.method == 'GET' &&
+              options.path == ApiEndpoints.payments) {
+            return _jsonResponse(_paginatedPayments());
+          }
+          if (options.method == 'GET' &&
+              options.path == ApiEndpoints.paymentSummary) {
+            return _jsonResponse(_summaryJson());
+          }
+          if (options.method == 'GET' &&
+              options.path == ApiEndpoints.terminalReaders) {
+            return _jsonResponse({
+              'readers': [
+                {
+                  'id': 'tmr_1',
+                  'label': 'TPE Comptoir 1',
+                  'status': 'online',
+                },
+              ],
+            });
+          }
+          if (options.method == 'GET' &&
+              options.path == ApiEndpoints.connectStatus) {
+            return _jsonResponse(_connectStatusJson());
+          }
+          throw StateError(
+            'requete inattendue ${options.method} ${options.path}',
+          );
+        });
+
+        await _pumpPaymentsPage(
+          tester,
+          api,
+          size: Size(width, 1100),
+        );
+        await tester.pump(const Duration(milliseconds: 1));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Paiements'), findsOneWidget);
+        expect(find.text('Transactions'), findsOneWidget);
+      });
+    }
   });
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-Future<void> _pumpPaymentsPage(WidgetTester tester, ApiClient api) async {
-  tester.view.physicalSize = const Size(1400, 1000);
+Future<void> _pumpPaymentsPage(
+  WidgetTester tester,
+  ApiClient api, {
+  Size size = const Size(1400, 1000),
+}) async {
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 

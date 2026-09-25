@@ -2,8 +2,10 @@ import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
+import 'package:app_admin_staff/features/haccp/application/haccp_offline_service.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -265,6 +267,7 @@ class _NcCardState extends ConsumerState<_NcCard> {
   }
 
   Future<void> _addCorrectiveAction() async {
+    final messenger = ScaffoldMessenger.of(context);
     final controller =
         TextEditingController(text: widget.nc.correctiveAction ?? '');
 
@@ -318,16 +321,35 @@ class _NcCardState extends ConsumerState<_NcCard> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(haccpRepositoryProvider).updateNonConformity(
+      final result =
+          await ref.read(haccpOfflineServiceProvider).updateNonConformity(
             widget.nc.id,
             correctiveAction: action,
             status: 'in_progress',
           );
+      if (mounted) {
+        final queued = result is QueuedForSync<HaccpNonConformity>;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              queued
+                  ? '${result.label}. Enregistre localement, synchronisation en attente.'
+                  : 'Action corrective enregistree',
+            ),
+            backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
+          ),
+        );
+      }
       widget.onUpdated();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible de mettre a jour la NC'),
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -336,10 +358,11 @@ class _NcCardState extends ConsumerState<_NcCard> {
   }
 
   Future<void> _validate() async {
+    final messenger = ScaffoldMessenger.of(context);
     // Vérifier qu'une action corrective existe
     if (widget.nc.correctiveAction == null ||
         widget.nc.correctiveAction!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
           content: Text(
             '⚠️ Ajoutez d\'abord une action corrective avant de clôturer.',
@@ -403,23 +426,34 @@ class _NcCardState extends ConsumerState<_NcCard> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(haccpRepositoryProvider).updateNonConformity(
+      final result =
+          await ref.read(haccpOfflineServiceProvider).updateNonConformity(
             widget.nc.id,
             status: 'closed',
           );
       widget.onUpdated();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Non-conformité clôturée ✓'),
-            backgroundColor: Colors.green,
+        final queued = result is QueuedForSync<HaccpNonConformity>;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              queued
+                  ? '${result.label}. Enregistre localement, synchronisation en attente.'
+                  : 'Non-conformit\u00e9 cl\u00f4tur\u00e9e \u2713',
+            ),
+            backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible de cloturer la NC'),
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -470,6 +504,17 @@ class _NcCardState extends ConsumerState<_NcCard> {
             nc.description,
             style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
           ),
+          if (isClosed) ...[
+            const SizedBox(height: AppSpacing.xs),
+            const Text(
+              'Non-conformit\u00e9 cl\u00f4tur\u00e9e \u2713',
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
 
           // Détails étendus
           if (_expanded) ...[

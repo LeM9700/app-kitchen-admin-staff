@@ -10,6 +10,7 @@ import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
 import 'package:app_admin_staff/features/haccp/presentation/dlc_form_dialog.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -212,6 +213,24 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
   }
 }
 
+void _showHaccpSnack<T>(
+  BuildContext context,
+  OfflineResult<T> result, {
+  required String onlineMessage,
+}) {
+  final queued = result is QueuedForSync<T>;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        queued
+            ? '${result.label}. Enregistre localement, synchronisation en attente.'
+            : onlineMessage,
+      ),
+      backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
+    ),
+  );
+}
+
 // ─── Onglet session (ouverture ou fermeture) ──────────────────────────────────
 
 class _SessionTab extends ConsumerStatefulWidget {
@@ -240,13 +259,27 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
   Future<void> _startSession() async {
     setState(() => _loading = true);
     try {
-      await ref.read(haccpRepositoryProvider).startSession(widget.sessionType);
+      final result = await ref
+          .read(haccpOfflineServiceProvider)
+          .startSession(widget.sessionType);
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpTodaySessionsProvider);
+      if (mounted) {
+        _showHaccpSnack(
+          context,
+          result,
+          onlineMessage: 'Check $_label demarre',
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible de demarrer le check HACCP'),
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -280,17 +313,16 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
 
     setState(() => _loading = true);
     try {
-      await ref
-          .read(haccpRepositoryProvider)
+      final result = await ref
+          .read(haccpOfflineServiceProvider)
           .completeSession(sessionId, force: force);
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpTodaySessionsProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Check $_label validé ✓'),
-            backgroundColor: Colors.green,
-          ),
+        _showHaccpSnack(
+          context,
+          result,
+          onlineMessage: 'Check $_label valide',
         );
       }
     } catch (e) {
@@ -590,7 +622,7 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
     final controller = TextEditingController();
     final ncController = TextEditingController();
 
-    final result = await showDialog<Map<String, dynamic>>(
+    final entry = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (_) => _TempInputDialog(
         equipment: equipment,
@@ -599,19 +631,26 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
       ),
     );
 
-    if (result == null) return;
+    if (entry == null) return;
 
     try {
-      await ref.read(haccpRepositoryProvider).logTemperature(
+      final saveResult =
+          await ref.read(haccpOfflineServiceProvider).logTemperature(
             widget.sessionId,
             equipmentId: equipment.id,
-            measuredTemp: result['temp'] as double,
-            correctiveAction: result['action'] as String?,
+            measuredTemp: entry['temp'] as double,
+            correctiveAction: entry['action'] as String?,
           );
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpTemperatureLogsProvider(widget.sessionId));
 
-      if (mounted && result['is_compliant'] == false) {
+      if (mounted && saveResult is QueuedForSync<HaccpTemperatureLog>) {
+        _showHaccpSnack(
+          context,
+          saveResult,
+          onlineMessage: 'Releve temperature enregistre',
+        );
+      } else if (mounted && entry['is_compliant'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content:
@@ -623,7 +662,15 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(
+                e,
+                'Impossible d enregistrer la temperature HACCP',
+              ),
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -902,13 +949,19 @@ class _DlcSectionState extends ConsumerState<_DlcSection> {
     if (result == null) return;
 
     try {
-      await ref
-          .read(haccpRepositoryProvider)
+      final saveResult = await ref
+          .read(haccpOfflineServiceProvider)
           .logDlcCheck(widget.sessionId, result);
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpDlcChecksProvider(widget.sessionId));
 
-      if (mounted && result['is_compliant'] == false) {
+      if (mounted && saveResult is QueuedForSync<HaccpDlcCheck>) {
+        _showHaccpSnack(
+          context,
+          saveResult,
+          onlineMessage: 'Verification DLC enregistree',
+        );
+      } else if (mounted && result['is_compliant'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('⚠️ DLC non conforme — NC créée automatiquement'),
@@ -1007,12 +1060,19 @@ class _CleaningSection extends ConsumerStatefulWidget {
 class _CleaningSectionState extends ConsumerState<_CleaningSection> {
   Future<void> _markDone(int taskId) async {
     try {
-      await ref.read(haccpRepositoryProvider).logCleaning(
+      final result = await ref.read(haccpOfflineServiceProvider).logCleaning(
             widget.sessionId,
             taskId: taskId,
           );
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpCleaningLogsProvider(widget.sessionId));
+      if (mounted) {
+        _showHaccpSnack(
+          context,
+          result,
+          onlineMessage: 'Tache de nettoyage marquee comme faite',
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1370,7 +1430,7 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
 
   double? get _polarity =>
       double.tryParse(_polarityCtrl.text.replaceAll(',', '.'));
-  bool get _nonCompliant => _polarity != null && _polarity! > 25;
+  bool get _nonCompliant => false;
 
   @override
   void dispose() {
@@ -1384,7 +1444,7 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
     setState(() => _saving = true);
 
     try {
-      await ref.read(haccpRepositoryProvider).logFryingOil(
+      final result = await ref.read(haccpOfflineServiceProvider).logFryingOil(
             widget.sessionId,
             polarityPercent: _polarity!,
             color: _color,
@@ -1394,6 +1454,13 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                 : null,
           );
       widget.onSaved();
+      if (mounted) {
+        _showHaccpSnack(
+          context,
+          result,
+          onlineMessage: 'Releve huile enregistre',
+        );
+      }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {

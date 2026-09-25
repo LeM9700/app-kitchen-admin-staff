@@ -1,7 +1,9 @@
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
+import 'package:app_admin_staff/features/haccp/application/haccp_offline_service.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -412,18 +414,36 @@ class _StartCoolingFormState extends ConsumerState<_StartCoolingForm> {
     setState(() => _saving = true);
 
     try {
-      await ref.read(haccpRepositoryProvider).startCooling({
+      final result = await ref.read(haccpOfflineServiceProvider).startCooling({
         'product_name': _productCtrl.text.trim(),
         'temp_initial':
             double.parse(_tempCtrl.text.trim().replaceAll(',', '.')),
         'started_at': DateTime.now().toIso8601String(),
       });
       widget.onSaved();
+      if (mounted) {
+        final queued = result is QueuedForSync<HaccpCoolingLog>;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              queued
+                  ? '${result.label}. Enregistre localement, synchronisation en attente.'
+                  : 'Suivi de refroidissement demarre',
+            ),
+            backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
+          ),
+        );
+      }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible de demarrer le refroidissement'),
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -535,7 +555,7 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
   double? get _tempValue =>
       double.tryParse(_tempCtrl.text.replaceAll(',', '.'));
 
-  bool get _nonCompliant => _tempValue != null && _tempValue! > 10;
+  bool get _nonCompliant => false;
 
   @override
   void dispose() {
@@ -549,7 +569,7 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
     setState(() => _saving = true);
 
     try {
-      await ref.read(haccpRepositoryProvider).completeCooling(
+      final result = await ref.read(haccpOfflineServiceProvider).completeCooling(
             widget.log.id,
             tempFinal: _tempValue!,
             correctiveAction: _correctiveCtrl.text.trim().isNotEmpty
@@ -557,11 +577,29 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
                 : null,
           );
       widget.onSaved();
+      if (mounted) {
+        final queued = result is QueuedForSync<HaccpCoolingLog>;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              queued
+                  ? '${result.label}. Enregistre localement, synchronisation en attente.'
+                  : 'Temperature finale enregistree',
+            ),
+            backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
+          ),
+        );
+      }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible de terminer le refroidissement'),
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {

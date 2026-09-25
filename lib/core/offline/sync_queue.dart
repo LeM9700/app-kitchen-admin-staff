@@ -304,6 +304,7 @@ class SyncQueue extends Notifier<List<QueuedAction>> {
         tenantSlug: tenantSlug,
         userId: userId,
         sessionId: _sessionId,
+        idempotencyKey: idempotencyKey,
         lastError: lastError,
       ),
       ...state,

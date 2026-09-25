@@ -103,6 +103,34 @@ class HaccpOfflineService {
     return const QueuedForSync('Session mise en queue');
   }
 
+  Future<OfflineResult<HaccpCheckSession>> completeSession(
+    int sessionId, {
+    String? notes,
+    bool force = false,
+  }) async {
+    final payload = {
+      if (notes != null) 'notes': notes,
+      'force': force,
+    };
+    if (isOnline) {
+      final result = await repo.completeSession(
+        sessionId,
+        notes: notes,
+        force: force,
+      );
+      return OnlineSuccess(result);
+    }
+    _enqueue(
+      feature: 'haccp',
+      label: 'Valider session #$sessionId',
+      endpoint: '/haccp/sessions/$sessionId/complete',
+      method: 'PATCH',
+      payload: payload,
+      idempotencyKey: _ikey('session_complete', sessionId.toString()),
+    );
+    return const QueuedForSync('Validation de session mise en queue');
+  }
+
   // ── Relevés de température ─────────────────────────────────────────────────
 
   Future<OfflineResult<HaccpTemperatureLog>> logTemperature(

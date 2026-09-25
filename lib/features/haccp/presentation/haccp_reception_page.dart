@@ -1,7 +1,9 @@
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
+import 'package:app_admin_staff/features/haccp/application/haccp_offline_service.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -286,7 +288,8 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
     final temp = double.tryParse(_tempCtrl.text.replaceAll(',', '.'));
 
     try {
-      await ref.read(haccpRepositoryProvider).createReceptionControl({
+      final result =
+          await ref.read(haccpOfflineServiceProvider).createReceptionControl({
         'supplier_name': _supplierCtrl.text.trim(),
         'product_name': _productCtrl.text.trim(),
         if (_batchCtrl.text.trim().isNotEmpty)
@@ -303,11 +306,29 @@ class _ReceptionFormState extends ConsumerState<_ReceptionForm> {
       });
 
       widget.onSaved();
+      if (mounted) {
+        final queued = result is QueuedForSync<HaccpReceptionControl>;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              queued
+                  ? '${result.label}. Enregistre localement, synchronisation en attente.'
+                  : 'Reception enregistree',
+            ),
+            backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
+          ),
+        );
+      }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible d enregistrer la reception'),
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {

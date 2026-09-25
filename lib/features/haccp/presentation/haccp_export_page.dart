@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
-import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,7 +33,10 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
   // État des exports
   bool _exportingPdf = false;
   bool _exportingCsv = false;
-  String? _csvType;
+
+  // Sélection UI (n'affecte que le choix de l'utilisateur, pas les requêtes)
+  _ExportFormat _format = _ExportFormat.pdf;
+  String _selectedType = 'all';
 
   @override
   void initState() {
@@ -130,8 +133,10 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur export PDF : $e'),
-            backgroundColor: Colors.red,
+            content: Text(
+              haccpFriendlyError(e, 'Export PDF impossible'),
+            ),
+            backgroundColor: haccpToneStyle(HaccpTone.danger).foreground,
           ),
         );
       }
@@ -143,7 +148,6 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
   Future<void> _exportCsv(String type) async {
     setState(() {
       _exportingCsv = true;
-      _csvType = type;
     });
     try {
       final api = ref.read(apiClientProvider);
@@ -173,8 +177,10 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur export CSV : $e'),
-            backgroundColor: Colors.red,
+            content: Text(
+              haccpFriendlyError(e, 'Export CSV impossible'),
+            ),
+            backgroundColor: haccpToneStyle(HaccpTone.danger).foreground,
           ),
         );
       }
@@ -182,7 +188,6 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
       if (mounted) {
         setState(() {
           _exportingCsv = false;
-          _csvType = null;
         });
       }
     }
@@ -193,156 +198,221 @@ class _HaccpExportPageState extends ConsumerState<HaccpExportPage> {
   @override
   Widget build(BuildContext context) {
     final isExporting = _exportingPdf || _exportingCsv;
+    final days = _toDate.difference(_fromDate).inDays + 1;
+    final selected = _csvOptions.firstWhere((o) => o.type == _selectedType);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Export HACCP / PMS')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        children: [
-          // Infos légales
-          const _InfoBanner(
-            icon: Icons.info_outline,
-            text:
-                'Ces documents constituent le dossier PMS numérique (Règlement CE 852/2004 + arrêté 12/02/2024). '
-                'À conserver 5 ans. Présentable lors d\'une inspection DDPP/DGAL.',
-            color: Colors.blue,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Sélecteur de période
-          Text('Période', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          InkWell(
-            onTap: _pickDateRange,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
+      backgroundColor: HaccpPalette.background,
+      appBar: AppBar(
+        title: const Text('Export HACCP / PMS'),
+        backgroundColor: HaccpPalette.background,
+        foregroundColor: HaccpPalette.graphite,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              const HaccpInfoBanner(
+                icon: Icons.info_outline,
+                title: 'Dossier PMS numérique',
+                message:
+                    'Règlement CE 852/2004 + arrêté 12/02/2024. À conserver 5 ans. '
+                    'Présentable lors d\'une inspection DDPP/DGAL.',
+                tone: HaccpTone.info,
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.date_range, color: Colors.blue),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${_displayDate(_fromDate)} → ${_displayDate(_toDate)}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Période
+              HaccpSection(
+                title: 'Période',
+                icon: Icons.date_range_outlined,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InkWell(
+                      onTap: isExporting ? null : _pickDateRange,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        constraints: const BoxConstraints(minHeight: 56),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
                         ),
-                        Text(
-                          '${_toDate.difference(_fromDate).inDays + 1} jour(s)',
-                          style:
-                              const TextStyle(color: Colors.grey, fontSize: 12),
+                        decoration: BoxDecoration(
+                          color: HaccpPalette.surfaceWarm,
+                          border: Border.all(color: HaccpPalette.border),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.date_range,
+                              color: HaccpPalette.graphite,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${_displayDate(_fromDate)} → ${_displayDate(_toDate)}',
+                                    style: const TextStyle(
+                                      color: HaccpPalette.graphite,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Text(
+                                    '$days jour(s)',
+                                    style: const TextStyle(
+                                      color: HaccpPalette.graphiteSoft,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: HaccpPalette.graphiteSoft,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        ActionChip(
+                          label: const Text('7 jours'),
+                          onPressed: isExporting ? null : () => _setLastN(7),
+                        ),
+                        ActionChip(
+                          label: const Text('30 jours'),
+                          onPressed: isExporting ? null : () => _setLastN(30),
+                        ),
+                        ActionChip(
+                          label: const Text('Ce mois'),
+                          onPressed: isExporting ? null : _setCurrentMonth,
+                        ),
+                        ActionChip(
+                          label: const Text('Mois précédent'),
+                          onPressed: isExporting ? null : _setLastMonth,
                         ),
                       ],
                     ),
-                  ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
 
-          // Raccourcis période
-          Wrap(
-            spacing: AppSpacing.xs,
-            children: [
-              ActionChip(
-                label: const Text('7 jours'),
-                onPressed: () => _setLastN(7),
+              // Format
+              HaccpSection(
+                title: 'Format',
+                icon: Icons.description_outlined,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<_ExportFormat>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: _ExportFormat.pdf,
+                        icon: Icon(Icons.picture_as_pdf_outlined),
+                        label: Text('PDF'),
+                      ),
+                      ButtonSegment(
+                        value: _ExportFormat.csv,
+                        icon: Icon(Icons.table_chart_outlined),
+                        label: Text('CSV'),
+                      ),
+                    ],
+                    selected: {_format},
+                    onSelectionChanged: isExporting
+                        ? null
+                        : (v) => setState(() => _format = v.first),
+                  ),
+                ),
               ),
-              ActionChip(
-                label: const Text('30 jours'),
-                onPressed: () => _setLastN(30),
+              const SizedBox(height: AppSpacing.md),
+
+              // Type de données
+              HaccpSection(
+                title: 'Type de données',
+                subtitle: _format == _ExportFormat.pdf
+                    ? 'Le PDF regroupe toutes les sections du dossier.'
+                    : selected.subtitle,
+                icon: Icons.category_outlined,
+                child: _format == _ExportFormat.pdf
+                    ? const HaccpStatusBadge(
+                        label: 'Rapport complet',
+                        tone: HaccpTone.neutral,
+                      )
+                    : Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xs,
+                        children: [
+                          for (final opt in _csvOptions)
+                            ChoiceChip(
+                              avatar: Icon(opt.icon, size: 18),
+                              label: Text(opt.label),
+                              selected: _selectedType == opt.type,
+                              onSelected: isExporting
+                                  ? null
+                                  : (_) =>
+                                      setState(() => _selectedType = opt.type),
+                            ),
+                        ],
+                      ),
               ),
-              ActionChip(
-                label: const Text('Ce mois'),
-                onPressed: _setCurrentMonth,
+              const SizedBox(height: AppSpacing.lg),
+
+              SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  onPressed: isExporting
+                      ? null
+                      : () => _format == _ExportFormat.pdf
+                          ? _exportPdf()
+                          : _exportCsv(_selectedType),
+                  icon: isExporting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.file_download_outlined),
+                  label: Text(
+                    isExporting ? 'GÉNÉRATION EN COURS…' : 'GÉNÉRER',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: HaccpPalette.graphite,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
               ),
-              ActionChip(
-                label: const Text('Mois précédent'),
-                onPressed: _setLastMonth,
-              ),
+              const SizedBox(height: AppSpacing.lg),
             ],
           ),
-
-          const SizedBox(height: AppSpacing.xl),
-
-          // Export PDF
-          Text(
-            'Rapport complet',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          const Text(
-            'PDF multi-sections : sessions, températures, DLC, nettoyage, NC, '
-            'réceptions, refroidissements, formations.',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: isExporting ? null : _exportPdf,
-              icon: _exportingPdf
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.picture_as_pdf),
-              label: Text(
-                _exportingPdf ? 'Génération en cours…' : 'Exporter en PDF',
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red[700],
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.xl),
-
-          // Export CSV
-          Text('Exports CSV', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.xs),
-          const Text(
-            'Fichiers CSV compatibles Excel (UTF-8 BOM). Utile pour analyser '
-            'les données ou les importer dans un tableur.',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          ..._csvOptions.map(
-            (opt) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-              child: _CsvExportTile(
-                icon: opt.icon,
-                label: opt.label,
-                subtitle: opt.subtitle,
-                type: opt.type,
-                loading: _exportingCsv && _csvType == opt.type,
-                disabled: isExporting,
-                onTap: () => _exportCsv(opt.type),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
+
+enum _ExportFormat { pdf, csv }
 
 // ─── Options CSV ──────────────────────────────────────────────────────────────
 
@@ -398,103 +468,3 @@ const _csvOptions = [
     type: 'cooling',
   ),
 ];
-
-// ─── Widgets utilitaires ──────────────────────────────────────────────────────
-
-class _CsvExportTile extends StatelessWidget {
-  const _CsvExportTile({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.type,
-    required this.loading,
-    required this.disabled,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final String type;
-  final bool loading;
-  final bool disabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return DsCard(
-      borderRadius: 10,
-      padding: EdgeInsets.zero,
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: loading
-              ? const Padding(
-                  padding: EdgeInsets.all(10),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.green,
-                  ),
-                )
-              : Icon(icon, color: Colors.green[700], size: 20),
-        ),
-        title: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(color: Colors.grey, fontSize: 12),
-        ),
-        trailing: disabled
-            ? const SizedBox.shrink()
-            : const Icon(Icons.share_outlined, size: 18, color: Colors.grey),
-        onTap: disabled ? null : onTap,
-      ),
-    );
-  }
-}
-
-class _InfoBanner extends StatelessWidget {
-  const _InfoBanner({
-    required this.icon,
-    required this.text,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(color: color, fontSize: 12, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

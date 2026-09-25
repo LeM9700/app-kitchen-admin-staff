@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,7 +21,7 @@ class _HaccpCleaningTasksPageState
     extends ConsumerState<HaccpCleaningTasksPage> {
   List<HaccpCleaningTask>? _tasks;
   bool _loading = true;
-  String? _error;
+  Object? _error;
 
   @override
   void initState() {
@@ -37,7 +38,7 @@ class _HaccpCleaningTasksPageState
       final tasks = await ref.read(haccpRepositoryProvider).listCleaningTasks();
       if (mounted) setState(() => _tasks = tasks);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -62,7 +63,12 @@ class _HaccpCleaningTasksPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Enregistrement impossible'),
+            ),
+            backgroundColor: haccpToneStyle(HaccpTone.danger).foreground,
+          ),
         );
       }
     }
@@ -77,7 +83,12 @@ class _HaccpCleaningTasksPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Enregistrement impossible'),
+            ),
+            backgroundColor: haccpToneStyle(HaccpTone.danger).foreground,
+          ),
         );
       }
     }
@@ -101,9 +112,9 @@ class _HaccpCleaningTasksPageState
   String _sessionTypeLabel(String s) {
     switch (s) {
       case 'opening':
-        return 'Ouverture';
+        return 'Avant ouverture';
       case 'closing':
-        return 'Fermeture';
+        return 'Avant fermeture';
       default:
         return 'Ouverture + Fermeture';
     }
@@ -111,63 +122,181 @@ class _HaccpCleaningTasksPageState
 
   @override
   Widget build(BuildContext context) {
+    final tasks = _tasks ?? const <HaccpCleaningTask>[];
     return Scaffold(
-      appBar: AppBar(title: const Text('Plan de nettoyage & désinfection')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(),
-        child: const Icon(Icons.add),
+      backgroundColor: HaccpPalette.background,
+      appBar: AppBar(
+        title: const Text('Plan de nettoyage & désinfection'),
+        backgroundColor: HaccpPalette.background,
+        foregroundColor: HaccpPalette.graphite,
+        elevation: 0,
+        scrolledUnderElevation: 0,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text('Erreur : $_error'))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: (_tasks ?? const []).isEmpty
-                      ? ListView(
-                          children: const [
-                            Padding(
-                              padding: EdgeInsets.all(AppSpacing.lg),
-                              child: Text(
-                                'Aucune tâche de nettoyage. Appuyez sur + pour '
-                                'en ajouter une.',
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        )
-                      : ListView.builder(
-                          itemCount: _tasks!.length,
-                          itemBuilder: (context, index) {
-                            final t = _tasks![index];
-                            return ListTile(
-                              leading: Icon(
-                                Icons.cleaning_services_outlined,
-                                color: t.isActive ? null : Colors.grey,
-                              ),
-                              title: Text(
-                                t.name,
-                                style: TextStyle(
-                                  color: t.isActive ? null : Colors.grey,
-                                  decoration: t.isActive
-                                      ? null
-                                      : TextDecoration.lineThrough,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openForm(),
+        icon: const Icon(Icons.add),
+        label: const Text('Ajouter une tâche'),
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child: _loading
+              ? const HaccpSkeleton()
+              : _error != null
+                  ? HaccpErrorState(
+                      message: haccpFriendlyError(
+                        _error!,
+                        'Impossible de charger le plan de nettoyage',
+                      ),
+                      onRetry: _load,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: tasks.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: const [
+                                SizedBox(height: AppSpacing.xl),
+                                HaccpEmptyState(
+                                  icon: Icons.cleaning_services_outlined,
+                                  title: 'Aucune tâche de nettoyage',
+                                  message:
+                                      'Ajoutez une première tâche pour construire le plan.',
                                 ),
-                              ),
-                              subtitle: Text(
-                                '${t.zone} • ${_frequencyLabel(t.frequency)} • '
-                                '${_sessionTypeLabel(t.sessionType)}'
-                                '${t.productUsed != null ? ' • ${t.productUsed}' : ''}',
-                              ),
-                              onTap: () => _openForm(existing: t),
-                              trailing: Switch(
-                                value: t.isActive,
-                                onChanged: (_) => _toggleActive(t),
-                              ),
-                            );
-                          },
-                        ),
+                              ],
+                            )
+                          : _buildList(tasks),
+                    ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(List<HaccpCleaningTask> tasks) {
+    final byZone = <String, List<HaccpCleaningTask>>{};
+    for (final t in tasks) {
+      byZone.putIfAbsent(t.zone, () => []).add(t);
+    }
+    final activeCount = tasks.where((t) => t.isActive).length;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        96,
+      ),
+      children: [
+        HaccpPageHeader(
+          title: 'Plan de nettoyage',
+          subtitle: '$activeCount tâche(s) active(s) sur ${tasks.length}',
+          icon: Icons.cleaning_services_outlined,
+        ),
+        for (final entry in byZone.entries) ...[
+          const SizedBox(height: AppSpacing.md),
+          HaccpSection(
+            title: entry.key,
+            subtitle: '${entry.value.length} tâche(s)',
+            icon: Icons.place_outlined,
+            child: Column(
+              children: [
+                for (var i = 0; i < entry.value.length; i++) ...[
+                  if (i > 0)
+                    const Divider(height: 1, color: HaccpPalette.border),
+                  _CleaningRow(
+                    task: entry.value[i],
+                    frequency: _frequencyLabel(entry.value[i].frequency),
+                    session: _sessionTypeLabel(entry.value[i].sessionType),
+                    onTap: () => _openForm(existing: entry.value[i]),
+                    onToggle: () => _toggleActive(entry.value[i]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CleaningRow extends StatelessWidget {
+  const _CleaningRow({
+    required this.task,
+    required this.frequency,
+    required this.session,
+    required this.onTap,
+    required this.onToggle,
+  });
+
+  final HaccpCleaningTask task;
+  final String frequency;
+  final String session;
+  final VoidCallback onTap;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = !task.isActive;
+    final product = task.productUsed;
+    final details = [
+      frequency,
+      session,
+      if (product != null && product.isNotEmpty) product,
+    ].join(' • ');
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xs,
+            vertical: AppSpacing.xs,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.name,
+                      style: TextStyle(
+                        color: muted
+                            ? HaccpPalette.graphiteSoft
+                            : HaccpPalette.graphite,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        decoration: muted ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      details,
+                      style: const TextStyle(
+                        color: HaccpPalette.graphiteSoft,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              if (muted)
+                const Padding(
+                  padding: EdgeInsets.only(right: AppSpacing.xs),
+                  child: HaccpStatusBadge(
+                    label: 'Inactive',
+                    tone: HaccpTone.neutral,
+                    compact: true,
+                  ),
+                ),
+              Switch(value: task.isActive, onChanged: (_) => onToggle()),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

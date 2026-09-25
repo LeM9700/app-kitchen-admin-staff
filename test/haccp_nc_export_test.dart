@@ -214,6 +214,10 @@ void main() {
         );
       });
 
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
       await tester.pumpWidget(
         ProviderScope(
           overrides: [apiClientProvider.overrideWithValue(api)],
@@ -222,7 +226,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Exporter en PDF'));
+      await tester.tap(find.text('GÉNÉRER'));
       await tester.pumpAndSettle();
 
       expect(captured, isNotNull);
@@ -261,7 +265,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // Nouveau flux : format CSV, type de donnees, puis GÉNÉRER.
+      await tester.tap(find.text('CSV'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Non-conformités'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('GÉNÉRER'));
       await tester.pumpAndSettle();
 
       expect(captured, isNotNull);

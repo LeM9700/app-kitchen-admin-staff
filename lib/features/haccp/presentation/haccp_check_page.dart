@@ -3,9 +3,8 @@ import 'package:app_admin_staff/core/connectivity/connectivity_status.dart';
 import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:app_admin_staff/core/offline/sync_worker.dart';
 import 'package:app_admin_staff/features/haccp/application/haccp_offline_service.dart';
-import 'package:app_admin_staff/design_system/components/badges/status_badge.dart';
-import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
+import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
@@ -59,6 +58,7 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
     final openNcCount = openNcsAsync.valueOrNull?.length ?? 0;
 
     return Scaffold(
+      backgroundColor: HaccpPalette.background,
       appBar: AppBar(
         title: const Text('Sécurité alimentaire'),
         actions: [
@@ -68,7 +68,7 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
             child: Badge(
               isLabelVisible: openNcCount > 0,
               label: Text(openNcCount.toString()),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.dangerAlt,
               child: IconButton(
                 icon: const Icon(Icons.report_problem_outlined),
                 tooltip: 'Non-conformités',
@@ -173,9 +173,12 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
 
           Expanded(
             child: statusAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => _ErrorState(
-                message: e.toString(),
+              loading: () => const HaccpSkeleton(),
+              error: (e, _) => HaccpErrorState(
+                message: haccpFriendlyError(
+                  e,
+                  'Impossible de charger les checks HACCP',
+                ),
                 onRetry: () => ref.invalidate(haccpStatusProvider),
               ),
               data: (status) => Column(
@@ -226,7 +229,7 @@ void _showHaccpSnack<T>(
             ? '${result.label}. Enregistre localement, synchronisation en attente.'
             : onlineMessage,
       ),
-      backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
+      backgroundColor: queued ? AppColors.infoAlt : AppColors.success,
     ),
   );
 }
@@ -278,7 +281,7 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
             content: Text(
               haccpFriendlyError(e, 'Impossible de demarrer le check HACCP'),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.dangerAlt,
           ),
         );
       }
@@ -334,8 +337,10 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Erreur : $msg'),
-              backgroundColor: Colors.red,
+              content: Text(
+                haccpFriendlyError(e, 'Impossible de valider le check HACCP'),
+              ),
+              backgroundColor: AppColors.dangerAlt,
             ),
           );
         }
@@ -348,125 +353,110 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
   @override
   Widget build(BuildContext context) {
     final summary = widget.summary;
+    final started = summary.status != 'not_started';
 
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(haccpStatusProvider);
         ref.invalidate(haccpTodaySessionsProvider);
       },
-      child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          // Bandeau de progression
-          _ProgressBanner(summary: summary, sessionType: widget.sessionType),
-          const SizedBox(height: AppSpacing.md),
+      child: HaccpPageBody(
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            // Progression : session, restant, terminé, NC
+            _ProgressBanner(summary: summary, sessionType: widget.sessionType),
+            const SizedBox(height: AppSpacing.md),
 
-          // Session non démarrée
-          if (summary.status == 'not_started') ...[
-            DsCard(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.play_circle_outline,
-                    size: 48,
-                    color: AppColors.infoAlt,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Check $_label non démarré',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Démarrez le check pour commencer les relevés.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  FilledButton.icon(
+            if (!started)
+              HaccpSection(
+                title: 'Check $_label non démarré',
+                subtitle: 'Démarrez le check pour commencer les relevés.',
+                icon: Icons.play_circle_outline,
+                tone: HaccpTone.info,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
                     onPressed: _loading ? null : _startSession,
                     icon: _loading
                         ? const SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: 18,
+                            height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.play_arrow),
                     label: Text('Démarrer le check $_label'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                    ),
                   ),
-                ],
+                ),
+              )
+            else ...[
+              // 1. Ce qui nécessite une action : NC de la session
+              _NonConformitySection(sessionId: summary.sessionId!),
+              // 2. Contrôles / saisies
+              _TemperatureSection(
+                sessionId: summary.sessionId!,
+                sessionType: widget.sessionType,
               ),
-            ),
-          ] else ...[
-            // Session en cours ou complète
-            _TemperatureSection(
-              sessionId: summary.sessionId!,
-              sessionType: widget.sessionType,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _DlcSection(sessionId: summary.sessionId!),
-            const SizedBox(height: AppSpacing.md),
-            _CleaningSection(
-              sessionId: summary.sessionId!,
-              sessionType: widget.sessionType,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            // Section huile friteuse — visible seulement si feature flag activé
-            _OilSection(sessionId: summary.sessionId!),
-            const SizedBox(height: AppSpacing.md),
-            _NonConformitySection(sessionId: summary.sessionId!),
-            const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
+              _DlcSection(sessionId: summary.sessionId!),
+              const SizedBox(height: AppSpacing.md),
+              _CleaningSection(
+                sessionId: summary.sessionId!,
+                sessionType: widget.sessionType,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              // Section huile friteuse — visible seulement si feature flag activé
+              _OilSection(sessionId: summary.sessionId!),
+              const SizedBox(height: AppSpacing.lg),
 
-            // Bouton validation (admin uniquement)
-            if (widget.isAdmin && !summary.isComplete)
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
+              // Bouton validation (admin uniquement)
+              if (widget.isAdmin && !summary.isComplete)
+                FilledButton.icon(
                   onPressed: _loading
                       ? null
                       : () => _completeSession(summary.sessionId!),
                   icon: _loading
                       ? const SizedBox(
-                          width: 16,
-                          height: 16,
+                          width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.check_circle_outline),
                   label: Text('Valider le check $_label'),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-
-            // Statut validé
-            if (summary.isComplete)
-              DsCard(
-                backgroundColor: Colors.green.withValues(alpha: 0.1),
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  leading: const Icon(Icons.check_circle, color: Colors.green),
-                  title: Text(
-                    summary.status == 'incomplete_validated'
-                        ? 'Validé avec réserves'
-                        : 'Check $_label validé',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
+                    minimumSize: const Size.fromHeight(56),
+                    backgroundColor: HaccpPalette.graphite,
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
                     ),
                   ),
-                  subtitle: Text(
-                    widget.canProceed
-                        ? widget.sessionType == 'opening'
-                            ? 'Le restaurant peut ouvrir.'
-                            : 'La fermeture peut être confirmée.'
-                        : '',
-                  ),
                 ),
-              ),
+
+              // Statut validé
+              if (summary.isComplete)
+                HaccpInfoBanner(
+                  icon: Icons.check_circle_outline,
+                  title: summary.status == 'incomplete_validated'
+                      ? 'Validé avec réserves'
+                      : 'Check $_label validé',
+                  message: widget.canProceed
+                      ? widget.sessionType == 'opening'
+                          ? 'Le restaurant peut ouvrir.'
+                          : 'La fermeture peut être confirmée.'
+                      : 'Validation enregistrée.',
+                  tone: summary.status == 'incomplete_validated'
+                      ? HaccpTone.warning
+                      : HaccpTone.ok,
+                ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -474,7 +464,7 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
 
 // ─── Bandeau de progression ───────────────────────────────────────────────────
 
-class _ProgressBanner extends StatelessWidget {
+class _ProgressBanner extends ConsumerWidget {
   const _ProgressBanner({
     required this.summary,
     required this.sessionType,
@@ -484,76 +474,71 @@ class _ProgressBanner extends StatelessWidget {
   final String sessionType;
 
   @override
-  Widget build(BuildContext context) {
-    final color = summary.isComplete
-        ? Colors.green
-        : summary.status == 'not_started'
-            ? Colors.grey
-            : AppColors.infoAlt;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final started = summary.status != 'not_started';
+    final total = summary.temperaturesTotal + summary.cleaningTotal;
+    final done = summary.temperaturesDone + summary.cleaningDone;
+    final sessionId = summary.sessionId;
+    final ncCount = sessionId == null
+        ? 0
+        : (ref
+                .watch(haccpOpenNcProvider)
+                .valueOrNull
+                ?.where((nc) => nc.sessionId == sessionId)
+                .length ??
+            0);
 
-    return DsCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                summary.isComplete
-                    ? Icons.check_circle
-                    : summary.status == 'not_started'
-                        ? Icons.radio_button_unchecked
-                        : Icons.pending,
-                color: color,
-                size: 20,
+    final tone = summary.isComplete
+        ? (summary.status == 'incomplete_validated'
+            ? HaccpTone.warning
+            : HaccpTone.ok)
+        : started
+            ? HaccpTone.info
+            : HaccpTone.neutral;
+
+    final remainingTemps =
+        (summary.temperaturesTotal - summary.temperaturesDone).clamp(0, 9999);
+    final remainingCleaning =
+        (summary.cleaningTotal - summary.cleaningDone).clamp(0, 9999);
+
+    return HaccpProgressCard(
+      title: sessionType == 'opening'
+          ? 'HACCP — Ouverture'
+          : 'HACCP — Fermeture',
+      statusLabel: _statusLabel(summary.status),
+      tone: tone,
+      done: done,
+      total: started ? total : 0,
+      chips: !started
+          ? const []
+          : [
+              HaccpStatusBadge(
+                label:
+                    '${summary.temperaturesDone}/${summary.temperaturesTotal} Températures',
+                tone: remainingTemps == 0 ? HaccpTone.ok : HaccpTone.neutral,
+                compact: true,
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                _statusLabel(summary.status),
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
+              HaccpStatusBadge(
+                label:
+                    '${summary.cleaningDone}/${summary.cleaningTotal} Nettoyage',
+                tone:
+                    remainingCleaning == 0 ? HaccpTone.ok : HaccpTone.neutral,
+                compact: true,
               ),
-              const Spacer(),
-              if (summary.hasNonConformities)
-                const StatusBadge(
-                  label: 'NC',
-                  tone: StatusTone.warning,
+              HaccpStatusBadge(
+                label: '${summary.dlcDone} DLC',
+                tone: summary.dlcDone > 0 ? HaccpTone.ok : HaccpTone.neutral,
+                compact: true,
+              ),
+              if (ncCount > 0 || summary.hasNonConformities)
+                HaccpStatusBadge(
+                  label: ncCount > 0
+                      ? '$ncCount NC ouverte${ncCount > 1 ? 's' : ''}'
+                      : 'NC',
+                  tone: HaccpTone.danger,
+                  compact: true,
                 ),
             ],
-          ),
-          if (summary.status != 'not_started') ...[
-            const SizedBox(height: AppSpacing.sm),
-            LinearProgressIndicator(
-              value: summary.progress,
-              color: color,
-              backgroundColor: color.withValues(alpha: 0.15),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Row(
-              children: [
-                _ProgressChip(
-                  label:
-                      '${summary.temperaturesDone}/${summary.temperaturesTotal} Températures',
-                  done: summary.temperaturesDone >= summary.temperaturesTotal,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                _ProgressChip(
-                  label:
-                      '${summary.cleaningDone}/${summary.cleaningTotal} Nettoyage',
-                  done: summary.cleaningDone >= summary.cleaningTotal,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                _ProgressChip(
-                  label: '${summary.dlcDone} DLC',
-                  done: summary.dlcDone > 0,
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -570,34 +555,6 @@ class _ProgressBanner extends StatelessWidget {
       default:
         return status;
     }
-  }
-}
-
-class _ProgressChip extends StatelessWidget {
-  const _ProgressChip({required this.label, required this.done});
-
-  final String label;
-  final bool done;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: done
-            ? Colors.green.withValues(alpha: 0.12)
-            : Colors.grey.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
-          color: done ? Colors.green[700] : Colors.grey[600],
-        ),
-      ),
-    );
   }
 }
 
@@ -655,7 +612,7 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
           const SnackBar(
             content:
                 Text('⚠️ Température hors limite — NC créée automatiquement'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.warning,
           ),
         );
       }
@@ -669,7 +626,7 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
                 'Impossible d enregistrer la temperature HACCP',
               ),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.dangerAlt,
           ),
         );
       }
@@ -685,8 +642,10 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
       title: 'Températures',
       icon: Icons.thermostat,
       child: equipmentAsync.when(
-        loading: () => const LinearProgressIndicator(),
-        error: (e, _) => Text('Erreur : $e'),
+        loading: () => const HaccpInlineSkeleton(),
+        error: (e, _) => HaccpInlineError(
+          message: haccpFriendlyError(e, 'Équipements indisponibles'),
+        ),
         data: (equipment) {
           final filtered = equipment
               .where(
@@ -697,33 +656,55 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
               .toList();
 
           if (filtered.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.all(AppSpacing.sm),
-              child: Text(
-                'Aucun équipement configuré. Contactez votre administrateur.',
-                style: TextStyle(color: Colors.grey),
-              ),
+            return const HaccpInlineEmpty(
+              message:
+                  'Aucun équipement configuré. Contactez votre administrateur.',
             );
           }
 
           return logsAsync.when(
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Erreur : $e'),
+            loading: () => const HaccpInlineSkeleton(),
+            error: (e, _) => HaccpInlineError(
+              message: haccpFriendlyError(e, 'Relevés indisponibles'),
+            ),
             data: (logs) {
               final loggedIds = logs.map((l) => l.equipmentId).toSet();
-              return Column(
-                children: filtered.map((equipment) {
-                  final done = loggedIds.contains(equipment.id);
-                  final log = done
-                      ? logs.firstWhere((l) => l.equipmentId == equipment.id)
-                      : null;
-                  return _EquipmentTile(
+              final todo =
+                  filtered.where((e) => !loggedIds.contains(e.id)).toList();
+              final doneList =
+                  filtered.where((e) => loggedIds.contains(e.id)).toList();
+              Widget tile(HaccpEquipment equipment) {
+                final done = loggedIds.contains(equipment.id);
+                final log = done
+                    ? logs.firstWhere((l) => l.equipmentId == equipment.id)
+                    : null;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: _EquipmentTile(
                     equipment: equipment,
                     log: log,
                     done: done,
                     onTap: done ? null : () => _logTemp(equipment),
-                  );
-                }).toList(),
+                  ),
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (todo.isNotEmpty) ...[
+                    HaccpGroupLabel(
+                      label: 'À FAIRE',
+                      count: todo.length,
+                      tone: HaccpTone.warning,
+                    ),
+                    ...todo.map(tile),
+                  ],
+                  if (doneList.isNotEmpty) ...[
+                    HaccpGroupLabel(label: 'TERMINÉS', count: doneList.length),
+                    ...doneList.map(tile),
+                  ],
+                ],
               );
             },
           );
@@ -761,45 +742,39 @@ class _EquipmentTile extends StatelessWidget {
     }
   }
 
+  String get _rangeSubtitle =>
+      equipment.targetMinTemp == null || equipment.targetMaxTemp == null
+          ? 'À relever'
+          : 'À relever · cible ${equipment.tempRangeLabel}';
+
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: done
-            ? (log?.isCompliant == true
-                ? Colors.green.withValues(alpha: 0.15)
-                : Colors.orange.withValues(alpha: 0.15))
-            : Colors.grey.withValues(alpha: 0.15),
-        child: Icon(
-          done
-              ? (log?.isCompliant == true ? Icons.check : Icons.warning)
-              : _typeIcon,
-          color: done
-              ? (log?.isCompliant == true ? Colors.green : Colors.orange)
-              : Colors.grey,
-        ),
+    final l = log;
+    if (done && l != null) {
+      final at = l.loggedAt.toLocal();
+      final hh = at.hour.toString().padLeft(2, '0');
+      final mm = at.minute.toString().padLeft(2, '0');
+      return HaccpMeasurementCard(
+        title: equipment.name,
+        primaryValue: '${l.measuredTemp.toStringAsFixed(1)} °C',
+        subtitle:
+            '${l.isCompliant ? 'Conforme' : 'Hors limite'} · relevé à $hh:$mm',
+        icon: l.isCompliant ? Icons.check_circle : Icons.warning_amber_rounded,
+        tone: l.isCompliant ? HaccpTone.ok : HaccpTone.danger,
+      );
+    }
+    return HaccpTaskCard(
+      title: equipment.name,
+      subtitle: _rangeSubtitle,
+      icon: _typeIcon,
+      tone: HaccpTone.neutral,
+      onTap: onTap,
+      trailing: const Icon(
+        Icons.add_circle_outline,
+        color: HaccpPalette.graphite,
+        size: 28,
+        semanticLabel: 'Saisir la température',
       ),
-      title: Text(equipment.name),
-      subtitle: done
-          ? Text(
-              '${log!.measuredTemp.toStringAsFixed(1)}°C '
-              '${log!.isCompliant ? '✓' : '⚠️ Hors limite'}',
-              style: TextStyle(
-                color: log!.isCompliant ? Colors.green : Colors.orange,
-                fontWeight: FontWeight.w500,
-              ),
-            )
-          : Text(
-              equipment.tempRangeLabel,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-      trailing: done
-          ? null
-          : IconButton(
-              icon: const Icon(Icons.add_circle_outline),
-              onPressed: onTap,
-              tooltip: 'Saisir la température',
-            ),
     );
   }
 }
@@ -823,6 +798,10 @@ class _TempInputDialogState extends State<_TempInputDialog> {
   final _formKey = GlobalKey<FormState>();
   bool _showNcField = false;
 
+  bool get _hasRange =>
+      widget.equipment.targetMinTemp != null &&
+      widget.equipment.targetMaxTemp != null;
+
   bool get _isCompliant {
     final temp = double.tryParse(widget.tempController.text);
     if (temp == null) return true;
@@ -834,76 +813,106 @@ class _TempInputDialogState extends State<_TempInputDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final typed = double.tryParse(widget.tempController.text);
+    final HaccpTone? liveTone = typed == null || !_hasRange
+        ? null
+        : (_isCompliant ? HaccpTone.ok : HaccpTone.danger);
+
     return AlertDialog(
+      backgroundColor: HaccpPalette.surface,
+      scrollable: true,
       title: Text(widget.equipment.name),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Plage cible : ${widget.equipment.tempRangeLabel}',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: widget.tempController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-                signed: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Température mesurée (°C)',
-                suffixText: '°C',
-              ),
-              onChanged: (_) {
-                setState(() {
-                  _showNcField = !_isCompliant;
-                });
-              },
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Champ obligatoire';
-                if (double.tryParse(v) == null) return 'Valeur invalide';
-                return null;
-              },
-            ),
-            if (_showNcField) ...[
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_hasRange)
+                Text(
+                  'Plage cible : ${widget.equipment.tempRangeLabel}',
+                  style: const TextStyle(
+                    color: HaccpPalette.graphiteSoft,
+                    fontSize: 13,
+                  ),
+                ),
               const SizedBox(height: AppSpacing.sm),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              TextFormField(
+                controller: widget.tempController,
+                autofocus: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: HaccpPalette.graphite,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '⚠️ Température hors limite',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    TextFormField(
-                      controller: widget.ncController,
-                      decoration: const InputDecoration(
-                        labelText: 'Action corrective (optionnel)',
-                        hintText: 'Ex: Alerte technicien, produits déplacés...',
-                      ),
-                      maxLines: 2,
-                    ),
-                  ],
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
                 ),
+                decoration: InputDecoration(
+                  labelText: 'Température relevée',
+                  suffixText: '°C',
+                  filled: true,
+                  fillColor: HaccpPalette.surfaceWarm,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.md,
+                    horizontal: AppSpacing.md,
+                  ),
+                ),
+                onChanged: (_) {
+                  setState(() {
+                    _showNcField = !_isCompliant;
+                  });
+                },
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Champ obligatoire';
+                  if (double.tryParse(v) == null) return 'Valeur invalide';
+                  return null;
+                },
               ),
+              if (liveTone != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: HaccpStatusBadge(
+                    label: liveTone == HaccpTone.ok
+                        ? 'Conforme'
+                        : 'Hors plage — non-conformité',
+                    tone: liveTone,
+                  ),
+                ),
+              ],
+              if (_showNcField) ...[
+                const SizedBox(height: AppSpacing.sm),
+                TextFormField(
+                  controller: widget.ncController,
+                  decoration: InputDecoration(
+                    labelText: 'Action corrective (optionnel)',
+                    hintText: 'Ex: Alerte technicien, produits déplacés...',
+                    filled: true,
+                    fillColor: AppColors.dangerBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.md,
       ),
       actions: [
         TextButton(
@@ -922,6 +931,10 @@ class _TempInputDialogState extends State<_TempInputDialog> {
                   : null,
             });
           },
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(140, 52),
+            backgroundColor: HaccpPalette.graphite,
+          ),
           child: const Text('Enregistrer'),
         ),
       ],
@@ -965,14 +978,19 @@ class _DlcSectionState extends ConsumerState<_DlcSection> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('⚠️ DLC non conforme — NC créée automatiquement'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.warning,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible d enregistrer la saisie HACCP'),
+            ),
+            backgroundColor: AppColors.dangerAlt,
+          ),
         );
       }
     }
@@ -987,24 +1005,30 @@ class _DlcSectionState extends ConsumerState<_DlcSection> {
       icon: Icons.event_available,
       action: TextButton.icon(
         onPressed: _addDlcCheck,
-        icon: const Icon(Icons.add, size: 16),
+        icon: const Icon(Icons.add, size: 18),
         label: const Text('Ajouter'),
+        style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
       ),
       child: checksAsync.when(
-        loading: () => const LinearProgressIndicator(),
-        error: (e, _) => Text('Erreur : $e'),
+        loading: () => const HaccpInlineSkeleton(rows: 1),
+        error: (e, _) => HaccpInlineError(
+          message: haccpFriendlyError(e, 'Vérifications DLC indisponibles'),
+        ),
         data: (checks) {
           if (checks.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.all(AppSpacing.sm),
-              child: Text(
-                'Aucune vérification DLC enregistrée. Appuyez sur Ajouter.',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-              ),
+            return const HaccpInlineEmpty(
+              message:
+                  'Aucune vérification DLC enregistrée. Appuyez sur Ajouter.',
             );
           }
           return Column(
-            children: checks.map((c) => _DlcTile(check: c)).toList(),
+            children: [
+              for (final c in checks)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: _DlcTile(check: c),
+                ),
+            ],
           );
         },
       ),
@@ -1017,32 +1041,38 @@ class _DlcTile extends StatelessWidget {
 
   final HaccpDlcCheck check;
 
+  /// Temps restant calcule depuis la date DLC saisie (jour calendaire).
+  String get _remaining {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(check.dlcDate.year, check.dlcDate.month, check.dlcDate.day);
+    final days = d.difference(today).inDays;
+    if (days < 0) return 'Expirée depuis ${-days} j';
+    if (days == 0) return "Échéance aujourd'hui";
+    return 'J-$days';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      leading: Icon(
-        check.isCompliant ? Icons.check_circle : Icons.cancel,
-        color: check.isCompliant ? Colors.green : Colors.red,
-        size: 20,
-      ),
-      title: Text(check.ingredientName),
-      subtitle: Text(
-        '${check.levelLabel} • ${_formatDate(check.dlcDate)}'
-        '${check.location != null ? ' • ${check.location}' : ''}',
-        style: const TextStyle(fontSize: 11),
-      ),
-      trailing: check.isCompliant
-          ? null
-          : const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
+    final tone = check.isCompliant ? HaccpTone.ok : HaccpTone.danger;
+    final parts = <String>[
+      check.levelLabel,
+      if (check.batchId != null) 'Lot ${check.batchId}',
+      'Échéance ${_formatDate(check.dlcDate)}',
+      if (check.location != null) check.location!,
+    ];
+    return HaccpTaskCard(
+      title: check.ingredientName,
+      subtitle: '${parts.join(' · ')}\nTemps restant : $_remaining',
+      icon: check.isCompliant ? Icons.check_circle_outline : Icons.event_busy,
+      tone: tone,
+      statusLabel: check.isCompliant ? 'Conforme' : 'Non conforme',
     );
   }
 
   String _formatDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 }
-
-// ─── Section nettoyage ────────────────────────────────────────────────────────
 
 class _CleaningSection extends ConsumerStatefulWidget {
   const _CleaningSection({
@@ -1076,7 +1106,12 @@ class _CleaningSectionState extends ConsumerState<_CleaningSection> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible d enregistrer la saisie HACCP'),
+            ),
+            backgroundColor: AppColors.dangerAlt,
+          ),
         );
       }
     }
@@ -1092,41 +1127,120 @@ class _CleaningSectionState extends ConsumerState<_CleaningSection> {
       title: 'Nettoyage & Désinfection',
       icon: Icons.cleaning_services,
       child: tasksAsync.when(
-        loading: () => const LinearProgressIndicator(),
-        error: (e, _) => Text('Erreur : $e'),
+        loading: () => const HaccpInlineSkeleton(),
+        error: (e, _) => HaccpInlineError(
+          message: haccpFriendlyError(e, 'Tâches de nettoyage indisponibles'),
+        ),
         data: (tasks) {
           if (tasks.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.all(AppSpacing.sm),
-              child: Text(
-                'Aucune tâche ND configurée. Contactez votre administrateur.',
-                style: TextStyle(color: Colors.grey),
-              ),
+            return const HaccpInlineEmpty(
+              message:
+                  'Aucune tâche ND configurée. Contactez votre administrateur.',
             );
           }
 
           return logsAsync.when(
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Erreur : $e'),
+            loading: () => const HaccpInlineSkeleton(),
+            error: (e, _) => HaccpInlineError(
+              message: haccpFriendlyError(e, 'Historique nettoyage indisponible'),
+            ),
             data: (logs) {
               final doneIds = logs.map((l) => l.taskId).toSet();
-              return Column(
-                children: tasks.map((task) {
-                  final done = doneIds.contains(task.id);
-                  return CheckboxListTile(
-                    dense: true,
-                    value: done,
-                    onChanged: done ? null : (_) => _markDone(task.id),
-                    title: Text(task.name),
-                    subtitle: Text(
-                      '${task.zone}'
-                      '${task.productUsed != null ? ' • ${task.productUsed}' : ''}',
-                      style: const TextStyle(fontSize: 11),
+              final todo = tasks.where((t) => !doneIds.contains(t.id)).toList();
+              final done = tasks.where((t) => doneIds.contains(t.id)).toList();
+
+              String doneAt(int taskId) {
+                final log = logs.firstWhere((l) => l.taskId == taskId);
+                final at = log.completedAt.toLocal();
+                return 'Fait à ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
+              }
+
+              Widget row(HaccpCleaningTask task, bool isDone) {
+                final detail = [
+                  task.zone,
+                  if (task.productUsed != null) task.productUsed!,
+                ].join(' · ');
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Material(
+                    color: isDone
+                        ? AppColors.successBg
+                        : HaccpPalette.surfaceWarm,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      onTap: isDone ? null : () => _markDone(task.id),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 56),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isDone
+                                    ? Icons.check_box
+                                    : Icons.check_box_outline_blank,
+                                size: 28,
+                                color: isDone
+                                    ? AppColors.success
+                                    : HaccpPalette.graphiteSoft,
+                                semanticLabel: isDone
+                                    ? 'Tâche faite'
+                                    : 'Marquer comme faite',
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      task.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                        color: HaccpPalette.graphite,
+                                      ),
+                                    ),
+                                    Text(
+                                      isDone
+                                          ? '${doneAt(task.id)} · $detail'
+                                          : detail,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: HaccpPalette.graphiteSoft,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    activeColor: Colors.green,
-                  );
-                }).toList(),
+                  ),
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (todo.isNotEmpty) ...[
+                    HaccpGroupLabel(
+                      label: 'À FAIRE',
+                      count: todo.length,
+                      tone: HaccpTone.warning,
+                    ),
+                    ...todo.map((t) => row(t, false)),
+                  ],
+                  if (done.isNotEmpty) ...[
+                    HaccpGroupLabel(label: 'TERMINÉS', count: done.length),
+                    ...done.map((t) => row(t, true)),
+                  ],
+                ],
               );
             },
           );
@@ -1156,43 +1270,35 @@ class _NonConformitySection extends ConsumerWidget {
             ncs.where((nc) => nc.sessionId == sessionId).toList();
         if (sessionNcs.isEmpty) return const SizedBox.shrink();
 
-        return _SectionCard(
-          title: 'Non-conformités (${sessionNcs.length})',
-          icon: Icons.warning_amber,
-          iconColor: Colors.orange,
-          child: Column(
-            children: sessionNcs
-                .map(
-                  (nc) => ListTile(
-                    dense: true,
-                    leading: const Icon(
-                      Icons.report_problem,
-                      color: Colors.orange,
-                      size: 18,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: HaccpSection(
+            title: 'Non-conformités (${sessionNcs.length})',
+            subtitle: 'À traiter avant de valider la session',
+            icon: Icons.report_problem_outlined,
+            tone: HaccpTone.danger,
+            action: TextButton(
+              onPressed: () => context.push('/haccp/nc'),
+              style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
+              child: const Text('Ouvrir'),
+            ),
+            child: Column(
+              children: [
+                for (final nc in sessionNcs)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: HaccpTaskCard(
+                      title: nc.description,
+                      subtitle: nc.correctiveAction != null
+                          ? 'Action : ${nc.correctiveAction}'
+                          : 'Action corrective requise',
+                      icon: Icons.report_problem_outlined,
+                      tone: HaccpTone.danger,
+                      statusLabel: 'Ouverte',
                     ),
-                    title: Text(
-                      nc.description,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    subtitle: nc.correctiveAction != null
-                        ? Text(
-                            'Action : ${nc.correctiveAction}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                            ),
-                          )
-                        : const Text(
-                            'Action corrective requise',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.orange,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
                   ),
-                )
-                .toList(),
+              ],
+            ),
           ),
         );
       },
@@ -1209,23 +1315,35 @@ class _NcBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final style = haccpToneStyle(HaccpTone.danger);
     return Container(
-      color: Colors.orange.shade50,
+      width: double.infinity,
+      color: style.background,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.xs,
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
+          Icon(Icons.report_problem_outlined, color: style.foreground, size: 18),
           const SizedBox(width: AppSpacing.xs),
-          Text(
-            '$count non-conformité${count > 1 ? 's' : ''} ouverte${count > 1 ? 's' : ''}',
-            style: const TextStyle(
-              color: Colors.orange,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+          Expanded(
+            child: Text(
+              '$count non-conformité${count > 1 ? 's' : ''} ouverte${count > 1 ? 's' : ''}',
+              style: TextStyle(
+                color: style.foreground,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
             ),
+          ),
+          TextButton(
+            onPressed: () => context.push('/haccp/nc'),
+            style: TextButton.styleFrom(
+              foregroundColor: style.foreground,
+              minimumSize: const Size(48, 40),
+            ),
+            child: const Text('Voir'),
           ),
         ],
       ),
@@ -1240,56 +1358,27 @@ class _SectionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.child,
-    this.iconColor,
     this.action,
   });
 
   final String title;
   final IconData icon;
   final Widget child;
-  final Color? iconColor;
   final Widget? action;
 
   @override
   Widget build(BuildContext context) {
-    return DsCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.xs,
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: iconColor ?? AppColors.infoAlt),
-                const SizedBox(width: AppSpacing.xs),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const Spacer(),
-                if (action != null) action!,
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          child,
-        ],
-      ),
+    return HaccpSection(
+      title: title,
+      icon: icon,
+      action: action,
+      tone: HaccpTone.info,
+      child: child,
     );
   }
 }
 
-// ─── Section huile friteuse (feature flag) ────────────────────────────────────
-
-/// Visible uniquement si [TenantConfig.haccpFryingOilEnabled] est `true`.
+// Visible uniquement si [TenantConfig.haccpFryingOilEnabled] est `true`.
 /// Seuil légal : polarité ≤ 25% (OIL_POLARITY_LIMIT).
 class _OilSection extends ConsumerWidget {
   const _OilSection({required this.sessionId});
@@ -1304,89 +1393,47 @@ class _OilSection extends ConsumerWidget {
 
     final logsAsync = ref.watch(haccpOilLogsProvider(sessionId));
 
-    return DsCard(
-      borderRadius: 12,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return HaccpSection(
+      title: 'Huile friteuse',
+      icon: Icons.local_fire_department_outlined,
+      tone: HaccpTone.warning,
+      action: TextButton.icon(
+        onPressed: () => _showOilForm(context, ref, sessionId),
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Relever'),
+        style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
+      ),
+      child: logsAsync.when(
+        loading: () => const HaccpInlineSkeleton(rows: 1),
+        error: (e, _) => HaccpInlineError(
+          message: haccpFriendlyError(e, 'Relevés huile indisponibles'),
+        ),
+        data: (logs) {
+          if (logs.isEmpty) {
+            return const HaccpInlineEmpty(
+              message: 'Aucun relevé huile pour cette session.',
+            );
+          }
+          return Column(
             children: [
-              const Icon(
-                Icons.local_fire_department_outlined,
-                size: 18,
-                color: Colors.deepOrange,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Huile friteuse',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => _showOilForm(context, ref, sessionId),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Relever'),
-                style: TextButton.styleFrom(foregroundColor: Colors.deepOrange),
-              ),
-            ],
-          ),
-          logsAsync.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => Text(
-              'Erreur: $e',
-              style: const TextStyle(color: Colors.red, fontSize: 12),
-            ),
-            data: (logs) {
-              if (logs.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  child: Text(
-                    'Aucun relevé huile pour cette session.',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
+              for (final log in logs)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: HaccpMeasurementCard(
+                    title: 'Polarité : ${log.polarityPercent.toStringAsFixed(1)} %',
+                    primaryValue: log.isCompliant ? 'Conforme' : 'Non conforme',
+                    subtitle: log.isCompliant
+                        ? '≤ 25 % requis'
+                        : (log.correctiveAction ?? 'NC — huile à changer'),
+                    icon: log.isCompliant
+                        ? Icons.check_circle
+                        : Icons.warning_amber_rounded,
+                    tone: log.isCompliant ? HaccpTone.ok : HaccpTone.danger,
                   ),
-                );
-              }
-              return Column(
-                children: logs.map((log) {
-                  final compliant = log.isCompliant;
-                  return ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      compliant ? Icons.check_circle : Icons.cancel,
-                      color: compliant ? Colors.green : Colors.red,
-                      size: 18,
-                    ),
-                    title: Text(
-                      'Polarité : ${log.polarityPercent.toStringAsFixed(1)}%',
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    subtitle: compliant
-                        ? null
-                        : Text(
-                            log.correctiveAction ?? 'NC — huile à changer',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.orange,
-                            ),
-                          ),
-                    trailing: Text(
-                      '${log.polarityPercent > 25 ? "⚠️ " : ""}≤ 25% requis',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: compliant ? Colors.grey : Colors.red,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ],
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1430,6 +1477,8 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
 
   double? get _polarity =>
       double.tryParse(_polarityCtrl.text.replaceAll(',', '.'));
+  // GELE (phase 2 UI) : reste volontairement a false, comme avant la refonte.
+  // Ne pas brancher de seuil ici sans passe metier dediee.
   bool get _nonCompliant => false;
 
   @override
@@ -1465,7 +1514,12 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Impossible d enregistrer la saisie HACCP'),
+            ),
+            backgroundColor: AppColors.dangerAlt,
+          ),
         );
       }
     } finally {
@@ -1612,40 +1666,14 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 48),
-          const SizedBox(height: AppSpacing.sm),
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: AppSpacing.md),
-          FilledButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Réessayer'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Bannière offline HACCP ───────────────────────────────────────────────────
 
-/// Affiche une bannière contextuelle quand :
-///   1. L'appareil est hors ligne (fond orange, mode dégradé)
-///   2. Des actions HACCP sont en attente de sync (fond bleu, bouton sync)
+//// Etat de synchronisation HACCP (UI uniquement, lit la file existante).
 ///
-/// Disparaît automatiquement quand online et queue vide.
+///   1. Hors ligne : "Enregistre localement"
+///   2. Actions en attente : "Synchronisation en attente" + bouton
+///   3. Au moins une action a deja echoue : "Erreur de synchronisation"
+///   4. Sinon : "Synchronise"
 class _HaccpOfflineBanner extends ConsumerWidget {
   const _HaccpOfflineBanner();
 
@@ -1653,81 +1681,22 @@ class _HaccpOfflineBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isOnline = ref.watch(onlineStatusProvider).valueOrNull ?? true;
     final pendingCount = ref.watch(haccpPendingSyncCountProvider);
+    final failedCount = ref
+        .watch(syncQueueProvider)
+        .where((a) => a.feature == 'haccp' && a.retryCount > 0)
+        .length;
 
-    // Online + aucune action en attente → bannière invisible
-    if (isOnline && pendingCount == 0) return const SizedBox.shrink();
-
-    // Offline → bannière mode dégradé
-    if (!isOnline) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: 10,
-        ),
-        color: Colors.orange.shade700,
-        child: Row(
-          children: [
-            const Icon(Icons.wifi_off, color: Colors.white, size: 18),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                pendingCount > 0
-                    ? 'Hors ligne — $pendingCount action${pendingCount > 1 ? 's' : ''} en attente de sync'
-                    : 'Hors ligne — Les saisies seront synchronisées au retour réseau',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Online + actions en attente → bannière sync
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: 8,
-      ),
-      color: Colors.blue.shade700,
-      child: Row(
-        children: [
-          const Icon(Icons.cloud_sync_outlined, color: Colors.white, size: 18),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              '$pendingCount action${pendingCount > 1 ? 's' : ''} HACCP en attente de synchronisation',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: () {
-              final queue = ref.read(syncQueueProvider);
-              if (queue.isNotEmpty) {
-                ref.read(syncWorkerProvider).flush(queue);
-              }
-            },
-            child: const Text(
-              'Sync maintenant',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+    return HaccpSyncStatus(
+      isOnline: isOnline,
+      pendingCount: pendingCount,
+      failedCount: failedCount,
+      showWhenSynced: true,
+      onSync: () {
+        final queue = ref.read(syncQueueProvider);
+        if (queue.isNotEmpty) {
+          ref.read(syncWorkerProvider).flush(queue);
+        }
+      },
     );
   }
 }

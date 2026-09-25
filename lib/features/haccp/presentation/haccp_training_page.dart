@@ -1,7 +1,7 @@
-import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,11 +18,17 @@ class HaccpTrainingPage extends ConsumerWidget {
     final trainingAsync = ref.watch(haccpTrainingProvider);
 
     return Scaffold(
+      backgroundColor: HaccpPalette.background,
       appBar: AppBar(
         title: const Text('Registre de formation'),
+        backgroundColor: HaccpPalette.background,
+        foregroundColor: HaccpPalette.graphite,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'Actualiser',
             onPressed: () => ref.invalidate(haccpTrainingProvider),
           ),
         ],
@@ -32,108 +38,24 @@ class HaccpTrainingPage extends ConsumerWidget {
         icon: const Icon(Icons.school),
         label: const Text('Ajouter formation'),
       ),
-      body: trainingAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 40),
-              const SizedBox(height: AppSpacing.sm),
-              Text(e.toString()),
-              const SizedBox(height: AppSpacing.md),
-              FilledButton.icon(
-                onPressed: () => ref.invalidate(haccpTrainingProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Réessayer'),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: trainingAsync.when(
+            loading: () => const HaccpSkeleton(),
+            error: (e, _) => HaccpErrorState(
+              message: haccpFriendlyError(
+                e,
+                'Impossible de charger le registre de formation',
               ),
-            ],
+              onRetry: () => ref.invalidate(haccpTrainingProvider),
+            ),
+            data: (records) => _TrainingBody(
+              records: records,
+              onRefresh: () async => ref.invalidate(haccpTrainingProvider),
+            ),
           ),
         ),
-        data: (records) {
-          // Alertes : formations expirées ou expirant dans 30j
-          final expiring = records
-              .where((r) => !r.isExpired && r.expiresWithin30Days)
-              .toList();
-          final expired = records.where((r) => r.isExpired).toList();
-
-          return Column(
-            children: [
-              // Bannière alerte
-              if (expired.isNotEmpty || expiring.isNotEmpty)
-                _AlertBanner(
-                  expired: expired.length,
-                  expiring: expiring.length,
-                ),
-
-              // Info légale
-              Container(
-                margin: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                  AppSpacing.md,
-                  0,
-                ),
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 14, color: Colors.blue),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Arrêté 12/02/2024 — Au moins 1 formé permanent. '
-                        'Registre présentable à la DDPP.',
-                        style: TextStyle(fontSize: 11, color: Colors.blue),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Expanded(
-                child: records.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.school_outlined,
-                              size: 56,
-                              color: Colors.grey[300],
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            const Text(
-                              'Aucune formation enregistrée',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async =>
-                            ref.invalidate(haccpTrainingProvider),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.md,
-                            AppSpacing.sm,
-                            AppSpacing.md,
-                            100,
-                          ),
-                          itemCount: records.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: AppSpacing.sm),
-                          itemBuilder: (context, i) =>
-                              _TrainingCard(record: records[i]),
-                        ),
-                      ),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
@@ -150,61 +72,202 @@ class HaccpTrainingPage extends ConsumerWidget {
   }
 }
 
-// ─── Bannière alerte ──────────────────────────────────────────────────────────
+String _dateLabel(DateTime d) =>
+    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
-class _AlertBanner extends StatelessWidget {
-  const _AlertBanner({required this.expired, required this.expiring});
+({String label, HaccpTone tone}) _trainingStatus(HaccpTrainingRecord r) {
+  if (r.isExpired) return (label: 'Expirée', tone: HaccpTone.danger);
+  if (r.expiresWithin30Days) {
+    return (label: 'Expire bientôt', tone: HaccpTone.warning);
+  }
+  return (label: 'Valide', tone: HaccpTone.ok);
+}
 
-  final int expired;
-  final int expiring;
+// ─── Corps ────────────────────────────────────────────────────────────────────
+
+class _TrainingBody extends StatelessWidget {
+  const _TrainingBody({required this.records, required this.onRefresh});
+
+  final List<HaccpTrainingRecord> records;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: expired > 0
-            ? Colors.red.withValues(alpha: 0.1)
-            : Colors.orange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: expired > 0
-              ? Colors.red.withValues(alpha: 0.3)
-              : Colors.orange.withValues(alpha: 0.3),
+    final expired = records.where((r) => r.isExpired).length;
+    final expiring =
+        records.where((r) => !r.isExpired && r.expiresWithin30Days).length;
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          100,
         ),
+        children: [
+          if (expired > 0 || expiring > 0) ...[
+            HaccpInfoBanner(
+              icon: Icons.warning_amber_outlined,
+              title: expired > 0
+                  ? '$expired formation(s) expirée(s)'
+                  : '$expiring formation(s) expirant sous 30 jours',
+              message: expired > 0 && expiring > 0
+                  ? '$expiring formation(s) expirant dans moins de 30 jours.'
+                  : 'À renouveler pour garder le registre à jour.',
+              tone: expired > 0 ? HaccpTone.danger : HaccpTone.warning,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          const HaccpInfoBanner(
+            icon: Icons.info_outline,
+            title: 'Registre de formation',
+            message: 'Arrêté 12/02/2024 — Au moins 1 formé permanent. '
+                'Registre présentable à la DDPP.',
+            tone: HaccpTone.info,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (records.isEmpty)
+            const HaccpEmptyState(
+              icon: Icons.school_outlined,
+              title: 'Aucune formation enregistrée',
+              message: 'Ajoutez une formation pour alimenter le registre.',
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 720) {
+                  return _TrainingTable(records: records);
+                }
+                return Column(
+                  children: [
+                    for (var i = 0; i < records.length; i++) ...[
+                      if (i > 0) const SizedBox(height: AppSpacing.sm),
+                      _TrainingCard(record: records[i]),
+                    ],
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Tableau (largeur >= 720) ─────────────────────────────────────────────────
+
+class _TrainingTable extends StatelessWidget {
+  const _TrainingTable({required this.records});
+
+  final List<HaccpTrainingRecord> records;
+
+  @override
+  Widget build(BuildContext context) {
+    const headStyle = TextStyle(
+      color: HaccpPalette.graphiteSoft,
+      fontSize: 11,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.4,
+    );
+    return Container(
+      decoration: BoxDecoration(
+        color: HaccpPalette.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: HaccpPalette.border),
+      ),
+      child: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                Expanded(flex: 2, child: Text('EMPLOYÉ', style: headStyle)),
+                Expanded(flex: 4, child: Text('FORMATION', style: headStyle)),
+                Expanded(flex: 2, child: Text('DATE', style: headStyle)),
+                Expanded(flex: 2, child: Text('ÉCHÉANCE', style: headStyle)),
+                Expanded(flex: 2, child: Text('STATUT', style: headStyle)),
+              ],
+            ),
+          ),
+          for (final r in records) ...[
+            const Divider(height: 1, color: HaccpPalette.border),
+            _TrainingRow(record: r),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TrainingRow extends StatelessWidget {
+  const _TrainingRow({required this.record});
+
+  final HaccpTrainingRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    const cell = TextStyle(color: HaccpPalette.graphite, fontSize: 13);
+    final status = _trainingStatus(record);
+    final expiry = record.expiryDate;
+    final extra = [
+      if (record.trainerName != null) record.trainerName!,
+      if (record.certificateRef != null) 'Réf. ${record.certificateRef}',
+    ].join(' • ');
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            Icons.warning_amber,
-            color: expired > 0 ? Colors.red : Colors.orange,
-            size: 20,
-          ),
-          const SizedBox(width: AppSpacing.sm),
           Expanded(
+            flex: 2,
+            child: Text('Employé #${record.userId}', style: cell),
+          ),
+          Expanded(
+            flex: 4,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (expired > 0)
+                Text(
+                  record.trainingTypeLabel,
+                  style: cell.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (extra.isNotEmpty)
                   Text(
-                    '$expired formation(s) expirée(s)',
+                    extra,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.red,
-                      fontSize: 13,
-                    ),
-                  ),
-                if (expiring > 0)
-                  Text(
-                    '$expiring formation(s) expirant dans moins de 30j',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange,
-                      fontSize: 13,
+                      color: HaccpPalette.graphiteSoft,
+                      fontSize: 11,
                     ),
                   ),
               ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(_dateLabel(record.trainingDate), style: cell),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(expiry == null ? '—' : _dateLabel(expiry), style: cell),
+          ),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: HaccpStatusBadge(
+                label: status.label,
+                tone: status.tone,
+                compact: true,
+              ),
             ),
           ),
         ],
@@ -213,7 +276,7 @@ class _AlertBanner extends StatelessWidget {
   }
 }
 
-// ─── Carte formation ──────────────────────────────────────────────────────────
+// ─── Carte formation (mobile) ─────────────────────────────────────────────────
 
 class _TrainingCard extends StatelessWidget {
   const _TrainingCard({required this.record});
@@ -222,120 +285,82 @@ class _TrainingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color statusColor;
-    String statusLabel;
-    IconData statusIcon;
+    final status = _trainingStatus(record);
+    final expiry = record.expiryDate;
+    const label = TextStyle(color: HaccpPalette.graphiteSoft, fontSize: 12);
+    const value = TextStyle(
+      color: HaccpPalette.graphite,
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+    );
 
-    if (record.isExpired) {
-      statusColor = Colors.red;
-      statusLabel = 'Expirée';
-      statusIcon = Icons.error_outline;
-    } else if (record.expiresWithin30Days) {
-      statusColor = Colors.orange;
-      statusLabel = 'Expire bientôt';
-      statusIcon = Icons.schedule;
-    } else {
-      statusColor = Colors.green;
-      statusLabel = 'Valide';
-      statusIcon = Icons.check_circle_outline;
-    }
+    Widget line(String k, String v) => Padding(
+          padding: const EdgeInsets.only(top: 3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: 78, child: Text(k, style: label)),
+              Expanded(child: Text(v, style: value)),
+            ],
+          ),
+        );
 
-    return DsCard(
-      borderRadius: 12,
-      borderColor: statusColor.withValues(alpha: 0.3),
+    return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: HaccpPalette.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: haccpToneStyle(status.tone).foreground.withValues(alpha: 0.25),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(statusIcon, color: statusColor, size: 16),
-              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   record.trainingTypeLabel,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w700,
+                    color: HaccpPalette.graphite,
+                    fontWeight: FontWeight.w800,
                     fontSize: 14,
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                  ),
-                ),
+              const SizedBox(width: AppSpacing.xs),
+              HaccpStatusBadge(
+                label: status.label,
+                tone: status.tone,
+                compact: true,
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text(
-                'Formé le ${_dateLabel(record.trainingDate)}',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (record.expiryDate != null) ...[
-                const Text(
-                  ' · ',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                Text(
-                  'Expire le ${_dateLabel(record.expiryDate!)}',
-                  style: TextStyle(
-                    color: record.isExpired
-                        ? Colors.red
-                        : record.expiresWithin30Days
-                            ? Colors.orange
-                            : Colors.grey,
-                    fontSize: 12,
-                    fontWeight: record.isExpired || record.expiresWithin30Days
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          if (record.trainerName != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              '🎓 ${record.trainerName}',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
-          if (record.certificateRef != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              '📄 Réf. ${record.certificateRef}',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
+          line('Employé', '#${record.userId}'),
+          line('Date', _dateLabel(record.trainingDate)),
+          line('Échéance', expiry == null ? '—' : _dateLabel(expiry)),
+          if (record.trainerName != null)
+            line('Formateur', record.trainerName!),
+          if (record.certificateRef != null)
+            line('Réf.', record.certificateRef!),
           if (record.notes != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(
               record.notes!,
-              style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              style: const TextStyle(
+                color: HaccpPalette.graphiteSoft,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ],
       ),
     );
   }
-
-  String _dateLabel(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 }
 
 // ─── Formulaire formation ─────────────────────────────────────────────────────
@@ -422,7 +447,12 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Enregistrement impossible'),
+            ),
+            backgroundColor: haccpToneStyle(HaccpTone.danger).foreground,
+          ),
         );
       }
     } finally {

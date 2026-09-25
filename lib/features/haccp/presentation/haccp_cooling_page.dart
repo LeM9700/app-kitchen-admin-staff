@@ -1,4 +1,6 @@
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
+import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
+import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/application/haccp_offline_service.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
@@ -6,6 +8,8 @@ import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
 import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+const double _kMaxContentWidth = 960;
 
 /// Page de suivi du refroidissement rapide.
 ///
@@ -24,10 +28,12 @@ class HaccpCoolingPage extends ConsumerWidget {
     final coolingAsync = ref.watch(haccpAllCoolingProvider);
 
     return Scaffold(
+      backgroundColor: HaccpPalette.background,
       appBar: AppBar(
         title: const Text('Refroidissement rapide'),
         actions: [
           IconButton(
+            tooltip: 'Actualiser',
             icon: const Icon(Icons.refresh),
             onPressed: () {
               ref.invalidate(haccpAllCoolingProvider);
@@ -36,115 +42,108 @@ class HaccpCoolingPage extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showStartForm(context, ref),
-        icon: const Icon(Icons.thermostat),
-        label: const Text('Démarrer suivi'),
-      ),
-      body: coolingAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 40),
-              const SizedBox(height: AppSpacing.sm),
-              Text(e.toString()),
-              const SizedBox(height: AppSpacing.md),
-              FilledButton.icon(
-                onPressed: () => ref.invalidate(haccpAllCoolingProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Réessayer'),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
+          child: coolingAsync.when(
+            loading: () => const HaccpSkeleton(),
+            error: (e, _) => HaccpErrorState(
+              message: haccpFriendlyError(
+                e,
+                'Impossible de charger les refroidissements',
               ),
-            ],
+              onRetry: () => ref.invalidate(haccpAllCoolingProvider),
+            ),
+            data: (logs) {
+              final active = logs.where((l) => l.isInProgress).toList();
+              final done = logs.where((l) => !l.isInProgress).toList();
+
+              return RefreshIndicator(
+                onRefresh: () async => ref.invalidate(haccpAllCoolingProvider),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                    AppSpacing.xxl,
+                  ),
+                  children: [
+                    HaccpPageHeader(
+                      title: 'Suivi du refroidissement',
+                      subtitle: logs.isEmpty
+                          ? 'Objectif légal : < 10°C en moins de 2h'
+                          : '${active.length} en cours - ${done.length} terminé(s)',
+                      icon: Icons.ac_unit,
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: FilledButton.icon(
+                            onPressed: () => _showStartForm(context, ref),
+                            icon: const Icon(Icons.thermostat),
+                            label: const Text('Démarrer suivi'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: HaccpPalette.graphite,
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    if (logs.isEmpty)
+                      const HaccpEmptyState(
+                        icon: Icons.ac_unit,
+                        title: 'Aucun suivi de refroidissement',
+                        message: 'Objectif légal : < 10°C en moins de 2h',
+                      ),
+                    if (active.isNotEmpty) ...[
+                      _SectionTitle(
+                        icon: Icons.timer_outlined,
+                        label: 'En cours (${active.length})',
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      for (final l in active) ...[
+                        _CoolingCard(
+                          log: l,
+                          onComplete: () => _showCompleteForm(context, ref, l),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                      const SizedBox(height: AppSpacing.xs),
+                    ],
+                    if (done.isNotEmpty) ...[
+                      _SectionTitle(
+                        icon: Icons.history,
+                        label: 'Terminés (${done.length})',
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      for (final l in done) ...[
+                        _CoolingCard(log: l),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
         ),
-        data: (logs) {
-          final active = logs.where((l) => l.isInProgress).toList();
-          final done = logs.where((l) => !l.isInProgress).toList();
-
-          if (logs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.ac_unit, size: 56, color: Colors.blue[100]),
-                  const SizedBox(height: AppSpacing.md),
-                  const Text(
-                    'Aucun suivi de refroidissement',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  const Text(
-                    'Objectif légal : < 10°C en moins de 2h',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(haccpAllCoolingProvider),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                100,
-              ),
-              children: [
-                if (active.isNotEmpty) ...[
-                  _SectionHeader(
-                    icon: Icons.timer_outlined,
-                    label: 'En cours (${active.length})',
-                    color: Colors.orange,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  ...active.map(
-                    (l) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _CoolingCard(
-                        log: l,
-                        onComplete: () {
-                          _showCompleteForm(context, ref, l);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                if (done.isNotEmpty) ...[
-                  _SectionHeader(
-                    icon: Icons.history,
-                    label: 'Terminés (${done.length})',
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  ...done.map(
-                    (l) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _CoolingCard(log: l),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
-        },
       ),
     );
   }
 
   void _showStartForm(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      backgroundColor: HaccpPalette.background,
+      constraints: const BoxConstraints(maxWidth: 720),
       builder: (_) => _StartCoolingForm(
         onSaved: () {
           ref.invalidate(haccpAllCoolingProvider);
@@ -159,10 +158,12 @@ class HaccpCoolingPage extends ConsumerWidget {
     WidgetRef ref,
     HaccpCoolingLog log,
   ) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      backgroundColor: HaccpPalette.background,
+      constraints: const BoxConstraints(maxWidth: 720),
       builder: (_) => _CompleteCoolingForm(
         log: log,
         onSaved: () {
@@ -171,6 +172,130 @@ class HaccpCoolingPage extends ConsumerWidget {
           ref.invalidate(haccpOpenNcProvider);
           ref.invalidate(haccpStatusProvider);
         },
+      ),
+    );
+  }
+}
+
+// ─── Composants privés ────────────────────────────────────────────────────────
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: HaccpPalette.graphiteSoft),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              color: HaccpPalette.graphiteSoft,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _timeLabel(DateTime d) =>
+    '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+/// Point de la timeline : heure (si connue), libellé et température.
+class _TimelineEntry extends StatelessWidget {
+  const _TimelineEntry({
+    required this.time,
+    required this.label,
+    required this.temp,
+    required this.tone,
+    required this.isLast,
+  });
+
+  final String? time;
+  final String label;
+  final double temp;
+  final HaccpTone tone;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = haccpToneStyle(tone);
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 48,
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Text(
+                time ?? '',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: HaccpPalette.graphite,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          SizedBox(
+            width: 14,
+            child: Column(
+              children: [
+                const SizedBox(height: 4),
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: style.foreground,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Container(width: 2, color: HaccpPalette.border),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.sm),
+              child: Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: HaccpPalette.graphiteSoft,
+                    ),
+                  ),
+                  Text(
+                    '${temp.toStringAsFixed(1)}°C',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: style.foreground,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -189,198 +314,116 @@ class _CoolingCard extends StatelessWidget {
     final isActive = log.isInProgress;
     final compliant = log.isCompliant;
 
-    Color statusColor;
-    if (isActive) {
-      statusColor = Colors.orange;
-    } else if (compliant) {
-      statusColor = Colors.green;
-    } else {
-      statusColor = Colors.red;
-    }
+    final tone = isActive
+        ? HaccpTone.warning
+        : (compliant ? HaccpTone.ok : HaccpTone.danger);
+    final style = haccpToneStyle(tone);
+    final badgeLabel =
+        isActive ? 'En cours' : (compliant ? 'Conforme' : 'Non conforme');
 
     final elapsed =
         isActive ? DateTime.now().difference(log.startedAt).inMinutes : null;
     final twoHoursWarning = elapsed != null && elapsed >= 90;
 
     return DsCard(
-      borderRadius: 12,
-      borderColor: statusColor.withValues(alpha: 0.3),
+      backgroundColor: HaccpPalette.surface,
+      borderColor: style.foreground.withValues(alpha: 0.3),
+      borderRadius: AppRadius.lg,
       padding: const EdgeInsets.all(AppSpacing.md),
+      intensity: NeumorphicIntensity.subtle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                isActive
-                    ? Icons.ac_unit
-                    : (compliant ? Icons.check_circle : Icons.cancel),
-                color: statusColor,
-                size: 18,
-              ),
-              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   log.productName,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     fontSize: 15,
+                    color: HaccpPalette.graphite,
                   ),
                 ),
               ),
-              if (isActive && elapsed != null) ...[
-                if (twoHoursWarning)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '⚠️ ${elapsed}min',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.red,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
-                else
-                  Text(
-                    '${elapsed}min',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-              ],
+              const SizedBox(width: AppSpacing.xs),
+              HaccpStatusBadge(label: badgeLabel, tone: tone, compact: true),
             ],
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              _TempBadge(label: 'T° init.', temp: log.tempInitial, ok: true),
-              if (!isActive && log.tempFinal != null) ...[
-                const SizedBox(width: AppSpacing.xs),
-                const Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
-                const SizedBox(width: AppSpacing.xs),
-                _TempBadge(
-                  label: 'T° finale',
-                  temp: log.tempFinal!,
-                  ok: log.tempFinal! <= 10,
-                ),
-              ],
-              if (!isActive && log.durationMinutes != null) ...[
-                const Spacer(),
-                Text(
-                  '${log.durationMinutes}min',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ],
+          if (elapsed != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Écoulé : $elapsed min',
+              style: TextStyle(
+                color: twoHoursWarning
+                    ? haccpToneStyle(HaccpTone.danger).foreground
+                    : HaccpPalette.graphiteSoft,
+                fontSize: 12,
+                fontWeight: twoHoursWarning ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ] else if (log.durationMinutes != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Durée : ${log.durationMinutes} min',
+              style: const TextStyle(
+                color: HaccpPalette.graphiteSoft,
+                fontSize: 12,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          _TimelineEntry(
+            time: _timeLabel(log.startedAt),
+            label: 'Début',
+            temp: log.tempInitial,
+            tone: HaccpTone.ok,
+            isLast: isActive || log.tempFinal == null,
           ),
+          if (!isActive && log.tempFinal != null)
+            _TimelineEntry(
+              time: log.endedAt != null ? _timeLabel(log.endedAt!) : null,
+              label: 'Fin',
+              temp: log.tempFinal!,
+              tone: log.tempFinal! <= 10 ? HaccpTone.ok : HaccpTone.danger,
+              isLast: true,
+            ),
           if (twoHoursWarning) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.warning_amber, size: 13, color: Colors.red),
-                  SizedBox(width: 4),
-                  Text(
-                    'Objectif 2h bientôt dépassé — enregistrez la T° finale',
-                    style: TextStyle(fontSize: 12, color: Colors.red),
-                  ),
-                ],
-              ),
+            const SizedBox(height: AppSpacing.sm),
+            const HaccpInfoBanner(
+              icon: Icons.warning_amber,
+              title: 'Objectif 2h bientôt dépassé',
+              message: 'Enregistrez la T° finale.',
+              tone: HaccpTone.danger,
             ),
           ],
           if (!compliant && log.correctiveAction != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '🔧 ${log.correctiveAction}',
-              style: const TextStyle(fontSize: 12, color: Colors.orange),
+            const SizedBox(height: AppSpacing.sm),
+            HaccpInfoBanner(
+              icon: Icons.build_outlined,
+              title: 'Action corrective',
+              message: log.correctiveAction!,
+              tone: HaccpTone.warning,
             ),
           ],
           if (isActive && onComplete != null) ...[
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
+              height: 52,
+              child: FilledButton.icon(
                 onPressed: onComplete,
-                icon: const Icon(Icons.thermostat, size: 16),
+                icon: const Icon(Icons.thermostat, size: 20),
                 label: const Text('Enregistrer T° finale'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: HaccpPalette.graphite,
+                ),
               ),
             ),
           ],
         ],
       ),
-    );
-  }
-}
-
-class _TempBadge extends StatelessWidget {
-  const _TempBadge({required this.label, required this.temp, required this.ok});
-
-  final String label;
-  final double temp;
-  final bool ok;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: ok
-            ? Colors.green.withValues(alpha: 0.1)
-            : Colors.red.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: ok
-              ? Colors.green.withValues(alpha: 0.3)
-              : Colors.red.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Text(
-        '$label: ${temp.toStringAsFixed(1)}°C',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: ok ? Colors.green[700] : Colors.red[700],
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            color: color,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -427,8 +470,8 @@ class _StartCoolingFormState extends ConsumerState<_StartCoolingForm> {
           SnackBar(
             content: Text(
               queued
-                  ? '${result.label}. Enregistre localement, synchronisation en attente.'
-                  : 'Suivi de refroidissement demarre',
+                  ? '${result.label}. Enregistré localement, synchronisation en attente.'
+                  : 'Suivi de refroidissement démarré',
             ),
             backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
           ),
@@ -440,7 +483,10 @@ class _StartCoolingFormState extends ConsumerState<_StartCoolingForm> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              haccpFriendlyError(e, 'Impossible de demarrer le refroidissement'),
+              haccpFriendlyError(
+                e,
+                'Impossible de démarrer le refroidissement',
+              ),
             ),
             backgroundColor: Colors.red,
           ),
@@ -453,82 +499,49 @@ class _StartCoolingFormState extends ConsumerState<_StartCoolingForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Démarrer un suivi',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Objectif légal : atteindre ≤ 10°C en moins de 2h',
-                style: TextStyle(fontSize: 12, color: Colors.blue),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextFormField(
-              controller: _productCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Produit / préparation *',
-                border: OutlineInputBorder(),
-              ),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Requis' : null,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: _tempCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-                signed: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Température initiale (°C) *',
-                border: OutlineInputBorder(),
-                suffixText: '°C',
-              ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Requis';
-                if (double.tryParse(v.replaceAll(',', '.')) == null) {
-                  return 'Valeur numérique invalide';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _saving ? null : _submit,
-                icon: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.play_arrow),
-                label: const Text('Démarrer'),
-              ),
-            ),
-          ],
+    return _SheetScaffold(
+      title: 'Démarrer un suivi',
+      formKey: _formKey,
+      saving: _saving,
+      submitLabel: 'DÉMARRER',
+      submitIcon: Icons.play_arrow,
+      onSubmit: _submit,
+      children: [
+        const HaccpInfoBanner(
+          icon: Icons.info_outline,
+          title: 'Objectif légal',
+          message: 'Atteindre ≤ 10°C en moins de 2h',
+          tone: HaccpTone.info,
         ),
-      ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _productCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Produit / préparation *',
+            border: OutlineInputBorder(),
+            filled: true,
+            fillColor: HaccpPalette.surface,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: 18,
+            ),
+          ),
+          validator: (v) => v == null || v.trim().isEmpty ? 'Requis' : null,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        HaccpMeasurementInput(
+          controller: _tempCtrl,
+          label: 'Température initiale (°C) *',
+          suffix: '°C',
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return 'Requis';
+            if (double.tryParse(v.replaceAll(',', '.')) == null) {
+              return 'Valeur numérique invalide';
+            }
+            return null;
+          },
+        ),
+      ],
     );
   }
 }
@@ -555,6 +568,8 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
   double? get _tempValue =>
       double.tryParse(_tempCtrl.text.replaceAll(',', '.'));
 
+  // GELE (phase 2 UI) : reste volontairement a false, comme avant la refonte.
+  // Ne pas brancher de seuil ici sans passe metier dediee.
   bool get _nonCompliant => false;
 
   @override
@@ -569,13 +584,14 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
     setState(() => _saving = true);
 
     try {
-      final result = await ref.read(haccpOfflineServiceProvider).completeCooling(
-            widget.log.id,
-            tempFinal: _tempValue!,
-            correctiveAction: _correctiveCtrl.text.trim().isNotEmpty
-                ? _correctiveCtrl.text.trim()
-                : null,
-          );
+      final result =
+          await ref.read(haccpOfflineServiceProvider).completeCooling(
+                widget.log.id,
+                tempFinal: _tempValue!,
+                correctiveAction: _correctiveCtrl.text.trim().isNotEmpty
+                    ? _correctiveCtrl.text.trim()
+                    : null,
+              );
       widget.onSaved();
       if (mounted) {
         final queued = result is QueuedForSync<HaccpCoolingLog>;
@@ -583,8 +599,8 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
           SnackBar(
             content: Text(
               queued
-                  ? '${result.label}. Enregistre localement, synchronisation en attente.'
-                  : 'Temperature finale enregistree',
+                  ? '${result.label}. Enregistré localement, synchronisation en attente.'
+                  : 'Température finale enregistrée',
             ),
             backgroundColor: queued ? Colors.blue.shade700 : Colors.green,
           ),
@@ -596,7 +612,10 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              haccpFriendlyError(e, 'Impossible de terminer le refroidissement'),
+              haccpFriendlyError(
+                e,
+                'Impossible de terminer le refroidissement',
+              ),
             ),
             backgroundColor: Colors.red,
           ),
@@ -609,93 +628,174 @@ class _CompleteCoolingFormState extends ConsumerState<_CompleteCoolingForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
-      ),
-      child: Form(
-        key: _formKey,
+    return _SheetScaffold(
+      title: 'Enregistrer T° finale',
+      formKey: _formKey,
+      saving: _saving,
+      submitLabel: 'VALIDER',
+      submitIcon: Icons.check,
+      warn: _nonCompliant,
+      onSubmit: _submit,
+      children: [
+        Text(
+          '${widget.log.productName} — T° init. ${widget.log.tempInitial.toStringAsFixed(1)}°C',
+          style: const TextStyle(
+            color: HaccpPalette.graphiteSoft,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        HaccpMeasurementInput(
+          controller: _tempCtrl,
+          label: 'Température finale (°C) *',
+          suffix: '°C',
+          autofocus: true,
+          onChanged: (_) => setState(() {}),
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return 'Requis';
+            if (double.tryParse(v.replaceAll(',', '.')) == null) {
+              return 'Valeur numérique invalide';
+            }
+            return null;
+          },
+        ),
+        if (_tempValue != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: HaccpStatusBadge(
+              label: _nonCompliant
+                  ? 'NC — objectif ≤ 10°C non atteint'
+                  : 'Conforme',
+              tone: _nonCompliant ? HaccpTone.danger : HaccpTone.ok,
+            ),
+          ),
+        ],
+        if (_nonCompliant) ...[
+          const SizedBox(height: AppSpacing.sm),
+          TextFormField(
+            controller: _correctiveCtrl,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Action corrective *',
+              border: OutlineInputBorder(),
+              filled: true,
+              fillColor: HaccpPalette.surface,
+            ),
+            validator: (v) => _nonCompliant && (v == null || v.trim().isEmpty)
+                ? 'Requis en cas de NC'
+                : null,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Feuille de saisie : titre, contenu défilant, bouton principal collé en bas.
+class _SheetScaffold extends StatelessWidget {
+  const _SheetScaffold({
+    required this.title,
+    required this.formKey,
+    required this.saving,
+    required this.submitLabel,
+    required this.submitIcon,
+    required this.onSubmit,
+    required this.children,
+    this.warn = false,
+  });
+
+  final String title;
+  final GlobalKey<FormState> formKey;
+  final bool saving;
+  final String submitLabel;
+  final IconData submitIcon;
+  final VoidCallback onSubmit;
+  final List<Widget> children;
+  final bool warn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: formKey,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Enregistrer T° finale',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '${widget.log.productName} — T° init. ${widget.log.tempInitial.toStringAsFixed(1)}°C',
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextFormField(
-              controller: _tempCtrl,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-                signed: true,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.xs,
+                AppSpacing.xs,
               ),
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'Température finale (°C) *',
-                border: const OutlineInputBorder(),
-                suffixText: '°C',
-                // feedback temps réel
-                helperText: _tempValue == null
-                    ? null
-                    : _nonCompliant
-                        ? '⚠️ NC — objectif ≤ 10°C non atteint'
-                        : '✓ Conforme',
-                helperStyle: TextStyle(
-                  color: _nonCompliant ? Colors.red : Colors.green,
-                  fontWeight: FontWeight.w600,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: HaccpPalette.graphite,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Fermer',
+                    onPressed:
+                        saving ? null : () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.xs,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: children,
                 ),
               ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Requis';
-                if (double.tryParse(v.replaceAll(',', '.')) == null) {
-                  return 'Valeur numérique invalide';
-                }
-                return null;
-              },
             ),
-            if (_nonCompliant) ...[
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _correctiveCtrl,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Action corrective *',
-                  border: OutlineInputBorder(),
-                  fillColor: Color(0xFFFFF3E0),
-                  filled: true,
-                ),
-                validator: (v) =>
-                    _nonCompliant && (v == null || v.trim().isEmpty)
-                        ? 'Requis en cas de NC'
-                        : null,
-              ),
-            ],
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
+            Container(
               width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _saving ? null : _submit,
-                icon: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check),
-                label: const Text('Valider'),
-                style: _nonCompliant
-                    ? FilledButton.styleFrom(backgroundColor: Colors.orange)
-                    : null,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: const BoxDecoration(
+                color: HaccpPalette.surface,
+                border: Border(top: BorderSide(color: HaccpPalette.border)),
+              ),
+              child: SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  onPressed: saving ? null : onSubmit,
+                  icon: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(submitIcon),
+                  label: Text(submitLabel),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: warn
+                        ? haccpToneStyle(HaccpTone.warning).foreground
+                        : HaccpPalette.graphite,
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
               ),
             ),
           ],

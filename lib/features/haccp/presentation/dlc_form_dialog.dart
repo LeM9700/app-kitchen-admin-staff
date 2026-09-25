@@ -1,5 +1,6 @@
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:app_admin_staff/features/stock/data/stock_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -147,7 +148,9 @@ class _DlcFormDialogState extends ConsumerState<DlcFormDialog> {
                   final ingredientsAsync = ref.watch(ingredientsProvider);
                   return ingredientsAsync.when(
                     loading: () => const LinearProgressIndicator(),
-                    error: (e, _) => Text('Erreur chargement ingrédients : $e'),
+                    error: (e, _) => Text(
+                      haccpFriendlyError(e, 'Ingrédients indisponibles'),
+                    ),
                     data: (ingredients) => DropdownButtonFormField<int>(
                       initialValue: _selectedIngredientId,
                       decoration: const InputDecoration(

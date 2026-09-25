@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_repository.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,7 +20,7 @@ class HaccpEquipmentPage extends ConsumerStatefulWidget {
 class _HaccpEquipmentPageState extends ConsumerState<HaccpEquipmentPage> {
   List<HaccpEquipment>? _equipment;
   bool _loading = true;
-  String? _error;
+  Object? _error;
 
   @override
   void initState() {
@@ -38,7 +39,7 @@ class _HaccpEquipmentPageState extends ConsumerState<HaccpEquipmentPage> {
           .listEquipment(activeOnly: false);
       if (mounted) setState(() => _equipment = equipment);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -64,7 +65,12 @@ class _HaccpEquipmentPageState extends ConsumerState<HaccpEquipmentPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Enregistrement impossible'),
+            ),
+            backgroundColor: haccpToneStyle(HaccpTone.danger).foreground,
+          ),
         );
       }
     }
@@ -80,7 +86,12 @@ class _HaccpEquipmentPageState extends ConsumerState<HaccpEquipmentPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              haccpFriendlyError(e, 'Enregistrement impossible'),
+            ),
+            backgroundColor: haccpToneStyle(HaccpTone.danger).foreground,
+          ),
         );
       }
     }
@@ -105,63 +116,204 @@ class _HaccpEquipmentPageState extends ConsumerState<HaccpEquipmentPage> {
 
   @override
   Widget build(BuildContext context) {
+    final equipment = _equipment ?? const <HaccpEquipment>[];
     return Scaffold(
-      appBar: AppBar(title: const Text('Équipements HACCP')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(),
-        child: const Icon(Icons.add),
+      backgroundColor: HaccpPalette.background,
+      appBar: AppBar(
+        title: const Text('Équipements HACCP'),
+        backgroundColor: HaccpPalette.background,
+        foregroundColor: HaccpPalette.graphite,
+        elevation: 0,
+        scrolledUnderElevation: 0,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text('Erreur : $_error'))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: (_equipment ?? const []).isEmpty
-                      ? ListView(
-                          children: const [
-                            Padding(
-                              padding: EdgeInsets.all(AppSpacing.lg),
-                              child: Text(
-                                'Aucun équipement. Appuyez sur + pour en ajouter un '
-                                '(frigo, congélateur...).',
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        )
-                      : ListView.builder(
-                          itemCount: _equipment!.length,
-                          itemBuilder: (context, index) {
-                            final e = _equipment![index];
-                            return ListTile(
-                              leading: Icon(
-                                Icons.kitchen_outlined,
-                                color: e.isActive ? null : Colors.grey,
-                              ),
-                              title: Text(
-                                e.name,
-                                style: TextStyle(
-                                  color: e.isActive ? null : Colors.grey,
-                                  decoration: e.isActive
-                                      ? null
-                                      : TextDecoration.lineThrough,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openForm(),
+        icon: const Icon(Icons.add),
+        label: const Text('Ajouter un équipement'),
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: _loading
+              ? const HaccpSkeleton()
+              : _error != null
+                  ? HaccpErrorState(
+                      message: haccpFriendlyError(
+                        _error!,
+                        'Impossible de charger les équipements',
+                      ),
+                      onRetry: _load,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: equipment.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: const [
+                                SizedBox(height: AppSpacing.xl),
+                                HaccpEmptyState(
+                                  icon: Icons.kitchen_outlined,
+                                  title: 'Aucun équipement',
+                                  message:
+                                      'Ajoutez un frigo, un congélateur ou une chambre froide.',
                                 ),
-                              ),
-                              subtitle: Text(
-                                '${_typeLabel(e.type)}'
-                                '${e.location != null ? ' • ${e.location}' : ''}'
-                                '${e.tempRangeLabel.isNotEmpty ? ' • ${e.tempRangeLabel}' : ''}',
-                              ),
-                              onTap: () => _openForm(existing: e),
-                              trailing: Switch(
-                                value: e.isActive,
-                                onChanged: (_) => _toggleActive(e),
-                              ),
-                            );
-                          },
-                        ),
+                              ],
+                            )
+                          : _buildList(equipment),
+                    ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(List<HaccpEquipment> equipment) {
+    final activeCount = equipment.where((e) => e.isActive).length;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        96,
+      ),
+      children: [
+        HaccpPageHeader(
+          title: 'Équipements',
+          subtitle: '$activeCount actif(s) sur ${equipment.length}',
+          icon: Icons.kitchen_outlined,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 720 ? 2 : 1;
+            final width =
+                (constraints.maxWidth - (columns - 1) * AppSpacing.sm) /
+                    columns;
+            return Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final e in equipment)
+                  SizedBox(
+                    width: width,
+                    child: _EquipmentCard(
+                      equipment: e,
+                      typeLabel: _typeLabel(e.type),
+                      onTap: () => _openForm(existing: e),
+                      onToggle: () => _toggleActive(e),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _EquipmentCard extends StatelessWidget {
+  const _EquipmentCard({
+    required this.equipment,
+    required this.typeLabel,
+    required this.onTap,
+    required this.onToggle,
+  });
+
+  final HaccpEquipment equipment;
+  final String typeLabel;
+  final VoidCallback onTap;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = equipment;
+    final location = e.location;
+    final hasRange = e.targetMinTemp != null && e.targetMaxTemp != null;
+    final checks = [
+      if (e.checkAtOpening) 'ouverture',
+      if (e.checkAtClosing) 'fermeture',
+    ];
+    final lines = [
+      [
+        typeLabel,
+        if (location != null && location.isNotEmpty) location,
+      ].join(' • '),
+      if (hasRange) 'Plage cible ${e.tempRangeLabel}',
+      if (checks.isNotEmpty) 'Contrôlé à ${checks.join(' et ')}',
+    ];
+    return Material(
+      color: HaccpPalette.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: HaccpPalette.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: HaccpPalette.surfaceWarm,
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: Icon(
+                  Icons.kitchen_outlined,
+                  color: e.isActive
+                      ? HaccpPalette.graphite
+                      : HaccpPalette.graphiteSoft,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      e.name,
+                      style: TextStyle(
+                        color: e.isActive
+                            ? HaccpPalette.graphite
+                            : HaccpPalette.graphiteSoft,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        decoration:
+                            e.isActive ? null : TextDecoration.lineThrough,
+                      ),
+                    ),
+                    for (final line in lines)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          line,
+                          style: const TextStyle(
+                            color: HaccpPalette.graphiteSoft,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    if (!e.isActive)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: HaccpStatusBadge(
+                          label: 'Inactif',
+                          tone: HaccpTone.neutral,
+                          compact: true,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Switch(value: e.isActive, onChanged: (_) => onToggle()),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

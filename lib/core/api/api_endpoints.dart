@@ -231,6 +231,7 @@ class ApiEndpoints {
   }
 
   static const adminCustomers = '/admin/customers';
+  static const adminCustomerAudit = '/admin/customers/audit';
   static const adminCustomersExportCsv = '/admin/customers/export/csv';
   static const adminCustomerMessageTemplates =
       '/admin/customers/message-templates';

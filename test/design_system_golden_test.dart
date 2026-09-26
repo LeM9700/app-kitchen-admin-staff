@@ -395,6 +395,7 @@ List<Override> _adminOverrides() {
     loyaltyStatsProvider.overrideWith((ref) async => _loyaltyStats()),
     loyaltyRulesProvider.overrideWith((ref) async => _loyaltyRules()),
     loyaltyRewardsProvider.overrideWith((ref) async => _loyaltyRewards()),
+    loyaltyAuditProvider.overrideWith((ref) async => _loyaltyAudit()),
     deliveryZonesProvider.overrideWith((ref) async => _deliveryZones()),
     adminUsersProvider.overrideWith((ref, query) async {
       return PaginatedResult<AdminUser>(
@@ -1017,6 +1018,27 @@ List<LoyaltyReward> _loyaltyRewards() {
       pointsRequired: 100,
       discountAmount: 2,
       isActive: false,
+    ),
+  ];
+}
+
+List<LoyaltyAuditEntry> _loyaltyAudit() {
+  return [
+    LoyaltyAuditEntry(
+      id: 1,
+      actorUserId: 9,
+      actorEmail: 'staff@example.com',
+      action: 'loyalty_staff_reward_applied',
+      targetType: 'customer',
+      targetId: '42',
+      metadata: const {
+        'customer_id': 42,
+        'order_id': 88,
+        'establishment_id': 2,
+        'loyalty_identification_method': 'qr',
+        'loyalty_oral_confirmed': true,
+      },
+      createdAt: DateTime.utc(2026, 9, 26, 10),
     ),
   ];
 }

@@ -40,6 +40,7 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
     final stats = isAdmin ? ref.watch(loyaltyStatsProvider) : null;
     final rules = isAdmin ? ref.watch(loyaltyRulesProvider) : null;
     final rewards = isAdmin ? ref.watch(loyaltyRewardsProvider) : null;
+    final audit = isAdmin ? ref.watch(loyaltyAuditProvider) : null;
 
     return Padding(
       padding: EdgeInsets.all(
@@ -75,6 +76,7 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                           ref.invalidate(loyaltyStatsProvider);
                           ref.invalidate(loyaltyRulesProvider);
                           ref.invalidate(loyaltyRewardsProvider);
+                          ref.invalidate(loyaltyAuditProvider);
                         }
                       : null,
                   icon: const Icon(Icons.refresh),
@@ -122,6 +124,7 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                   ref.invalidate(loyaltyStatsProvider);
                   ref.invalidate(loyaltyRulesProvider);
                   ref.invalidate(loyaltyRewardsProvider);
+                  ref.invalidate(loyaltyAuditProvider);
                 },
                 child: ListView(
                   children: [
@@ -162,6 +165,8 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                           const SizedBox(height: AppSpacing.md),
                           _RewardsPanel(rewards: rewards),
                           const SizedBox(height: AppSpacing.md),
+                          _LoyaltyAuditPanel(audit: audit),
+                          const SizedBox(height: AppSpacing.md),
                           _customerLookup(context, ref),
                         ],
                       )
@@ -200,7 +205,13 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                           const SizedBox(width: AppSpacing.xl),
                           Expanded(
                             flex: 2,
-                            child: _customerLookup(context, ref),
+                            child: Column(
+                              children: [
+                                _LoyaltyAuditPanel(audit: audit),
+                                const SizedBox(height: AppSpacing.md),
+                                _customerLookup(context, ref),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -835,6 +846,108 @@ class _RewardsPanel extends ConsumerWidget {
   }
 }
 
+class _LoyaltyAuditPanel extends ConsumerWidget {
+  const _LoyaltyAuditPanel({required this.audit});
+
+  final AsyncValue<List<LoyaltyAuditEntry>>? audit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return DsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Journal fidelite',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Rafraichir le journal',
+                onPressed: () => ref.invalidate(loyaltyAuditProvider),
+                icon: const Icon(Icons.refresh_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          audit?.when(
+                data: (items) {
+                  if (items.isEmpty) {
+                    return const AppFeedback(
+                      kind: AppFeedbackKind.empty,
+                      title: 'Aucune action fidelite',
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final entry in items.take(8))
+                        _AuditRow(entry: entry),
+                    ],
+                  );
+                },
+                loading: () => const LinearProgressIndicator(),
+                error: (error, stackTrace) => AppFeedback(
+                  kind: AppFeedbackKind.error,
+                  title: 'Journal indisponible',
+                  message: _errorMessage(error),
+                  onRetry: () => ref.invalidate(loyaltyAuditProvider),
+                ),
+              ) ??
+              const SizedBox.shrink(),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuditRow extends StatelessWidget {
+  const _AuditRow({required this.entry});
+
+  final LoyaltyAuditEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final metadata = entry.metadata;
+    final actor = entry.actorEmail ??
+        (entry.actorUserId == null ? 'Systeme' : 'Staff #${entry.actorUserId}');
+    final method = metadata['loyalty_identification_method']?.toString();
+    final oralConfirmed = metadata['loyalty_oral_confirmed'] == true;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(_auditIcon(entry.action)),
+      title: Text(_auditActionLabel(entry.action)),
+      subtitle: Text(_auditSubtitle(entry, actor)),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (method != null && method.isNotEmpty)
+            StatusBadge(
+              label: _methodLabel(method),
+              tone: StatusTone.info,
+              compact: true,
+            )
+          else if (oralConfirmed)
+            const StatusBadge(
+              label: 'Oral confirme',
+              tone: StatusTone.success,
+              compact: true,
+            ),
+          if (entry.createdAt != null)
+            Text(
+              formatDateTime(entry.createdAt),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RuleRow extends StatelessWidget {
   const _RuleRow({
     required this.rule,
@@ -958,6 +1071,73 @@ String _rewardLabel(LoyaltyReward reward) {
     return '${reward.pointsRequired} points - produit #${reward.productId}';
   }
   return '${reward.pointsRequired} points - ${reward.rewardType}';
+}
+
+IconData _auditIcon(String action) {
+  return switch (action) {
+    'loyalty_staff_phone_search' ||
+    'loyalty_staff_search_too_short' =>
+      Icons.phone_in_talk_outlined,
+    'loyalty_staff_qr_identified' || 'loyalty_qr_generated' =>
+      Icons.qr_code_2_outlined,
+    'loyalty_staff_customer_created' ||
+    'loyalty_staff_customer_reused' =>
+      Icons.person_add_alt_1_outlined,
+    'loyalty_staff_signup_sms_sent' => Icons.sms_outlined,
+    'loyalty_staff_reward_applied' => Icons.redeem_outlined,
+    'loyalty_staff_wallet_viewed' => Icons.account_balance_wallet_outlined,
+    _ => Icons.history_outlined,
+  };
+}
+
+String _auditActionLabel(String action) {
+  return switch (action) {
+    'loyalty_staff_phone_search' => 'Recherche telephone',
+    'loyalty_staff_search_too_short' => 'Recherche trop courte',
+    'loyalty_staff_qr_identified' => 'QR resolu en caisse',
+    'loyalty_qr_generated' => 'QR genere par le client',
+    'loyalty_staff_customer_created' => 'Client cree en caisse',
+    'loyalty_staff_customer_reused' => 'Client retrouve en caisse',
+    'loyalty_staff_signup_sms_sent' => 'SMS inscription envoye',
+    'loyalty_staff_reward_applied' => 'Recompense appliquee',
+    'loyalty_staff_wallet_viewed' => 'Solde consulte',
+    _ => action,
+  };
+}
+
+String _auditSubtitle(LoyaltyAuditEntry entry, String actor) {
+  final metadata = entry.metadata;
+  final parts = <String>[actor];
+  final customerId = metadata['customer_id'] ?? entry.targetId;
+  if (customerId != null && customerId.toString().isNotEmpty) {
+    parts.add('client $customerId');
+  }
+  final orderId = metadata['order_id'];
+  if (orderId != null) {
+    parts.add('commande $orderId');
+  }
+  final establishmentId = metadata['establishment_id'];
+  if (establishmentId != null) {
+    parts.add('etablissement $establishmentId');
+  }
+  final resultCount = metadata['result_count'];
+  if (resultCount != null) {
+    parts.add('$resultCount resultat(s)');
+  }
+  final phoneLast4 = metadata['phone_last4'];
+  if (phoneLast4 != null) {
+    parts.add('tel ****$phoneLast4');
+  }
+  return parts.join(' - ');
+}
+
+String _methodLabel(String value) {
+  return switch (value) {
+    'phone' => 'Telephone',
+    'qr' => 'QR',
+    'quick_create' => 'Creation caisse',
+    _ => value,
+  };
 }
 
 double _double(String value, {double fallback = 0}) {

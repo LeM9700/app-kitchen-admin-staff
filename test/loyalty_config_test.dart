@@ -37,6 +37,10 @@ void main() {
             options.path == ApiEndpoints.loyaltyRewards) {
           return _jsonResponse(<Object?>[]);
         }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.adminCustomerAudit) {
+          return _jsonResponse(_auditPageJson());
+        }
         if (options.method == 'PATCH' &&
             options.path == ApiEndpoints.loyaltyConfig) {
           return _jsonResponse(_configJson(isActive: false));
@@ -94,6 +98,10 @@ void main() {
             options.path == ApiEndpoints.loyaltyRewards) {
           return _jsonResponse([_rewardJson(id: 5, isActive: true)]);
         }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.adminCustomerAudit) {
+          return _jsonResponse(_auditPageJson());
+        }
         if (options.method == 'PATCH' &&
             options.path == ApiEndpoints.loyaltyReward(5)) {
           return _jsonResponse(_rewardJson(id: 5, isActive: false));
@@ -121,6 +129,42 @@ void main() {
           .toList();
       expect(patches, hasLength(1));
       expect(patches.single.data['is_active'], isFalse);
+    });
+
+    testWidgets('affiche le journal fidelite admin', (tester) async {
+      final api = _client((options) {
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.loyaltyConfig) {
+          return _jsonResponse(_configJson(isActive: true));
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.loyaltyStats) {
+          return _jsonResponse(_statsJson());
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.loyaltyRules) {
+          return _jsonResponse(<Object?>[]);
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.loyaltyRewards) {
+          return _jsonResponse(<Object?>[]);
+        }
+        if (options.method == 'GET' &&
+            options.path == ApiEndpoints.adminCustomerAudit) {
+          expect(options.queryParameters['loyalty_only'], isTrue);
+          return _jsonResponse(_auditPageJson());
+        }
+        throw StateError(
+          'requete inattendue ${options.method} ${options.path}',
+        );
+      });
+
+      await _pumpLoyaltyPage(tester, api);
+
+      expect(find.text('Journal fidelite'), findsOneWidget);
+      expect(find.text('Recompense appliquee'), findsOneWidget);
+      expect(find.text('QR'), findsOneWidget);
+      expect(find.textContaining('commande 88'), findsOneWidget);
     });
   });
 }
@@ -176,6 +220,33 @@ Map<String, dynamic> _rewardJson({required int id, required bool isActive}) {
     'discount_amount': null,
     'product_id': 3,
     'is_active': isActive,
+  };
+}
+
+Map<String, dynamic> _auditPageJson() {
+  return {
+    'items': [
+      {
+        'id': 3,
+        'actor_user_id': 9,
+        'actor_email': 'staff@example.com',
+        'action': 'loyalty_staff_reward_applied',
+        'target_type': 'customer',
+        'target_id': '42',
+        'metadata_json': {
+          'customer_id': 42,
+          'order_id': 88,
+          'establishment_id': 2,
+          'loyalty_identification_method': 'qr',
+          'loyalty_oral_confirmed': true,
+        },
+        'created_at': '2026-09-26T10:00:00Z',
+      },
+    ],
+    'total': 1,
+    'page': 1,
+    'page_size': 20,
+    'pages': 1,
   };
 }
 

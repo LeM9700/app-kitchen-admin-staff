@@ -183,9 +183,16 @@ class ApiEndpoints {
   static const loyaltyRules = '/loyalty/rules';
   static const loyaltyRewards = '/loyalty/rewards';
   static const loyaltyStats = '/loyalty/stats';
+  static const loyaltyStaffCustomerSearch = '/loyalty/staff/customers/search';
+  static const loyaltyStaffCustomers = '/loyalty/staff/customers';
+  static const loyaltyStaffIdentifyQr = '/loyalty/staff/identify-qr';
   static String loyaltyRule(int ruleId) => '/loyalty/rules/$ruleId';
   static String loyaltyReward(int rewardId) => '/loyalty/rewards/$rewardId';
   static String loyaltyUser(int userId) => '/loyalty/users/$userId';
+  static String loyaltyStaffCustomerWallet(int customerId) {
+    return '/loyalty/staff/customers/$customerId/wallet';
+  }
+
   static String loyaltyUserTransactions(int userId) {
     return '/loyalty/users/$userId/transactions';
   }

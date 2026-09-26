@@ -10,6 +10,7 @@ import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
+import 'package:app_admin_staff/features/checkout/application/checkout_error_messages.dart';
 import 'package:app_admin_staff/features/checkout/application/checkout_validation.dart';
 import 'package:app_admin_staff/features/checkout/domain/checkout_cart.dart';
 import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
@@ -47,11 +48,16 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   final _externalReferenceController = TextEditingController();
   final _amountReceivedController = TextEditingController();
   final _promoCodeController = TextEditingController();
-  final _loyaltyUserController = TextEditingController();
-  final _loyaltyPointsController = TextEditingController();
+  final _loyaltySearchController = TextEditingController();
+  final _loyaltyQrController = TextEditingController();
   final _noteController = TextEditingController();
 
-  LoyaltyAccount? _loyaltyAccount;
+  LoyaltyStaffCustomer? _loyaltyCustomer;
+  List<LoyaltyStaffCustomer> _loyaltyMatches = const [];
+  List<LoyaltyReward> _loyaltyRewards = const [];
+  int? _selectedLoyaltyRewardId;
+  String? _loyaltyIdentificationMethod;
+  bool _loyaltyOralConfirmed = false;
   bool _loyaltyLoading = false;
   bool _submitting = false;
   String _orderType = 'pickup';
@@ -71,8 +77,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     _externalReferenceController.dispose();
     _amountReceivedController.dispose();
     _promoCodeController.dispose();
-    _loyaltyUserController.dispose();
-    _loyaltyPointsController.dispose();
+    _loyaltySearchController.dispose();
+    _loyaltyQrController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -224,9 +230,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       externalReferenceController: _externalReferenceController,
       amountReceivedController: _amountReceivedController,
       promoCodeController: _promoCodeController,
-      loyaltyUserController: _loyaltyUserController,
-      loyaltyPointsController: _loyaltyPointsController,
-      loyaltyAccount: _loyaltyAccount,
+      loyaltySearchController: _loyaltySearchController,
+      loyaltyQrController: _loyaltyQrController,
+      loyaltyCustomer: _loyaltyCustomer,
+      loyaltyMatches: _loyaltyMatches,
+      loyaltyRewards: _loyaltyRewards,
+      selectedLoyaltyRewardId: _selectedLoyaltyRewardId,
+      loyaltyOralConfirmed: _loyaltyOralConfirmed,
       loyaltyLoading: _loyaltyLoading,
       noteController: _noteController,
       submitting: _submitting,
@@ -267,7 +277,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           _validationMessage = null;
         });
       },
-      onLookupLoyalty: _lookupLoyalty,
+      onSearchLoyalty: _searchLoyalty,
+      onIdentifyQr: _identifyLoyaltyQr,
+      onSelectLoyaltyCustomer: _selectLoyaltyCustomer,
+      onSelectLoyaltyReward: _selectLoyaltyReward,
+      onLoyaltyOralConfirmedChanged: _setLoyaltyOralConfirmed,
+      onClearLoyalty: _clearLoyalty,
+      onCreateLoyaltyCustomer: _createLoyaltyCustomer,
       onSubmit: _submit,
       stickyFooter: sideBySide,
     );
@@ -348,8 +364,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         externalReference: _emptyToNull(_externalReferenceController.text),
         amountReceived: _parseAmount(_amountReceivedController.text),
         promoCode: _emptyToNull(_promoCodeController.text),
-        loyaltyUserId: _parseInt(_loyaltyUserController.text),
-        loyaltyPointsToUse: _parseInt(_loyaltyPointsController.text),
+        loyaltyCustomerId: _loyaltyCustomer?.id,
+        loyaltyRewardId: _selectedLoyaltyRewardId,
+        loyaltyIdentificationMethod: _loyaltyCustomer == null
+            ? null
+            : _loyaltyIdentificationMethod,
+        loyaltyOralConfirmed: _loyaltyOralConfirmed,
         note: _emptyToNull(_noteController.text),
         items: _cart.values
             .map(
@@ -384,11 +404,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         );
       }
     } catch (error) {
+      final message = checkoutFailureMessage(error);
       setState(() {
-        _validationMessage =
-            'Encaissement impossible. Verifiez puis reessayez.';
+        _validationMessage = message;
       });
-      _snack(error.toString());
+      _snack(message);
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -407,8 +427,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         paymentMethod: _paymentMethod,
         deliveryAddress: _deliveryAddressController.text,
         externalReference: _externalReferenceController.text,
-        loyaltyUserId: _parseInt(_loyaltyUserController.text),
-        loyaltyPointsToUse: _parseInt(_loyaltyPointsController.text),
+        loyaltyCustomerId: _loyaltyCustomer?.id,
+        loyaltyRewardId: _selectedLoyaltyRewardId,
+        loyaltyOralConfirmed: _loyaltyOralConfirmed,
         total: checkoutCartTotal(_cart.values),
         amountReceived: _parseAmount(_amountReceivedController.text),
         isOnline: ref.read(onlineStatusProvider).valueOrNull ?? true,
@@ -425,9 +446,14 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     _externalReferenceController.clear();
     _amountReceivedController.clear();
     _promoCodeController.clear();
-    _loyaltyUserController.clear();
-    _loyaltyPointsController.clear();
-    _loyaltyAccount = null;
+    _loyaltySearchController.clear();
+    _loyaltyQrController.clear();
+    _loyaltyCustomer = null;
+    _loyaltyMatches = const [];
+    _loyaltyRewards = const [];
+    _selectedLoyaltyRewardId = null;
+    _loyaltyIdentificationMethod = null;
+    _loyaltyOralConfirmed = false;
     _validationMessage = null;
     _cartEstablishmentId =
         ref.read(currentEstablishmentProvider).valueOrNull?.id;
@@ -449,7 +475,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           await ref.read(catalogRepositoryProvider).getProduct(product.id);
       _productDetails[product.id] = detail;
     } catch (error) {
-      _snack(error.toString());
+      final message = checkoutFailureMessage(
+        error,
+        context: CheckoutFailureContext.loyaltySearch,
+      );
+      setState(() => _validationMessage = message);
+      _snack(message);
       return;
     }
     if (!mounted) {
@@ -617,22 +648,187 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     );
   }
 
-  Future<void> _lookupLoyalty() async {
-    final userId = _parseInt(_loyaltyUserController.text);
-    if (userId == null) {
-      setState(() => _validationMessage = 'User ID fidelite invalide');
+  Future<void> _searchLoyalty() async {
+    if (!_isOnline) {
+      setState(() {
+        _validationMessage = 'Recherche fidelite impossible hors ligne';
+      });
+      return;
+    }
+    final query = _loyaltySearchController.text.trim();
+    final digits = query.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 4) {
+      setState(() {
+        _validationMessage = 'Saisissez au moins 4 chiffres du telephone';
+        _loyaltyMatches = const [];
+      });
       return;
     }
     setState(() => _loyaltyLoading = true);
     try {
-      final account = await ref.read(loyaltyRepositoryProvider).account(userId);
+      final matches =
+          await ref.read(loyaltyRepositoryProvider).searchStaffCustomers(query);
       if (!mounted) {
         return;
       }
       setState(() {
-        _loyaltyAccount = account;
+        _loyaltyMatches = matches;
         _validationMessage = null;
       });
+    } catch (error) {
+      final message = checkoutFailureMessage(
+        error,
+        context: CheckoutFailureContext.loyaltyQr,
+      );
+      setState(() => _validationMessage = message);
+      _snack(message);
+    } finally {
+      if (mounted) {
+        setState(() => _loyaltyLoading = false);
+      }
+    }
+  }
+
+  Future<void> _identifyLoyaltyQr() async {
+    if (!_isOnline) {
+      setState(() {
+        _validationMessage = 'Scanner QR fidelite impossible hors ligne';
+      });
+      return;
+    }
+    final token = _loyaltyQrController.text.trim();
+    if (token.isEmpty) {
+      setState(() => _validationMessage = 'Token QR fidelite requis');
+      return;
+    }
+    setState(() => _loyaltyLoading = true);
+    try {
+      final wallet =
+          await ref.read(loyaltyRepositoryProvider).identifyQr(token);
+      if (!mounted) {
+        return;
+      }
+      _applyLoyaltyWallet(wallet, method: 'qr');
+      _snack('Client fidelite identifie');
+    } catch (error) {
+      final message = checkoutFailureMessage(
+        error,
+        context: CheckoutFailureContext.loyaltyCustomer,
+      );
+      setState(() => _validationMessage = message);
+      _snack(message);
+    } finally {
+      if (mounted) {
+        setState(() => _loyaltyLoading = false);
+      }
+    }
+  }
+
+  Future<void> _selectLoyaltyCustomer(LoyaltyStaffCustomer customer) async {
+    if (!_isOnline) {
+      setState(() {
+        _validationMessage = 'Chargement fidelite impossible hors ligne';
+      });
+      return;
+    }
+    setState(() => _loyaltyLoading = true);
+    try {
+      final wallet = await ref
+          .read(loyaltyRepositoryProvider)
+          .staffCustomerWallet(customer.id);
+      if (!mounted) {
+        return;
+      }
+      _applyLoyaltyWallet(wallet, method: 'phone');
+    } catch (error) {
+      final message = checkoutFailureMessage(
+        error,
+        context: CheckoutFailureContext.loyaltyCreate,
+      );
+      setState(() => _validationMessage = message);
+      _snack(message);
+    } finally {
+      if (mounted) {
+        setState(() => _loyaltyLoading = false);
+      }
+    }
+  }
+
+  void _selectLoyaltyReward(int? rewardId) {
+    setState(() {
+      _selectedLoyaltyRewardId = rewardId;
+      _loyaltyOralConfirmed = false;
+      _validationMessage = null;
+    });
+  }
+
+  void _setLoyaltyOralConfirmed(bool value) {
+    setState(() {
+      _loyaltyOralConfirmed = value;
+      _validationMessage = null;
+    });
+  }
+
+  void _clearLoyalty() {
+    setState(() {
+      _loyaltyCustomer = null;
+      _loyaltyMatches = const [];
+      _loyaltyRewards = const [];
+      _selectedLoyaltyRewardId = null;
+      _loyaltyIdentificationMethod = null;
+      _loyaltyOralConfirmed = false;
+      _loyaltySearchController.clear();
+      _loyaltyQrController.clear();
+      _validationMessage = null;
+    });
+  }
+
+  void _applyLoyaltyWallet(
+    LoyaltyStaffWallet wallet, {
+    required String method,
+  }) {
+    setState(() {
+      _loyaltyCustomer = wallet.customer;
+      _loyaltyRewards = wallet.rewards;
+      _loyaltyMatches = const [];
+      _selectedLoyaltyRewardId = null;
+      _loyaltyIdentificationMethod = method;
+      _loyaltyOralConfirmed = false;
+      _validationMessage = null;
+      if ((wallet.customer.fullName ?? '').isNotEmpty) {
+        _customerNameController.text = wallet.customer.fullName!;
+      }
+    });
+  }
+
+  Future<void> _createLoyaltyCustomer() async {
+    if (!_isOnline) {
+      setState(() {
+        _validationMessage = 'Creation client fidelite impossible hors ligne';
+      });
+      return;
+    }
+    final result = await showDialog<_LoyaltyCustomerCreateDraft>(
+      context: context,
+      builder: (context) => const _CreateLoyaltyCustomerDialog(),
+    );
+    if (result == null) {
+      return;
+    }
+    setState(() => _loyaltyLoading = true);
+    try {
+      final wallet =
+          await ref.read(loyaltyRepositoryProvider).createStaffCustomer(
+                phone: result.phone,
+                firstName: result.firstName,
+                lastName: result.lastName,
+              );
+      if (!mounted) {
+        return;
+      }
+      _applyLoyaltyWallet(wallet, method: 'quick_create');
+      _customerPhoneController.text = result.phone;
+      _snack('Compte fidelite cree. SMS envoye au client.');
     } catch (error) {
       _snack(error.toString());
     } finally {
@@ -655,13 +851,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     return double.tryParse(normalized);
   }
 
-  int? _parseInt(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) {
-      return null;
-    }
-    return int.tryParse(trimmed);
-  }
+  bool get _isOnline => ref.read(onlineStatusProvider).valueOrNull ?? true;
 
   void _snack(String message) {
     if (!mounted) {
@@ -1068,9 +1258,13 @@ class _CartPanel extends StatelessWidget {
     required this.externalReferenceController,
     required this.amountReceivedController,
     required this.promoCodeController,
-    required this.loyaltyUserController,
-    required this.loyaltyPointsController,
-    required this.loyaltyAccount,
+    required this.loyaltySearchController,
+    required this.loyaltyQrController,
+    required this.loyaltyCustomer,
+    required this.loyaltyMatches,
+    required this.loyaltyRewards,
+    required this.selectedLoyaltyRewardId,
+    required this.loyaltyOralConfirmed,
     required this.loyaltyLoading,
     required this.noteController,
     required this.submitting,
@@ -1080,7 +1274,13 @@ class _CartPanel extends StatelessWidget {
     required this.onRemove,
     required this.onIncrement,
     required this.onDecrement,
-    required this.onLookupLoyalty,
+    required this.onSearchLoyalty,
+    required this.onIdentifyQr,
+    required this.onSelectLoyaltyCustomer,
+    required this.onSelectLoyaltyReward,
+    required this.onLoyaltyOralConfirmedChanged,
+    required this.onClearLoyalty,
+    required this.onCreateLoyaltyCustomer,
     required this.onSubmit,
     required this.stickyFooter,
   });
@@ -1099,9 +1299,13 @@ class _CartPanel extends StatelessWidget {
   final TextEditingController externalReferenceController;
   final TextEditingController amountReceivedController;
   final TextEditingController promoCodeController;
-  final TextEditingController loyaltyUserController;
-  final TextEditingController loyaltyPointsController;
-  final LoyaltyAccount? loyaltyAccount;
+  final TextEditingController loyaltySearchController;
+  final TextEditingController loyaltyQrController;
+  final LoyaltyStaffCustomer? loyaltyCustomer;
+  final List<LoyaltyStaffCustomer> loyaltyMatches;
+  final List<LoyaltyReward> loyaltyRewards;
+  final int? selectedLoyaltyRewardId;
+  final bool loyaltyOralConfirmed;
   final bool loyaltyLoading;
   final TextEditingController noteController;
   final bool submitting;
@@ -1111,7 +1315,13 @@ class _CartPanel extends StatelessWidget {
   final ValueChanged<String> onRemove;
   final ValueChanged<String> onIncrement;
   final ValueChanged<String> onDecrement;
-  final VoidCallback onLookupLoyalty;
+  final VoidCallback onSearchLoyalty;
+  final VoidCallback onIdentifyQr;
+  final ValueChanged<LoyaltyStaffCustomer> onSelectLoyaltyCustomer;
+  final ValueChanged<int?> onSelectLoyaltyReward;
+  final ValueChanged<bool> onLoyaltyOralConfirmedChanged;
+  final VoidCallback onClearLoyalty;
+  final VoidCallback onCreateLoyaltyCustomer;
   final VoidCallback onSubmit;
   final bool stickyFooter;
 
@@ -1190,60 +1400,27 @@ class _CartPanel extends StatelessWidget {
         _ExpandableSection(
           title: 'Fidelite',
           icon: Icons.loyalty_outlined,
-          subtitle: loyaltyAccount == null
-              ? 'Aucun client fidelite'
-              : '${loyaltyAccount!.points} points disponibles',
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: loyaltyUserController,
-                      onChanged: (_) => onChanged(),
-                      decoration: const InputDecoration(
-                        labelText: 'User ID fidelite',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox.square(
-                    dimension: 48,
-                    child: FilledButton.tonal(
-                      onPressed: loyaltyLoading ? null : onLookupLoyalty,
-                      child: loyaltyLoading
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.search),
-                    ),
-                  ),
-                ],
-              ),
-              if (loyaltyAccount != null) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Valeur ${formatMoney(loyaltyAccount!.pointValueEuros)}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: _posMuted),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 8),
-              TextField(
-                controller: loyaltyPointsController,
-                onChanged: (_) => onChanged(),
-                decoration:
-                    const InputDecoration(labelText: 'Points a utiliser'),
-                keyboardType: TextInputType.number,
-              ),
-            ],
+          subtitle: loyaltyCustomer == null
+              ? 'Telephone ou QR client'
+              : '${loyaltyCustomer!.availablePoints} points disponibles',
+          child: _LoyaltyCheckoutPanel(
+            searchController: loyaltySearchController,
+            qrController: loyaltyQrController,
+            customer: loyaltyCustomer,
+            matches: loyaltyMatches,
+            rewards: loyaltyRewards,
+            selectedRewardId: selectedLoyaltyRewardId,
+            oralConfirmed: loyaltyOralConfirmed,
+            loading: loyaltyLoading,
+            online: online,
+            onChanged: onChanged,
+            onSearch: onSearchLoyalty,
+            onIdentifyQr: onIdentifyQr,
+            onSelectCustomer: onSelectLoyaltyCustomer,
+            onSelectReward: onSelectLoyaltyReward,
+            onOralConfirmedChanged: onLoyaltyOralConfirmedChanged,
+            onClear: onClearLoyalty,
+            onCreateCustomer: onCreateLoyaltyCustomer,
           ),
         ),
         const SizedBox(height: 10),
@@ -1296,6 +1473,505 @@ class _CartPanel extends StatelessWidget {
               onSubmit: onSubmit,
             ),
         ],
+      ),
+    );
+  }
+}
+
+enum _LoyaltyLookupMode { phone, qr }
+
+class _LoyaltyCheckoutPanel extends StatefulWidget {
+  const _LoyaltyCheckoutPanel({
+    required this.searchController,
+    required this.qrController,
+    required this.customer,
+    required this.matches,
+    required this.rewards,
+    required this.selectedRewardId,
+    required this.oralConfirmed,
+    required this.loading,
+    required this.online,
+    required this.onChanged,
+    required this.onSearch,
+    required this.onIdentifyQr,
+    required this.onSelectCustomer,
+    required this.onSelectReward,
+    required this.onOralConfirmedChanged,
+    required this.onClear,
+    required this.onCreateCustomer,
+  });
+
+  final TextEditingController searchController;
+  final TextEditingController qrController;
+  final LoyaltyStaffCustomer? customer;
+  final List<LoyaltyStaffCustomer> matches;
+  final List<LoyaltyReward> rewards;
+  final int? selectedRewardId;
+  final bool oralConfirmed;
+  final bool loading;
+  final bool online;
+  final VoidCallback onChanged;
+  final VoidCallback onSearch;
+  final VoidCallback onIdentifyQr;
+  final ValueChanged<LoyaltyStaffCustomer> onSelectCustomer;
+  final ValueChanged<int?> onSelectReward;
+  final ValueChanged<bool> onOralConfirmedChanged;
+  final VoidCallback onClear;
+  final VoidCallback onCreateCustomer;
+
+  @override
+  State<_LoyaltyCheckoutPanel> createState() => _LoyaltyCheckoutPanelState();
+}
+
+class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
+  _LoyaltyLookupMode _mode = _LoyaltyLookupMode.phone;
+
+  @override
+  Widget build(BuildContext context) {
+    LoyaltyReward? selectedReward;
+    for (final reward in widget.rewards) {
+      if (reward.id == widget.selectedRewardId) {
+        selectedReward = reward;
+        break;
+      }
+    }
+    final canUseLoyalty = widget.online && !widget.loading;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!widget.online)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: _WarningBanner(
+              icon: Icons.wifi_off_outlined,
+              title: 'Fidelite hors ligne',
+              message:
+                  'Recherche, QR et creation client sont indisponibles sans serveur.',
+            ),
+          ),
+        if (widget.customer == null) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: widget.loading
+                    ? null
+                    : () => setState(() => _mode = _LoyaltyLookupMode.phone),
+                icon: const Icon(Icons.phone_iphone_outlined),
+                label: const Text('Telephone'),
+                style: _mode == _LoyaltyLookupMode.phone
+                    ? FilledButton.styleFrom(
+                        backgroundColor: AppColors.adminSidebar,
+                        foregroundColor: Colors.white,
+                      )
+                    : null,
+              ),
+              FilledButton.tonalIcon(
+                onPressed: widget.loading
+                    ? null
+                    : () => setState(() => _mode = _LoyaltyLookupMode.qr),
+                icon: const Icon(Icons.qr_code_scanner_outlined),
+                label: const Text('Scanner QR'),
+                style: _mode == _LoyaltyLookupMode.qr
+                    ? FilledButton.styleFrom(
+                        backgroundColor: AppColors.adminSidebar,
+                        foregroundColor: Colors.white,
+                      )
+                    : null,
+              ),
+              OutlinedButton.icon(
+                onPressed: canUseLoyalty ? widget.onCreateCustomer : null,
+                icon: const Icon(Icons.person_add_alt_1_outlined),
+                label: const Text('Creer client'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_mode == _LoyaltyLookupMode.phone) ...[
+            TextField(
+              controller: widget.searchController,
+              enabled: canUseLoyalty,
+              onChanged: (_) => widget.onChanged(),
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => widget.onSearch(),
+              decoration: const InputDecoration(
+                labelText: 'Telephone client',
+                helperText: 'Recherche a partir de 4 chiffres',
+                prefixIcon: Icon(Icons.phone_iphone_outlined),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.tonalIcon(
+                onPressed: canUseLoyalty ? widget.onSearch : null,
+                icon: widget.loading
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.search),
+                label: const Text('Rechercher telephone'),
+              ),
+            ),
+          ] else ...[
+            TextField(
+              controller: widget.qrController,
+              enabled: canUseLoyalty,
+              onChanged: (_) => widget.onChanged(),
+              minLines: 1,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Scanner QR fidelite',
+                helperText: 'Scannez le QR client ou collez le code.',
+                prefixIcon: Icon(Icons.qr_code_scanner_outlined),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.tonalIcon(
+                onPressed: canUseLoyalty ? widget.onIdentifyQr : null,
+                icon: widget.loading
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.qr_code_2_outlined),
+                label: const Text('Identifier par QR'),
+              ),
+            ),
+          ],
+          if (widget.matches.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            for (final match in widget.matches)
+              _LoyaltyCustomerChoice(
+                customer: match,
+                onTap: () => widget.onSelectCustomer(match),
+              ),
+          ],
+        ] else ...[
+          _PanelBlock(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                const Icon(Icons.verified_user_outlined),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.customer!.fullName?.isNotEmpty == true
+                            ? widget.customer!.fullName!
+                            : 'Client fidelite',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.customer!.maskedPhone ?? 'Telephone verifie'} - ${widget.customer!.availablePoints} pts disponibles',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: _posMuted),
+                      ),
+                      if (widget.customer!.pendingProfileCompletion)
+                        Text(
+                          'Profil a completer dans l app client',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.warning,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Retirer le client',
+                  onPressed: widget.onClear,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (widget.rewards.isEmpty)
+            Text(
+              'Aucune recompense utilisable pour ce client.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: _posMuted),
+            )
+          else ...[
+            const _SectionLabel('Recompenses proposees'),
+            const SizedBox(height: 8),
+            for (final reward in widget.rewards)
+              _LoyaltyRewardChoice(
+                reward: reward,
+                selected: reward.id == widget.selectedRewardId,
+                onTap: () => widget.onSelectReward(
+                  reward.id == widget.selectedRewardId ? null : reward.id,
+                ),
+              ),
+            if (selectedReward != null) ...[
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                value: widget.oralConfirmed,
+                onChanged: (value) =>
+                    widget.onOralConfirmedChanged(value ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Confirmation orale du client',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                subtitle: Text(
+                  'Le staff a relu nom, telephone masque, points et recompense avec le client.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: _posMuted),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+class _LoyaltyCustomerChoice extends StatelessWidget {
+  const _LoyaltyCustomerChoice({
+    required this.customer,
+    required this.onTap,
+  });
+
+  final LoyaltyStaffCustomer customer;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DsCard(
+        padding: const EdgeInsets.all(12),
+        backgroundColor: _posSurface,
+        borderColor: _posLine,
+        borderRadius: AppRadius.md,
+        onTap: onTap,
+        child: Row(
+          children: [
+            const Icon(Icons.person_search_outlined),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    customer.fullName?.isNotEmpty == true
+                        ? customer.fullName!
+                        : 'Client sans nom complet',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  Text(
+                    '${customer.maskedPhone ?? 'Telephone verifie'} - ${customer.availablePoints} pts',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: _posMuted),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoyaltyRewardChoice extends StatelessWidget {
+  const _LoyaltyRewardChoice({
+    required this.reward,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final LoyaltyReward reward;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = reward.rewardType == 'discount_euros'
+        ? 'Remise ${formatMoney(reward.discountAmount ?? 0)}'
+        : 'Produit offert #${reward.productId ?? '-'}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DsCard(
+        padding: const EdgeInsets.all(12),
+        backgroundColor: selected ? AppColors.adminSidebar : _posSurface,
+        borderColor: selected ? AppColors.adminSidebar : _posLine,
+        borderRadius: AppRadius.md,
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.check_circle : Icons.card_giftcard_outlined,
+              color: selected ? Colors.white : _posInk,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    reward.name,
+                    style: TextStyle(
+                      color: selected ? Colors.white : _posInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    '$detail - ${reward.pointsRequired} pts',
+                    style: TextStyle(
+                      color: selected ? Colors.white70 : _posMuted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoyaltyCustomerCreateDraft {
+  const _LoyaltyCustomerCreateDraft({
+    required this.phone,
+    required this.firstName,
+    required this.lastName,
+  });
+
+  final String phone;
+  final String firstName;
+  final String lastName;
+}
+
+class _CreateLoyaltyCustomerDialog extends StatefulWidget {
+  const _CreateLoyaltyCustomerDialog();
+
+  @override
+  State<_CreateLoyaltyCustomerDialog> createState() =>
+      _CreateLoyaltyCustomerDialogState();
+}
+
+class _CreateLoyaltyCustomerDialogState
+    extends State<_CreateLoyaltyCustomerDialog> {
+  final _phoneController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Creer un client fidelite'),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Telephone',
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _firstNameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Prenom',
+                prefixIcon: Icon(Icons.badge_outlined),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _lastNameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Nom',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _error!,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.danger),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        FilledButton.icon(
+          onPressed: _submit,
+          icon: const Icon(Icons.sms_outlined),
+          label: const Text('Creer et envoyer le SMS'),
+        ),
+      ],
+    );
+  }
+
+  void _submit() {
+    final phone = _phoneController.text.trim();
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    if (phone.isEmpty || firstName.isEmpty || lastName.isEmpty) {
+      setState(() {
+        _error = 'Telephone, prenom et nom sont requis.';
+      });
+      return;
+    }
+    Navigator.pop(
+      context,
+      _LoyaltyCustomerCreateDraft(
+        phone: phone,
+        firstName: firstName,
+        lastName: lastName,
       ),
     );
   }

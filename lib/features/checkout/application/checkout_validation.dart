@@ -5,8 +5,9 @@ class CheckoutValidationInput {
     required this.paymentMethod,
     required this.deliveryAddress,
     required this.externalReference,
-    required this.loyaltyUserId,
-    required this.loyaltyPointsToUse,
+    required this.loyaltyCustomerId,
+    required this.loyaltyRewardId,
+    required this.loyaltyOralConfirmed,
     required this.total,
     required this.amountReceived,
     required this.isOnline,
@@ -20,8 +21,9 @@ class CheckoutValidationInput {
   final String paymentMethod;
   final String deliveryAddress;
   final String externalReference;
-  final int? loyaltyUserId;
-  final int? loyaltyPointsToUse;
+  final int? loyaltyCustomerId;
+  final int? loyaltyRewardId;
+  final bool loyaltyOralConfirmed;
   final double total;
   final double? amountReceived;
   final bool isOnline;
@@ -72,9 +74,14 @@ CheckoutValidationResult validateCheckout(CheckoutValidationInput input) {
       'Reference externe requise pour ce paiement',
     );
   }
-  if (input.loyaltyPointsToUse != null && input.loyaltyUserId == null) {
+  if (input.loyaltyRewardId != null && input.loyaltyCustomerId == null) {
     return const CheckoutValidationResult.invalid(
-      'User ID fidelite requis pour utiliser des points',
+      'Client fidelite requis pour appliquer une recompense',
+    );
+  }
+  if (input.loyaltyRewardId != null && !input.loyaltyOralConfirmed) {
+    return const CheckoutValidationResult.invalid(
+      'Confirmation orale client requise pour appliquer la recompense',
     );
   }
   if (input.paymentMethod == 'cash' &&

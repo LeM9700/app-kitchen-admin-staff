@@ -88,4 +88,52 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('bloc fidelite expose telephone QR creation sans User ID',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1280, 900);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          catalogProductsProvider.overrideWith((ref) async => products),
+          currentEstablishmentProvider.overrideWith(
+            (ref) async => const Establishment(
+              id: 1,
+              name: 'Kitchen Test',
+              timezone: 'Europe/Paris',
+              isActive: true,
+            ),
+          ),
+          tenantStatusProvider.overrideWith(
+            (ref) async => const TenantStatus(
+              isOpen: true,
+              estimatedPrepTimeMinutes: 20,
+              activeOrdersCount: 0,
+            ),
+          ),
+          onlineStatusProvider.overrideWith((ref) => Stream.value(true)),
+          currentPermissionSetProvider.overrideWithValue(
+            const PermissionSet(role: 'admin', permissions: null),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: CheckoutPage())),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Fidelite'));
+    await tester.tap(find.text('Fidelite'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Telephone'), findsOneWidget);
+    expect(find.text('Scanner QR'), findsOneWidget);
+    expect(find.text('Creer client'), findsOneWidget);
+    expect(find.textContaining('User ID'), findsNothing);
+    expect(find.textContaining('loyalty_user_id'), findsNothing);
+  });
 }

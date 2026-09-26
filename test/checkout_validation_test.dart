@@ -8,8 +8,9 @@ void main() {
     String paymentMethod = 'cash',
     String deliveryAddress = '',
     String externalReference = '',
-    int? loyaltyUserId,
-    int? loyaltyPointsToUse,
+    int? loyaltyCustomerId,
+    int? loyaltyRewardId,
+    bool loyaltyOralConfirmed = false,
     double total = 24,
     double? amountReceived,
     bool isOnline = true,
@@ -23,8 +24,9 @@ void main() {
       paymentMethod: paymentMethod,
       deliveryAddress: deliveryAddress,
       externalReference: externalReference,
-      loyaltyUserId: loyaltyUserId,
-      loyaltyPointsToUse: loyaltyPointsToUse,
+      loyaltyCustomerId: loyaltyCustomerId,
+      loyaltyRewardId: loyaltyRewardId,
+      loyaltyOralConfirmed: loyaltyOralConfirmed,
       total: total,
       amountReceived: amountReceived,
       isOnline: isOnline,
@@ -87,11 +89,34 @@ void main() {
     expect(result.isValid, isTrue);
   });
 
-  test('refuse des points fidelite sans user id', () {
-    final result = validateCheckout(input(loyaltyPointsToUse: 120));
+  test('refuse une recompense fidelite sans client identifie', () {
+    final result = validateCheckout(input(loyaltyRewardId: 7));
 
     expect(result.isValid, isFalse);
     expect(result.message, contains('fidelite'));
+  });
+
+  test('refuse une recompense fidelite sans confirmation orale', () {
+    final result = validateCheckout(
+      input(loyaltyCustomerId: 42, loyaltyRewardId: 7),
+    );
+
+    expect(result.isValid, isFalse);
+    expect(result.message, contains('Confirmation orale'));
+  });
+
+  test(
+      'accepte une recompense fidelite avec client identifie et confirmation orale',
+      () {
+    final result = validateCheckout(
+      input(
+        loyaltyCustomerId: 42,
+        loyaltyRewardId: 7,
+        loyaltyOralConfirmed: true,
+      ),
+    );
+
+    expect(result.isValid, isTrue);
   });
 
   test('refuse le submit hors ligne', () {

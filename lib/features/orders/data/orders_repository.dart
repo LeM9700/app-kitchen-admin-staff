@@ -467,8 +467,10 @@ class ManualOrderDraft {
     this.externalReference,
     this.amountReceived,
     this.promoCode,
-    this.loyaltyUserId,
-    this.loyaltyPointsToUse,
+    this.loyaltyCustomerId,
+    this.loyaltyRewardId,
+    this.loyaltyIdentificationMethod,
+    this.loyaltyOralConfirmed = false,
     this.note,
   });
 
@@ -486,8 +488,10 @@ class ManualOrderDraft {
   final String? externalReference;
   final double? amountReceived;
   final String? promoCode;
-  final int? loyaltyUserId;
-  final int? loyaltyPointsToUse;
+  final int? loyaltyCustomerId;
+  final int? loyaltyRewardId;
+  final String? loyaltyIdentificationMethod;
+  final bool loyaltyOralConfirmed;
   final String? note;
 
   Map<String, dynamic> toJson() {
@@ -520,9 +524,12 @@ class ManualOrderDraft {
       },
       if (promoCode != null && promoCode!.trim().isNotEmpty)
         'promo_code': promoCode!.trim(),
-      if (loyaltyUserId != null) 'loyalty_user_id': loyaltyUserId,
-      if (loyaltyPointsToUse != null)
-        'loyalty_points_to_use': loyaltyPointsToUse,
+      if (loyaltyCustomerId != null) 'loyalty_customer_id': loyaltyCustomerId,
+      if (loyaltyRewardId != null) 'loyalty_reward_id': loyaltyRewardId,
+      if (loyaltyCustomerId != null && loyaltyIdentificationMethod != null)
+        'loyalty_identification_method': loyaltyIdentificationMethod,
+      if (loyaltyRewardId != null)
+        'loyalty_oral_confirmed': loyaltyOralConfirmed,
       if (note != null && note!.trim().isNotEmpty) 'note': note!.trim(),
     }..removeWhere((key, value) => value == null);
   }

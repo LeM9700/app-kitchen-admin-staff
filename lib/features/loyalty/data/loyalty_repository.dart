@@ -1,5 +1,6 @@
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
+import 'package:app_admin_staff/core/api/paginated.dart';
 import 'package:app_admin_staff/core/utils/json.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,6 +24,11 @@ final loyaltyRewardsProvider =
 
 final loyaltyStatsProvider = FutureProvider.autoDispose<LoyaltyStats>((ref) {
   return ref.watch(loyaltyRepositoryProvider).stats();
+});
+
+final loyaltyAuditProvider =
+    FutureProvider.autoDispose<List<LoyaltyAuditEntry>>((ref) {
+  return ref.watch(loyaltyRepositoryProvider).audit();
 });
 
 class LoyaltyRepository {
@@ -164,9 +170,71 @@ class LoyaltyRepository {
     return LoyaltyStats.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<List<LoyaltyAuditEntry>> audit({int pageSize = 20}) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.adminCustomerAudit,
+      queryParameters: {
+        'loyalty_only': true,
+        'page': 1,
+        'page_size': pageSize,
+      },
+    );
+    return PaginatedResult.fromJson(
+      readMap(response.data),
+      LoyaltyAuditEntry.fromJson,
+    ).items;
+  }
+
   Future<LoyaltyAccount> account(int userId) async {
     final response = await _apiClient.get(ApiEndpoints.loyaltyUser(userId));
     return LoyaltyAccount.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<List<LoyaltyStaffCustomer>> searchStaffCustomers(String query) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.loyaltyStaffCustomerSearch,
+      queryParameters: {'q': query, 'limit': 10},
+    );
+    final data = readMap(response.data);
+    return (data['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map(
+          (value) => LoyaltyStaffCustomer.fromJson(
+            Map<String, dynamic>.from(value),
+          ),
+        )
+        .toList();
+  }
+
+  Future<LoyaltyStaffWallet> staffCustomerWallet(int customerId) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.loyaltyStaffCustomerWallet(customerId),
+    );
+    return LoyaltyStaffWallet.fromJson(readMap(response.data));
+  }
+
+  Future<LoyaltyStaffWallet> identifyQr(String token) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.loyaltyStaffIdentifyQr,
+      data: {'token': token},
+    );
+    return LoyaltyStaffWallet.fromJson(readMap(response.data));
+  }
+
+  Future<LoyaltyStaffWallet> createStaffCustomer({
+    required String phone,
+    required String firstName,
+    required String lastName,
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.loyaltyStaffCustomers,
+      data: {
+        'phone': phone,
+        'first_name': firstName,
+        'last_name': lastName,
+      },
+    );
+    return LoyaltyStaffWallet.fromJson(readMap(response.data));
   }
 
   Future<List<LoyaltyTransaction>> transactions(int userId) async {
@@ -342,6 +410,67 @@ class LoyaltyAccount {
   }
 }
 
+class LoyaltyStaffCustomer {
+  const LoyaltyStaffCustomer({
+    required this.id,
+    required this.points,
+    required this.availablePoints,
+    required this.phoneVerified,
+    required this.pendingProfileCompletion,
+    this.fullName,
+    this.maskedPhone,
+    this.phoneLast4,
+  });
+
+  final int id;
+  final String? fullName;
+  final String? maskedPhone;
+  final String? phoneLast4;
+  final int points;
+  final int availablePoints;
+  final bool phoneVerified;
+  final bool pendingProfileCompletion;
+
+  factory LoyaltyStaffCustomer.fromJson(Map<String, dynamic> json) {
+    return LoyaltyStaffCustomer(
+      id: readInt(json['id']),
+      fullName: json['full_name']?.toString(),
+      maskedPhone: json['masked_phone']?.toString(),
+      phoneLast4: json['phone_last4']?.toString(),
+      points: readInt(json['points']),
+      availablePoints: readInt(json['available_points']),
+      phoneVerified: readBool(json['phone_verified']),
+      pendingProfileCompletion: readBool(
+        json['pending_profile_completion'],
+      ),
+    );
+  }
+}
+
+class LoyaltyStaffWallet {
+  const LoyaltyStaffWallet({
+    required this.customer,
+    required this.rewards,
+  });
+
+  final LoyaltyStaffCustomer customer;
+  final List<LoyaltyReward> rewards;
+
+  factory LoyaltyStaffWallet.fromJson(Map<String, dynamic> json) {
+    return LoyaltyStaffWallet(
+      customer: LoyaltyStaffCustomer.fromJson(readMap(json['customer'])),
+      rewards: (json['rewards'] as List? ?? const [])
+          .whereType<Map>()
+          .map(
+            (value) => LoyaltyReward.fromJson(
+              Map<String, dynamic>.from(value),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
 class LoyaltyTransaction {
   const LoyaltyTransaction({
     required this.id,
@@ -366,6 +495,43 @@ class LoyaltyTransaction {
       reason: json['reason']?.toString() ?? '',
       transactionType: json['transaction_type']?.toString() ?? '',
       source: json['source']?.toString() ?? '',
+      createdAt: readDateTime(json['created_at']),
+    );
+  }
+}
+
+class LoyaltyAuditEntry {
+  const LoyaltyAuditEntry({
+    required this.id,
+    required this.action,
+    required this.targetType,
+    required this.targetId,
+    required this.metadata,
+    this.actorUserId,
+    this.actorEmail,
+    this.createdAt,
+  });
+
+  final int id;
+  final int? actorUserId;
+  final String? actorEmail;
+  final String action;
+  final String targetType;
+  final String targetId;
+  final Map<String, dynamic> metadata;
+  final DateTime? createdAt;
+
+  factory LoyaltyAuditEntry.fromJson(Map<String, dynamic> json) {
+    return LoyaltyAuditEntry(
+      id: readInt(json['id']),
+      actorUserId: json['actor_user_id'] == null
+          ? null
+          : readInt(json['actor_user_id']),
+      actorEmail: json['actor_email']?.toString(),
+      action: json['action']?.toString() ?? '',
+      targetType: json['target_type']?.toString() ?? '',
+      targetId: json['target_id']?.toString() ?? '',
+      metadata: readMap(json['metadata_json']),
       createdAt: readDateTime(json['created_at']),
     );
   }

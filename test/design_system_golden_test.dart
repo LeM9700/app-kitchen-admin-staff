@@ -173,9 +173,11 @@ void main() {
       overrides: _adminOverrides(),
     );
     await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    expect(find.text('Modifier').last, findsOneWidget);
     await tester.tap(find.text('Modifier').last);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    expect(find.byType(AlertDialog), findsOneWidget);
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),

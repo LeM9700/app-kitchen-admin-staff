@@ -157,6 +157,10 @@ class HaccpStatus {
     required this.canOpen,
     required this.canClose,
     required this.openNonConformities,
+    required this.dlcGateStatus,
+    required this.dlcGateEnabled,
+    required this.dlcCriticalCount,
+    this.dlcGateMessage,
   });
 
   final DateTime today;
@@ -165,6 +169,13 @@ class HaccpStatus {
   final bool canOpen;
   final bool canClose;
   final int openNonConformities;
+  final String dlcGateStatus; // ok | warning | blocked
+  final bool dlcGateEnabled;
+  final int dlcCriticalCount;
+  final String? dlcGateMessage;
+
+  bool get hasDlcRisk => dlcCriticalCount > 0 || dlcGateStatus != 'ok';
+  bool get isDlcGateBlocked => dlcGateStatus == 'blocked';
 
   factory HaccpStatus.fromJson(Map<String, dynamic> json) {
     return HaccpStatus(
@@ -176,6 +187,10 @@ class HaccpStatus {
       canOpen: json['can_open'] as bool,
       canClose: json['can_close'] as bool,
       openNonConformities: json['open_non_conformities'] as int? ?? 0,
+      dlcGateStatus: json['dlc_gate_status'] as String? ?? 'ok',
+      dlcGateEnabled: json['dlc_gate_enabled'] as bool? ?? false,
+      dlcCriticalCount: json['dlc_critical_count'] as int? ?? 0,
+      dlcGateMessage: json['dlc_gate_message'] as String?,
     );
   }
 }

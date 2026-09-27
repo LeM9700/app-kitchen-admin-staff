@@ -62,6 +62,8 @@ void main() {
     expect(find.textContaining('Lot 42'), findsOneWidget);
     expect(find.textContaining('Temps restant'), findsOneWidget);
     expect(find.textContaining('4 / 6'), findsOneWidget);
+    expect(find.text('DLC critiques à régulariser'), findsOneWidget);
+    expect(find.text('Audit DLC'), findsOneWidget);
     expect(find.text('Synchronisé'), findsOneWidget);
   });
 }

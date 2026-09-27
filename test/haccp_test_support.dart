@@ -71,6 +71,11 @@ class _FakeHaccpRepository extends Fake implements HaccpRepository {
         'can_open': false,
         'can_close': false,
         'open_non_conformities': 1,
+        'dlc_gate_status': 'warning',
+        'dlc_gate_enabled': false,
+        'dlc_critical_count': 2,
+        'dlc_gate_message':
+            '2 lots DLC critiques a traiter avant le gate DLC strict.',
       });
 
   @override

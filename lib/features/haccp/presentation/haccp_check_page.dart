@@ -188,6 +188,7 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
                   // Bandeau global NC ouvertes
                   if (status.openNonConformities > 0)
                     _NcBanner(count: status.openNonConformities),
+                  if (status.hasDlcRisk) _DlcGateBanner(status: status),
 
                   Expanded(
                     child: TabBarView(
@@ -1345,6 +1346,69 @@ class _NcBanner extends StatelessWidget {
               minimumSize: const Size(48, 40),
             ),
             child: const Text('Voir'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Bandeau gate DLC ────────────────────────────────────────────────────────
+
+class _DlcGateBanner extends StatelessWidget {
+  const _DlcGateBanner({required this.status});
+
+  final HaccpStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone =
+        status.isDlcGateBlocked ? HaccpTone.danger : HaccpTone.warning;
+    final style = haccpToneStyle(tone);
+    final title = status.isDlcGateBlocked
+        ? 'Ouverture/fermeture bloquée par les DLC'
+        : 'DLC critiques à régulariser';
+    final fallback =
+        '${status.dlcCriticalCount} lot${status.dlcCriticalCount > 1 ? 's' : ''} à traiter avant le gate strict.';
+
+    return Container(
+      width: double.infinity,
+      color: style.background,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(Icons.event_busy_outlined, color: style.foreground, size: 18),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: style.foreground,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  status.dlcGateMessage ?? fallback,
+                  style: TextStyle(color: style.foreground, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push('/stock/dlc'),
+            style: TextButton.styleFrom(
+              foregroundColor: style.foreground,
+              minimumSize: const Size(48, 40),
+            ),
+            child: const Text('Audit DLC'),
           ),
         ],
       ),

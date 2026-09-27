@@ -68,11 +68,7 @@ void main() {
   });
 
   testWidgets('Planning 1440 golden', (tester) async {
-    await _pumpHrTab(
-      tester,
-      size: const Size(1440, 1024),
-      tab: 'Planning',
-    );
+    await _pumpHrTab(tester, size: const Size(1440, 1024), tab: 'Planning');
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -81,11 +77,7 @@ void main() {
   });
 
   testWidgets('Planning 1280 golden', (tester) async {
-    await _pumpHrTab(
-      tester,
-      size: const Size(1280, 900),
-      tab: 'Planning',
-    );
+    await _pumpHrTab(tester, size: const Size(1280, 900), tab: 'Planning');
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -94,11 +86,7 @@ void main() {
   });
 
   testWidgets('Pointages golden', (tester) async {
-    await _pumpHrTab(
-      tester,
-      size: const Size(1440, 1024),
-      tab: 'Pointages',
-    );
+    await _pumpHrTab(tester, size: const Size(1440, 1024), tab: 'Pointages');
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -107,11 +95,7 @@ void main() {
   });
 
   testWidgets('Alertes RH golden', (tester) async {
-    await _pumpHrTab(
-      tester,
-      size: const Size(1440, 1024),
-      tab: 'Alertes',
-    );
+    await _pumpHrTab(tester, size: const Size(1440, 1024), tab: 'Alertes');
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -429,10 +413,7 @@ class _PostVisibilityPumpProbeState extends State<_PostVisibilityPumpProbe> {
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text('ready'),
-        if (_settled) const Text('settled'),
-      ],
+      children: [const Text('ready'), if (_settled) const Text('settled')],
     );
   }
 }
@@ -528,8 +509,9 @@ List<Override> _adminOverrides() {
     timeClockEntriesProvider.overrideWith((ref, query) async => _entries()),
     hrAlertsProvider.overrideWith((ref, query) async => _alerts()),
     myEmployeeProfileProvider.overrideWith((ref) async => _selfProfile()),
-    myShiftsProvider
-        .overrideWith((ref, query) async => _shifts().take(2).toList()),
+    myShiftsProvider.overrideWith(
+      (ref, query) async => _shifts().take(2).toList(),
+    ),
     myTimeClockEntriesProvider.overrideWith((ref, query) async => _entries()),
   ];
 }
@@ -917,11 +899,7 @@ PaymentSummary _paymentSummary() {
     netAmountCents: 16340,
     paymentCount: 12,
     refundCount: 2,
-    countsByStatus: {
-      'paid': 9,
-      'partially_refunded': 2,
-      'failed': 1,
-    },
+    countsByStatus: {'paid': 9, 'partially_refunded': 2, 'failed': 1},
   );
 }
 
@@ -964,12 +942,7 @@ List<PaymentListItem> _payments() {
 
 List<TerminalReader> _terminalReaders() {
   return const [
-    TerminalReader(
-      id: 'tmr_1',
-      label: 'Comptoir',
-      status: 'online',
-      raw: {},
-    ),
+    TerminalReader(id: 'tmr_1', label: 'Comptoir', status: 'online', raw: {}),
   ];
 }
 

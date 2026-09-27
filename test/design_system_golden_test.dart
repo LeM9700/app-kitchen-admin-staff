@@ -326,9 +326,14 @@ Future<void> _pumpHrTab(
   await tester.pumpAndSettle();
 }
 
-Future<void> _pumpUntilVisible(WidgetTester tester, Finder finder) async {
-  for (var i = 0; i < 10; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
+Future<void> _pumpUntilVisible(
+  WidgetTester tester,
+  Finder finder, {
+  int maxAttempts = 10,
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  for (var i = 0; i < maxAttempts; i++) {
+    await tester.pump(step);
     if (finder.evaluate().length == 1) {
       return;
     }

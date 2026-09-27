@@ -97,8 +97,6 @@ class RealtimeClient {
       },
       cancelOnError: true,
     );
-    _setStatus(RealtimeConnectionStatus.connected);
-    _reconnectAttempts = 0;
   }
 
   Future<void> disconnect() async {
@@ -129,6 +127,8 @@ class RealtimeClient {
       return;
     }
     if (type == 'auth_ok') {
+      _reconnectAttempts = 0;
+      _setStatus(RealtimeConnectionStatus.connected);
       _logDev('auth_ok');
       return;
     }

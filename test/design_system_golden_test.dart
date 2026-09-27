@@ -338,10 +338,11 @@ Future<void> _pumpUntilVisible(
   WidgetTester tester,
   Finder finder, {
   required String description,
-  int maxAttempts = 10,
+  Duration timeout = const Duration(seconds: 1),
   Duration step = const Duration(milliseconds: 100),
   Duration postVisiblePump = Duration.zero,
 }) async {
+  final maxAttempts = (timeout.inMicroseconds / step.inMicroseconds).ceil();
   for (var i = 0; i < maxAttempts; i++) {
     await tester.pump(step);
     if (finder.evaluate().isNotEmpty) {
@@ -356,7 +357,7 @@ Future<void> _pumpUntilVisible(
     isNotEmpty,
     reason:
         'Timed out waiting for $description to become visible after '
-        '${maxAttempts * step.inMilliseconds}ms.',
+        '${timeout.inMilliseconds}ms.',
   );
 }
 

@@ -316,6 +316,45 @@ void main() {
       matchesGoldenFile('goldens/settings.png'),
     );
   });
+
+  testWidgets('_pumpUntilVisible fails with a descriptive timeout', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const SizedBox());
+
+    await expectLater(
+      _pumpUntilVisible(
+        tester,
+        find.text('missing'),
+        description: 'missing widget',
+        timeout: const Duration(milliseconds: 250),
+        step: const Duration(milliseconds: 100),
+      ),
+      throwsA(
+        isA<TestFailure>().having(
+          (failure) => failure.toString(),
+          'message',
+          allOf(contains('missing widget'), contains('250ms')),
+        ),
+      ),
+    );
+  });
+
+  testWidgets('_pumpUntilVisible can pump after visibility', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: _PostVisibilityPumpProbe())),
+    );
+
+    await _pumpUntilVisible(
+      tester,
+      find.text('ready'),
+      description: 'ready probe',
+      step: const Duration(milliseconds: 10),
+      postVisiblePump: const Duration(milliseconds: 100),
+    );
+
+    expect(find.text('settled'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpHrTab(
@@ -342,9 +381,12 @@ Future<void> _pumpUntilVisible(
   Duration step = const Duration(milliseconds: 100),
   Duration postVisiblePump = Duration.zero,
 }) async {
-  final maxAttempts = (timeout.inMicroseconds / step.inMicroseconds).ceil();
-  for (var i = 0; i < maxAttempts; i++) {
-    await tester.pump(step);
+  var elapsed = Duration.zero;
+  while (elapsed < timeout) {
+    final remaining = timeout - elapsed;
+    final pumpStep = remaining < step ? remaining : step;
+    await tester.pump(pumpStep);
+    elapsed += pumpStep;
     if (finder.evaluate().isNotEmpty) {
       if (postVisiblePump > Duration.zero) {
         await tester.pump(postVisiblePump);
@@ -359,6 +401,40 @@ Future<void> _pumpUntilVisible(
         'Timed out waiting for $description to become visible after '
         '${timeout.inMilliseconds}ms.',
   );
+}
+
+class _PostVisibilityPumpProbe extends StatefulWidget {
+  const _PostVisibilityPumpProbe();
+
+  @override
+  State<_PostVisibilityPumpProbe> createState() =>
+      _PostVisibilityPumpProbeState();
+}
+
+class _PostVisibilityPumpProbeState extends State<_PostVisibilityPumpProbe> {
+  var _settled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(const Duration(milliseconds: 50), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _settled = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('ready'),
+        if (_settled) const Text('settled'),
+      ],
+    );
+  }
 }
 
 Future<void> _pumpShell(

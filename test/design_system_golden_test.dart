@@ -329,11 +329,11 @@ Future<void> _pumpHrTab(
 Future<void> _pumpUntilVisible(WidgetTester tester, Finder finder) async {
   for (var i = 0; i < 10; i++) {
     await tester.pump(const Duration(milliseconds: 100));
-    if (finder.evaluate().isNotEmpty) {
+    if (finder.evaluate().length == 1) {
       return;
     }
   }
-  expect(finder, findsWidgets);
+  expect(finder, findsOneWidget);
 }
 
 Future<void> _pumpShell(

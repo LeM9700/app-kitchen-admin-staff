@@ -127,8 +127,10 @@ class _HaccpCheckPageState extends ConsumerState<HaccpCheckPage>
                 value: '/haccp/export',
                 child: ListTile(
                   dense: true,
-                  leading:
-                      Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                  leading: Icon(
+                    Icons.picture_as_pdf_outlined,
+                    color: Colors.red,
+                  ),
                   title: Text(
                     'Export PDF / CSV',
                     style: TextStyle(color: Colors.red),
@@ -322,11 +324,7 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpTodaySessionsProvider);
       if (mounted) {
-        _showHaccpSnack(
-          context,
-          result,
-          onlineMessage: 'Check $_label valide',
-        );
+        _showHaccpSnack(context, result, onlineMessage: 'Check $_label valide');
       }
     } catch (e) {
       if (mounted) {
@@ -446,8 +444,8 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
                       : 'Check $_label validé',
                   message: widget.canProceed
                       ? widget.sessionType == 'opening'
-                          ? 'Le restaurant peut ouvrir.'
-                          : 'La fermeture peut être confirmée.'
+                            ? 'Le restaurant peut ouvrir.'
+                            : 'La fermeture peut être confirmée.'
                       : 'Validation enregistrée.',
                   tone: summary.status == 'incomplete_validated'
                       ? HaccpTone.warning
@@ -465,10 +463,7 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
 // ─── Bandeau de progression ───────────────────────────────────────────────────
 
 class _ProgressBanner extends ConsumerWidget {
-  const _ProgressBanner({
-    required this.summary,
-    required this.sessionType,
-  });
+  const _ProgressBanner({required this.summary, required this.sessionType});
 
   final HaccpSessionSummary summary;
   final String sessionType;
@@ -482,24 +477,24 @@ class _ProgressBanner extends ConsumerWidget {
     final ncCount = sessionId == null
         ? 0
         : (ref
-                .watch(haccpOpenNcProvider)
-                .valueOrNull
-                ?.where((nc) => nc.sessionId == sessionId)
-                .length ??
-            0);
+                  .watch(haccpOpenNcProvider)
+                  .valueOrNull
+                  ?.where((nc) => nc.sessionId == sessionId)
+                  .length ??
+              0);
 
     final tone = summary.isComplete
         ? (summary.status == 'incomplete_validated'
-            ? HaccpTone.warning
-            : HaccpTone.ok)
+              ? HaccpTone.warning
+              : HaccpTone.ok)
         : started
-            ? HaccpTone.info
-            : HaccpTone.neutral;
+        ? HaccpTone.info
+        : HaccpTone.neutral;
 
     final remainingTemps =
         (summary.temperaturesTotal - summary.temperaturesDone).clamp(0, 9999);
-    final remainingCleaning =
-        (summary.cleaningTotal - summary.cleaningDone).clamp(0, 9999);
+    final remainingCleaning = (summary.cleaningTotal - summary.cleaningDone)
+        .clamp(0, 9999);
 
     return HaccpProgressCard(
       title: sessionType == 'opening'
@@ -521,8 +516,7 @@ class _ProgressBanner extends ConsumerWidget {
               HaccpStatusBadge(
                 label:
                     '${summary.cleaningDone}/${summary.cleaningTotal} Nettoyage',
-                tone:
-                    remainingCleaning == 0 ? HaccpTone.ok : HaccpTone.neutral,
+                tone: remainingCleaning == 0 ? HaccpTone.ok : HaccpTone.neutral,
                 compact: true,
               ),
               HaccpStatusBadge(
@@ -591,8 +585,9 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
     if (entry == null) return;
 
     try {
-      final saveResult =
-          await ref.read(haccpOfflineServiceProvider).logTemperature(
+      final saveResult = await ref
+          .read(haccpOfflineServiceProvider)
+          .logTemperature(
             widget.sessionId,
             equipmentId: equipment.id,
             measuredTemp: entry['temp'] as double,
@@ -610,8 +605,9 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
       } else if (mounted && entry['is_compliant'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content:
-                Text('⚠️ Température hors limite — NC créée automatiquement'),
+            content: Text(
+              '⚠️ Température hors limite — NC créée automatiquement',
+            ),
             backgroundColor: AppColors.warning,
           ),
         );
@@ -669,10 +665,12 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
             ),
             data: (logs) {
               final loggedIds = logs.map((l) => l.equipmentId).toSet();
-              final todo =
-                  filtered.where((e) => !loggedIds.contains(e.id)).toList();
-              final doneList =
-                  filtered.where((e) => loggedIds.contains(e.id)).toList();
+              final todo = filtered
+                  .where((e) => !loggedIds.contains(e.id))
+                  .toList();
+              final doneList = filtered
+                  .where((e) => loggedIds.contains(e.id))
+                  .toList();
               Widget tile(HaccpEquipment equipment) {
                 final done = loggedIds.contains(equipment.id);
                 final log = done
@@ -744,8 +742,8 @@ class _EquipmentTile extends StatelessWidget {
 
   String get _rangeSubtitle =>
       equipment.targetMinTemp == null || equipment.targetMaxTemp == null
-          ? 'À relever'
-          : 'À relever · cible ${equipment.tempRangeLabel}';
+      ? 'À relever'
+      : 'À relever · cible ${equipment.tempRangeLabel}';
 
   @override
   Widget build(BuildContext context) {
@@ -1045,7 +1043,11 @@ class _DlcTile extends StatelessWidget {
   String get _remaining {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final d = DateTime(check.dlcDate.year, check.dlcDate.month, check.dlcDate.day);
+    final d = DateTime(
+      check.dlcDate.year,
+      check.dlcDate.month,
+      check.dlcDate.day,
+    );
     final days = d.difference(today).inDays;
     if (days < 0) return 'Expirée depuis ${-days} j';
     if (days == 0) return "Échéance aujourd'hui";
@@ -1075,10 +1077,7 @@ class _DlcTile extends StatelessWidget {
 }
 
 class _CleaningSection extends ConsumerStatefulWidget {
-  const _CleaningSection({
-    required this.sessionId,
-    required this.sessionType,
-  });
+  const _CleaningSection({required this.sessionId, required this.sessionType});
 
   final int sessionId;
   final String sessionType;
@@ -1090,10 +1089,9 @@ class _CleaningSection extends ConsumerStatefulWidget {
 class _CleaningSectionState extends ConsumerState<_CleaningSection> {
   Future<void> _markDone(int taskId) async {
     try {
-      final result = await ref.read(haccpOfflineServiceProvider).logCleaning(
-            widget.sessionId,
-            taskId: taskId,
-          );
+      final result = await ref
+          .read(haccpOfflineServiceProvider)
+          .logCleaning(widget.sessionId, taskId: taskId);
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpCleaningLogsProvider(widget.sessionId));
       if (mounted) {
@@ -1119,8 +1117,9 @@ class _CleaningSectionState extends ConsumerState<_CleaningSection> {
 
   @override
   Widget build(BuildContext context) {
-    final tasksAsync =
-        ref.watch(haccpCleaningTasksProvider(widget.sessionType));
+    final tasksAsync = ref.watch(
+      haccpCleaningTasksProvider(widget.sessionType),
+    );
     final logsAsync = ref.watch(haccpCleaningLogsProvider(widget.sessionId));
 
     return _SectionCard(
@@ -1142,7 +1141,10 @@ class _CleaningSectionState extends ConsumerState<_CleaningSection> {
           return logsAsync.when(
             loading: () => const HaccpInlineSkeleton(),
             error: (e, _) => HaccpInlineError(
-              message: haccpFriendlyError(e, 'Historique nettoyage indisponible'),
+              message: haccpFriendlyError(
+                e,
+                'Historique nettoyage indisponible',
+              ),
             ),
             data: (logs) {
               final doneIds = logs.map((l) => l.taskId).toSet();
@@ -1266,8 +1268,9 @@ class _NonConformitySection extends ConsumerWidget {
       error: (_, __) => const SizedBox.shrink(),
       data: (ncs) {
         // Filtre les NC de cette session
-        final sessionNcs =
-            ncs.where((nc) => nc.sessionId == sessionId).toList();
+        final sessionNcs = ncs
+            .where((nc) => nc.sessionId == sessionId)
+            .toList();
         if (sessionNcs.isEmpty) return const SizedBox.shrink();
 
         return Padding(
@@ -1325,7 +1328,11 @@ class _NcBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.report_problem_outlined, color: style.foreground, size: 18),
+          Icon(
+            Icons.report_problem_outlined,
+            color: style.foreground,
+            size: 18,
+          ),
           const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Text(
@@ -1420,7 +1427,8 @@ class _OilSection extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                   child: HaccpMeasurementCard(
-                    title: 'Polarité : ${log.polarityPercent.toStringAsFixed(1)} %',
+                    title:
+                        'Polarité : ${log.polarityPercent.toStringAsFixed(1)} %',
                     primaryValue: log.isCompliant ? 'Conforme' : 'Non conforme',
                     subtitle: log.isCompliant
                         ? '≤ 25 % requis'
@@ -1493,7 +1501,9 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
     setState(() => _saving = true);
 
     try {
-      final result = await ref.read(haccpOfflineServiceProvider).logFryingOil(
+      final result = await ref
+          .read(haccpOfflineServiceProvider)
+          .logFryingOil(
             widget.sessionId,
             polarityPercent: _polarity!,
             color: _color,
@@ -1562,8 +1572,9 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
             TextFormField(
               controller: _polarityCtrl,
               autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: 'Taux de polarité (%) *',
@@ -1572,8 +1583,8 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                 helperText: _polarity == null
                     ? null
                     : _nonCompliant
-                        ? '⚠️ NC — dépasse 25% : changer l\'huile'
-                        : '✓ Conforme',
+                    ? '⚠️ NC — dépasse 25% : changer l\'huile'
+                    : '✓ Conforme',
                 helperStyle: TextStyle(
                   color: _nonCompliant ? Colors.red : Colors.green,
                   fontWeight: FontWeight.w600,
@@ -1635,8 +1646,8 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                 ),
                 validator: (v) =>
                     _nonCompliant && (v == null || v.trim().isEmpty)
-                        ? 'Requis en cas de NC'
-                        : null,
+                    ? 'Requis en cas de NC'
+                    : null,
               ),
             ],
             const SizedBox(height: AppSpacing.lg),

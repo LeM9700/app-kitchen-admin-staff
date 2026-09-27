@@ -16,7 +16,9 @@ final stockLevelFilterProvider = StateProvider<StockLevelFilter>((ref) {
 final ingredientsProvider = FutureProvider.autoDispose<List<Ingredient>>((ref) {
   final search = ref.watch(stockSearchProvider).trim();
   final level = ref.watch(stockLevelFilterProvider);
-  return ref.watch(stockRepositoryProvider).listIngredients(
+  return ref
+      .watch(stockRepositoryProvider)
+      .listIngredients(
         pageSize: 100,
         search: search.length >= 2 ? search : null,
         belowThreshold: level == StockLevelFilter.low ? true : null,
@@ -27,22 +29,23 @@ final stockAlertsProvider = FutureProvider.autoDispose<List<Ingredient>>((ref) {
   return ref.watch(stockRepositoryProvider).listAlerts();
 });
 
-final stockMovementsProvider =
-    FutureProvider.autoDispose<List<StockMovement>>((ref) {
+final stockMovementsProvider = FutureProvider.autoDispose<List<StockMovement>>((
+  ref,
+) {
   return ref.watch(stockRepositoryProvider).listMovements(pageSize: 30);
 });
 
 final stockMissingRecipesProvider =
     FutureProvider.autoDispose<List<MissingStockRecipe>>((ref) {
-  return ref.watch(stockRepositoryProvider).listMissingRecipes();
-});
+      return ref.watch(stockRepositoryProvider).listMissingRecipes();
+    });
 
 final adjustmentRequestsProvider =
     FutureProvider.autoDispose<List<StockAdjustmentRequest>>((ref) {
-  return ref
-      .watch(stockRepositoryProvider)
-      .listAdjustmentRequests(pageSize: 50);
-});
+      return ref
+          .watch(stockRepositoryProvider)
+          .listAdjustmentRequests(pageSize: 50);
+    });
 
 enum StockLevelFilter { all, low, out }
 
@@ -152,10 +155,7 @@ class StockRepository {
   }) async {
     final response = await _apiClient.post(
       ApiEndpoints.stockSupply,
-      data: {
-        'ingredient_id': ingredientId,
-        'quantity': quantity,
-      },
+      data: {'ingredient_id': ingredientId, 'quantity': quantity},
     );
     return Ingredient.fromJson(response.data as Map<String, dynamic>);
   }
@@ -191,8 +191,9 @@ class StockRepository {
   }
 
   Future<IngredientBatch> openBatch(int batchId) async {
-    final response =
-        await _apiClient.post(ApiEndpoints.stockBatchOpen(batchId));
+    final response = await _apiClient.post(
+      ApiEndpoints.stockBatchOpen(batchId),
+    );
     return IngredientBatch.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -320,17 +321,23 @@ class StockRepository {
   }
 
   Future<StockRecipe> getProductRecipe(int productId) async {
-    final response = await _apiClient.get(ApiEndpoints.stockProductRecipe(productId));
+    final response = await _apiClient.get(
+      ApiEndpoints.stockProductRecipe(productId),
+    );
     return StockRecipe.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<StockRecipe> getVariantRecipe(int variantId) async {
-    final response = await _apiClient.get(ApiEndpoints.stockVariantRecipe(variantId));
+    final response = await _apiClient.get(
+      ApiEndpoints.stockVariantRecipe(variantId),
+    );
     return StockRecipe.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<StockRecipe> getExtraRecipe(int extraId) async {
-    final response = await _apiClient.get(ApiEndpoints.stockExtraRecipe(extraId));
+    final response = await _apiClient.get(
+      ApiEndpoints.stockExtraRecipe(extraId),
+    );
     return StockRecipe.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -462,7 +469,10 @@ class StockRecipe {
       targetId: readInt(json['target_id']),
       items: (json['items'] as List? ?? const [])
           .whereType<Map>()
-          .map((value) => StockRecipeLine.fromJson(Map<String, dynamic>.from(value)))
+          .map(
+            (value) =>
+                StockRecipeLine.fromJson(Map<String, dynamic>.from(value)),
+          )
           .toList(),
     );
   }
@@ -522,7 +532,9 @@ class MissingStockRecipe {
       recipeType: json['recipe_type']?.toString() ?? 'product',
       targetId: readInt(json['target_id']),
       name: json['name']?.toString() ?? '',
-      productId: json['product_id'] == null ? null : readInt(json['product_id']),
+      productId: json['product_id'] == null
+          ? null
+          : readInt(json['product_id']),
     );
   }
 }

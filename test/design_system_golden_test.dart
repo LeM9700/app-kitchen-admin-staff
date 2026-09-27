@@ -34,8 +34,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _goldenSurfaceKey = ValueKey('golden-surface');
-const _popupMenuTransitionDuration = Duration(milliseconds: 300);
-const _dialogTransitionDuration = Duration(milliseconds: 300);
 final _fixedWeek = DateTime(2026, 8, 10);
 
 void main() {
@@ -175,15 +173,11 @@ void main() {
       overrides: _adminOverrides(),
     );
     await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
-    await _pumpOverlay(
-      tester,
-      transitionDuration: _popupMenuTransitionDuration,
-    );
+    await tester.pump();
+    expect(find.text('Modifier').last, findsOneWidget);
     await tester.tap(find.text('Modifier').last);
-    await _pumpOverlay(
-      tester,
-      transitionDuration: _dialogTransitionDuration,
-    );
+    await tester.pump();
+    expect(find.byType(AlertDialog), findsOneWidget);
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -326,17 +320,6 @@ Future<void> _pumpHrTab(
   );
   await tester.tap(find.text(tab));
   await tester.pumpAndSettle();
-}
-
-// Popup menus and text-input dialogs can keep transient animation/focus work
-// alive long enough for pumpAndSettle() to time out in CI. For golden capture
-// we only need the overlay transition to finish rendering.
-Future<void> _pumpOverlay(
-  WidgetTester tester, {
-  required Duration transitionDuration,
-}) async {
-  await tester.pump();
-  await tester.pump(transitionDuration);
 }
 
 Future<void> _pumpShell(

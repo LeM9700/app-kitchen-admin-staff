@@ -333,6 +333,7 @@ Future<void> _pumpUntilVisible(WidgetTester tester, Finder finder) async {
       return;
     }
   }
+  expect(finder, findsWidgets);
 }
 
 Future<void> _pumpShell(

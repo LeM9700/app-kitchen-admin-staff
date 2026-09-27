@@ -108,7 +108,8 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                   const AppFeedback(
                     kind: AppFeedbackKind.forbidden,
                     title: 'Configuration reservee aux admins',
-                    message: 'La consultation client reste accessible aux roles staff.',
+                    message:
+                        'La consultation client reste accessible aux roles staff.',
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _customerLookup(context, ref),

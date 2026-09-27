@@ -11,6 +11,8 @@ import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/catalog/application/catalog_view_state.dart';
 import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
+import 'package:app_admin_staff/features/stock/data/stock_repository.dart';
+import 'package:app_admin_staff/features/stock/presentation/stock_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -37,6 +39,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   Widget build(BuildContext context) {
     final products = ref.watch(catalogProductsProvider);
     final categories = ref.watch(catalogCategoriesProvider);
+    final missingRecipes = ref.watch(stockMissingRecipesProvider);
     final selectedCategoryId = ref.watch(catalogCategoryFilterProvider);
     final availabilityFilter = ref.watch(catalogAvailabilityFilterProvider);
     final permissions = ref.watch(currentPermissionSetProvider);
@@ -68,6 +71,8 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
               data: (items) => _CatalogStatsRow(
                 products: items,
                 categoryCount: categories.valueOrNull?.length,
+                missingRecipeProductIds:
+                    _missingRecipeProductIds(missingRecipes.valueOrNull),
                 onFilter: (filter) {
                   ref.read(catalogAvailabilityFilterProvider.notifier).state =
                       filter;
@@ -123,9 +128,12 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                     final filtered = _applyAvailabilityFilter(
                       items,
                       availabilityFilter,
+                      _missingRecipeProductIds(missingRecipes.valueOrNull),
                     );
                     return _ProductTable(
                       products: filtered,
+                      missingRecipeProductIds:
+                          _missingRecipeProductIds(missingRecipes.valueOrNull),
                       compactCards: compactProducts,
                       canWrite: canWrite,
                       canManageAvailability: canManageAvailability,
@@ -151,9 +159,14 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                 final contextPanel = _CatalogContextPanel(
                   products: products.valueOrNull ?? const [],
                   categories: categories.valueOrNull ?? const [],
+                  missingRecipes: missingRecipes,
                   onIncomplete: () {
                     ref.read(catalogAvailabilityFilterProvider.notifier).state =
                         CatalogAvailabilityFilter.incomplete;
+                  },
+                  onMissingRecipes: () {
+                    ref.read(catalogAvailabilityFilterProvider.notifier).state =
+                        CatalogAvailabilityFilter.recipeMissing;
                   },
                   onEditCategory: canWrite
                       ? (category) => _categoryDialog(category: category)
@@ -188,9 +201,11 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   Future<void> _refreshCatalog() async {
     ref.invalidate(catalogProductsProvider);
     ref.invalidate(catalogCategoriesProvider);
+    ref.invalidate(stockMissingRecipesProvider);
     await Future.wait([
       ref.read(catalogProductsProvider.future),
       ref.read(catalogCategoriesProvider.future),
+      ref.read(stockMissingRecipesProvider.future),
     ]);
     if (mounted) {
       _snack('Catalogue rafraichi');
@@ -200,10 +215,24 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   List<CatalogProduct> _applyAvailabilityFilter(
     List<CatalogProduct> products,
     CatalogAvailabilityFilter filter,
+    Set<int> missingRecipeProductIds,
   ) {
     return products
-        .where((product) => matchesCatalogFilter(product, filter))
+        .where(
+          (product) => matchesCatalogFilter(
+            product,
+            filter,
+            missingRecipeProductIds,
+          ),
+        )
         .toList();
+  }
+
+  Set<int> _missingRecipeProductIds(List<MissingStockRecipe>? recipes) {
+    return (recipes ?? const <MissingStockRecipe>[])
+        .where((recipe) => recipe.productId != null)
+        .map((recipe) => recipe.productId!)
+        .toSet();
   }
 
   Future<void> _availability(CatalogProduct product, bool available) async {
@@ -501,8 +530,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     }
     try {
       final repository = ref.read(catalogRepositoryProvider);
+      CatalogProduct? createdProduct;
       if (product == null) {
-        await repository.createProduct(
+        createdProduct = await repository.createProduct(
           categoryId: categoryId,
           name: name.text.trim(),
           description: description.text.trim(),
@@ -526,8 +556,52 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
         );
       }
       ref.invalidate(catalogProductsProvider);
+      if (product == null && createdProduct != null && mounted) {
+        await _askRecipeAfterProductCreation(createdProduct);
+      }
     } catch (error) {
       _snack(error.toString());
+    }
+  }
+
+  Future<void> _askRecipeAfterProductCreation(CatalogProduct product) async {
+    final openRecipe = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ajouter la recette ?'),
+        content: Text(
+          '${product.name} est cree. Vous pouvez renseigner sa recette stock maintenant.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Plus tard'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.menu_book_outlined),
+            label: const Text('Creer la recette'),
+          ),
+        ],
+      ),
+    );
+    if (openRecipe != true || !mounted) {
+      return;
+    }
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StockRecipeDialog(
+        catalogRepository: ref.read(catalogRepositoryProvider),
+        stockRepository: ref.read(stockRepositoryProvider),
+        initialTargetType: 'product',
+        initialProductId: product.id,
+      ),
+    );
+    if (saved == true && mounted) {
+      ref.invalidate(stockMissingRecipesProvider);
+      ref.invalidate(catalogProductsProvider);
+      _snack('Recette enregistree');
     }
   }
 
@@ -2022,13 +2096,17 @@ class _CatalogContextPanel extends StatelessWidget {
   const _CatalogContextPanel({
     required this.products,
     required this.categories,
+    required this.missingRecipes,
     required this.onIncomplete,
+    required this.onMissingRecipes,
     required this.onEditCategory,
   });
 
   final List<CatalogProduct> products;
   final List<CatalogCategory> categories;
+  final AsyncValue<List<MissingStockRecipe>> missingRecipes;
   final VoidCallback onIncomplete;
+  final VoidCallback onMissingRecipes;
   final ValueChanged<CatalogCategory>? onEditCategory;
 
   @override
@@ -2090,6 +2168,11 @@ class _CatalogContextPanel extends StatelessWidget {
               ],
             ],
           ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _CatalogMissingRecipesCard(
+          missingRecipes: missingRecipes,
+          onMissingRecipes: onMissingRecipes,
         ),
         const SizedBox(height: AppSpacing.md),
         DsCard(
@@ -2175,6 +2258,98 @@ class _CatalogContextPanel extends StatelessWidget {
       ],
     );
   }
+}
+
+class _CatalogMissingRecipesCard extends StatelessWidget {
+  const _CatalogMissingRecipesCard({
+    required this.missingRecipes,
+    required this.onMissingRecipes,
+  });
+
+  final AsyncValue<List<MissingStockRecipe>> missingRecipes;
+  final VoidCallback onMissingRecipes;
+
+  @override
+  Widget build(BuildContext context) {
+    return DsCard(
+      backgroundColor: const Color(0xFFF8F4EC),
+      borderColor: const Color(0xFFD8D0C3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Recettes stock',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          missingRecipes.when(
+            data: (items) {
+              if (items.isEmpty) {
+                return const StatusBadge(
+                  label: 'Catalogue couvert',
+                  tone: StatusTone.success,
+                  icon: Icons.check_circle_outline,
+                );
+              }
+              final productItems = items
+                  .where((item) => item.isProduct || item.isVariant)
+                  .take(5)
+                  .toList();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  StatusBadge(
+                    label: '${items.length} recette(s) manquante(s)',
+                    tone: StatusTone.warning,
+                    icon: Icons.menu_book_outlined,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  for (final item in productItems)
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(_catalogRecipeIcon(item.recipeType)),
+                      title: Text(item.name),
+                      subtitle: Text(_catalogRecipeLabel(item.recipeType)),
+                    ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: onMissingRecipes,
+                      icon: const Icon(Icons.filter_alt_outlined),
+                      label: const Text('Filtrer recettes manquantes'),
+                    ),
+                  ),
+                ],
+              );
+            },
+            loading: () => const LinearProgressIndicator(),
+            error: (error, stackTrace) => const Text(
+              'Diagnostic recette indisponible.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+IconData _catalogRecipeIcon(String recipeType) {
+  return switch (recipeType) {
+    'variant' => Icons.tune_outlined,
+    'extra' => Icons.add_circle_outline,
+    _ => Icons.local_pizza_outlined,
+  };
+}
+
+String _catalogRecipeLabel(String recipeType) {
+  return switch (recipeType) {
+    'variant' => 'Variante a verifier',
+    'extra' => 'Extra sans recette',
+    _ => 'Produit sans recette',
+  };
 }
 
 class _CatalogHeader extends StatelessWidget {
@@ -2316,11 +2491,13 @@ class _CatalogStatsRow extends StatelessWidget {
   const _CatalogStatsRow({
     required this.products,
     required this.categoryCount,
+    required this.missingRecipeProductIds,
     required this.onFilter,
   });
 
   final List<CatalogProduct> products;
   final int? categoryCount;
+  final Set<int> missingRecipeProductIds;
   final ValueChanged<CatalogAvailabilityFilter> onFilter;
 
   @override
@@ -2330,6 +2507,12 @@ class _CatalogStatsRow extends StatelessWidget {
     final complete =
         products.where((product) => product.regulatoryComplete).length;
     final incomplete = products.length - complete;
+    final recipeMissing = products
+        .where(
+          (product) =>
+              catalogProductRecipeMissing(product, missingRecipeProductIds),
+        )
+        .length;
     return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
@@ -2362,6 +2545,13 @@ class _CatalogStatsRow extends StatelessWidget {
           icon: Icons.fact_check_outlined,
           color: incomplete == 0 ? AppColors.success : AppColors.warning,
           onTap: () => onFilter(CatalogAvailabilityFilter.incomplete),
+        ),
+        _CatalogMetric(
+          value: recipeMissing.toString(),
+          label: 'recettes manquantes',
+          icon: Icons.menu_book_outlined,
+          color: recipeMissing == 0 ? AppColors.success : AppColors.warning,
+          onTap: () => onFilter(CatalogAvailabilityFilter.recipeMissing),
         ),
       ],
     );
@@ -2529,6 +2719,11 @@ class _CatalogToolbar extends StatelessWidget {
                     label: 'Incomplets',
                     icon: Icons.fact_check_outlined,
                   ),
+                  PillFilterOption<CatalogAvailabilityFilter>(
+                    value: CatalogAvailabilityFilter.recipeMissing,
+                    label: 'Recette manquante',
+                    icon: Icons.menu_book_outlined,
+                  ),
                 ],
               ),
               if (onEditCategory != null && categories.isNotEmpty)
@@ -2554,6 +2749,7 @@ class _CatalogToolbar extends StatelessWidget {
 class _ProductTable extends StatelessWidget {
   const _ProductTable({
     required this.products,
+    required this.missingRecipeProductIds,
     required this.compactCards,
     required this.canWrite,
     required this.canManageAvailability,
@@ -2566,6 +2762,7 @@ class _ProductTable extends StatelessWidget {
   });
 
   final List<CatalogProduct> products;
+  final Set<int> missingRecipeProductIds;
   final bool compactCards;
   final bool canWrite;
   final bool canManageAvailability;
@@ -2596,6 +2793,10 @@ class _ProductTable extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: _ProductCard(
                 product: product,
+                recipeMissing: catalogProductRecipeMissing(
+                  product,
+                  missingRecipeProductIds,
+                ),
                 canWrite: canWrite,
                 canManageAvailability: canManageAvailability,
                 busy: busyIds.contains(product.id),
@@ -2615,7 +2816,7 @@ class _ProductTable extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width =
-              constraints.maxWidth < 1180 ? 1180.0 : constraints.maxWidth;
+              constraints.maxWidth < 1340 ? 1340.0 : constraints.maxWidth;
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
@@ -2627,6 +2828,10 @@ class _ProductTable extends StatelessWidget {
                   for (final (index, product) in products.indexed) ...[
                     _ProductTableRow(
                       product: product,
+                      recipeMissing: catalogProductRecipeMissing(
+                        product,
+                        missingRecipeProductIds,
+                      ),
                       canWrite: canWrite,
                       canManageAvailability: canManageAvailability,
                       busy: busyIds.contains(product.id),
@@ -2664,6 +2869,7 @@ class _ProductTableHeader extends StatelessWidget {
           _TableLabel('Station', width: 130),
           _TableLabel('Disponibilite', width: 170),
           _TableLabel('Fiche', width: 130),
+          _TableLabel('Recette', width: 160),
           Expanded(child: _TableLabel('Actions')),
         ],
       ),
@@ -2674,6 +2880,7 @@ class _ProductTableHeader extends StatelessWidget {
 class _ProductTableRow extends StatelessWidget {
   const _ProductTableRow({
     required this.product,
+    required this.recipeMissing,
     required this.canWrite,
     required this.canManageAvailability,
     required this.busy,
@@ -2685,6 +2892,7 @@ class _ProductTableRow extends StatelessWidget {
   });
 
   final CatalogProduct product;
+  final bool recipeMissing;
   final bool canWrite;
   final bool canManageAvailability;
   final bool busy;
@@ -2773,6 +2981,10 @@ class _ProductTableRow extends StatelessWidget {
                 compact: true,
               ),
             ),
+            SizedBox(
+              width: 160,
+              child: _RecipeStatusBadge(recipeMissing: recipeMissing),
+            ),
             Expanded(
               child: _ProductActions(
                 product: product,
@@ -2796,6 +3008,7 @@ class _ProductTableRow extends StatelessWidget {
 class _ProductCard extends StatelessWidget {
   const _ProductCard({
     required this.product,
+    required this.recipeMissing,
     required this.canWrite,
     required this.canManageAvailability,
     required this.busy,
@@ -2807,6 +3020,7 @@ class _ProductCard extends StatelessWidget {
   });
 
   final CatalogProduct product;
+  final bool recipeMissing;
   final bool canWrite;
   final bool canManageAvailability;
   final bool busy;
@@ -2886,6 +3100,7 @@ class _ProductCard extends StatelessWidget {
                     : StatusTone.warning,
                 compact: true,
               ),
+              _RecipeStatusBadge(recipeMissing: recipeMissing),
             ],
           ),
           if ((product.availabilityReason ?? '').isNotEmpty) ...[
@@ -2911,6 +3126,23 @@ class _ProductCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RecipeStatusBadge extends StatelessWidget {
+  const _RecipeStatusBadge({required this.recipeMissing});
+
+  final bool recipeMissing;
+
+  @override
+  Widget build(BuildContext context) {
+    return StatusBadge(
+      label: recipeMissing ? 'Recette manquante' : 'Recette complete',
+      tone: recipeMissing ? StatusTone.warning : StatusTone.success,
+      icon:
+          recipeMissing ? Icons.menu_book_outlined : Icons.check_circle_outline,
+      compact: true,
     );
   }
 }
@@ -2965,7 +3197,7 @@ class _ProductActions extends StatelessWidget {
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
                   ),
-            label: Text(available ? 'Indispo' : 'Dispo'),
+            label: Text(available ? 'Indispo' : 'Reactiver'),
           ),
         if (canWrite)
           PopupMenuButton<_ProductAction>(

@@ -7,13 +7,23 @@ bool catalogProductAvailable(CatalogProduct product) {
 bool matchesCatalogFilter(
   CatalogProduct product,
   CatalogAvailabilityFilter filter,
+  Set<int> missingRecipeProductIds,
 ) {
   return switch (filter) {
     CatalogAvailabilityFilter.all => true,
     CatalogAvailabilityFilter.available => catalogProductAvailable(product),
     CatalogAvailabilityFilter.unavailable => !catalogProductAvailable(product),
     CatalogAvailabilityFilter.incomplete => !product.regulatoryComplete,
+    CatalogAvailabilityFilter.recipeMissing =>
+      missingRecipeProductIds.contains(product.id),
   };
+}
+
+bool catalogProductRecipeMissing(
+  CatalogProduct product,
+  Set<int> missingRecipeProductIds,
+) {
+  return missingRecipeProductIds.contains(product.id);
 }
 
 String catalogStationLabel(String value) {

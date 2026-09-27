@@ -172,6 +172,126 @@ void main() {
     expect(request.status, 'pending');
   });
 
+  test('stock recipe repository uses target endpoints and cost fields',
+      () async {
+    final seen = <RequestOptions>[];
+    final repository = StockRepository(
+      _client(
+        (options) {
+          seen.add(options);
+          if (options.path == ApiEndpoints.stockIngredients) {
+            return _jsonResponse(
+              {
+                'id': 2,
+                'name': 'Mozzarella',
+                'unit': 'g',
+                'current_qty': 5000,
+                'alert_threshold': 1000,
+                'is_below_threshold': false,
+                'purchase_price_per_unit': 7.5,
+                'purchase_unit': 'kg',
+              },
+              statusCode: 201,
+            );
+          }
+          if (options.path == ApiEndpoints.stockProductRecipe(11) &&
+              options.method == 'GET') {
+            return _jsonResponse({
+              'recipe_type': 'product',
+              'target_id': 11,
+              'items': [
+                {
+                  'id': 7,
+                  'recipe_type': 'product',
+                  'target_id': 11,
+                  'ingredient_id': 2,
+                  'ingredient_name': 'Mozzarella',
+                  'quantity': 120,
+                  'unit': 'g',
+                },
+              ],
+            });
+          }
+          if (options.path == ApiEndpoints.stockVariantRecipe(21) &&
+              options.method == 'PUT') {
+            return _jsonResponse({
+              'recipe_type': 'variant',
+              'target_id': 21,
+              'items': [
+                {
+                  'id': 8,
+                  'recipe_type': 'variant',
+                  'target_id': 21,
+                  'ingredient_id': 2,
+                  'ingredient_name': 'Mozzarella',
+                  'quantity': 80,
+                  'unit': 'g',
+                },
+              ],
+            });
+          }
+          if (options.path == ApiEndpoints.stockRecipesMissing) {
+            return _jsonResponse([
+              {
+                'recipe_type': 'product',
+                'target_id': 11,
+                'name': 'Margherita',
+                'product_id': 11,
+              },
+              {
+                'recipe_type': 'extra',
+                'target_id': 31,
+                'name': 'Supplement mozzarella',
+                'product_id': null,
+              },
+            ]);
+          }
+          return _jsonResponse({'ok': true});
+        },
+      ),
+    );
+
+    final ingredient = await repository.createIngredient(
+      name: 'Mozzarella',
+      unit: 'g',
+      currentQty: 5000,
+      alertThreshold: 1000,
+      purchasePricePerUnit: 7.5,
+      purchaseUnit: 'kg',
+    );
+    final recipe = await repository.getProductRecipe(11);
+    final replaced = await repository.replaceVariantRecipe(
+      variantId: 21,
+      items: const [
+        StockRecipeInputLine(
+          ingredientId: 2,
+          quantity: 80,
+          unit: 'g',
+        ),
+      ],
+    );
+    await repository.deleteRecipeLine(recipeType: 'product', recipeLineId: 7);
+    final missingRecipes = await repository.listMissingRecipes();
+
+    expect(ingredient.purchasePricePerUnit, 7.5);
+    expect(ingredient.purchaseUnit, 'kg');
+    expect((seen.first.data as Map)['purchase_price_per_unit'], 7.5);
+    expect((seen.first.data as Map)['purchase_unit'], 'kg');
+    expect(recipe.items.single.ingredientName, 'Mozzarella');
+    expect(recipe.items.single.unit, 'g');
+    expect(seen[2].path, ApiEndpoints.stockVariantRecipe(21));
+    expect((seen[2].data as Map)['items'], [
+      {'ingredient_id': 2, 'quantity': 80.0, 'unit': 'g'},
+    ]);
+    expect(replaced.recipeType, 'variant');
+    expect(seen[3].path, ApiEndpoints.stockRecipeLine('product', 7));
+    expect(seen[3].method, 'DELETE');
+    expect(seen.last.path, ApiEndpoints.stockRecipesMissing);
+    expect(missingRecipes.first.name, 'Margherita');
+    expect(missingRecipes.first.productId, 11);
+    expect(missingRecipes.last.isExtra, isTrue);
+  });
+
   test('payments repository uses status filter and refund contract', () async {
     final seen = <RequestOptions>[];
     final repository = PaymentsRepository(

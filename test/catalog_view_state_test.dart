@@ -15,19 +15,51 @@ void main() {
     final incomplete = _product(available: true, regulatoryComplete: false);
 
     expect(
-      matchesCatalogFilter(available, CatalogAvailabilityFilter.available),
+      matchesCatalogFilter(
+        available,
+        CatalogAvailabilityFilter.available,
+        const {},
+      ),
       isTrue,
     );
     expect(
-      matchesCatalogFilter(unavailable, CatalogAvailabilityFilter.unavailable),
+      matchesCatalogFilter(
+        unavailable,
+        CatalogAvailabilityFilter.unavailable,
+        const {},
+      ),
       isTrue,
     );
     expect(
-      matchesCatalogFilter(incomplete, CatalogAvailabilityFilter.incomplete),
+      matchesCatalogFilter(
+        incomplete,
+        CatalogAvailabilityFilter.incomplete,
+        const {},
+      ),
       isTrue,
     );
     expect(
-      matchesCatalogFilter(available, CatalogAvailabilityFilter.incomplete),
+      matchesCatalogFilter(
+        available,
+        CatalogAvailabilityFilter.incomplete,
+        const {},
+      ),
+      isFalse,
+    );
+    expect(
+      matchesCatalogFilter(
+        available,
+        CatalogAvailabilityFilter.recipeMissing,
+        const {1},
+      ),
+      isTrue,
+    );
+    expect(
+      matchesCatalogFilter(
+        available,
+        CatalogAvailabilityFilter.recipeMissing,
+        const {2},
+      ),
       isFalse,
     );
   });

@@ -32,6 +32,11 @@ final stockMovementsProvider =
   return ref.watch(stockRepositoryProvider).listMovements(pageSize: 30);
 });
 
+final stockMissingRecipesProvider =
+    FutureProvider.autoDispose<List<MissingStockRecipe>>((ref) {
+  return ref.watch(stockRepositoryProvider).listMissingRecipes();
+});
+
 final adjustmentRequestsProvider =
     FutureProvider.autoDispose<List<StockAdjustmentRequest>>((ref) {
   return ref
@@ -99,6 +104,8 @@ class StockRepository {
     required String unit,
     required double currentQty,
     required double alertThreshold,
+    double? purchasePricePerUnit,
+    String? purchaseUnit,
   }) async {
     final response = await _apiClient.post(
       ApiEndpoints.stockIngredients,
@@ -107,6 +114,10 @@ class StockRepository {
         'unit': unit,
         'current_qty': currentQty,
         'alert_threshold': alertThreshold,
+        if (purchasePricePerUnit != null)
+          'purchase_price_per_unit': purchasePricePerUnit,
+        if (purchaseUnit != null && purchaseUnit.trim().isNotEmpty)
+          'purchase_unit': purchaseUnit.trim(),
       },
     );
     return Ingredient.fromJson(response.data as Map<String, dynamic>);
@@ -117,6 +128,8 @@ class StockRepository {
     String? name,
     String? unit,
     double? alertThreshold,
+    double? purchasePricePerUnit,
+    String? purchaseUnit,
   }) async {
     final response = await _apiClient.patch(
       '${ApiEndpoints.stockIngredients}/$ingredientId',
@@ -124,6 +137,10 @@ class StockRepository {
         if (name != null) 'name': name,
         if (unit != null) 'unit': unit,
         if (alertThreshold != null) 'alert_threshold': alertThreshold,
+        if (purchasePricePerUnit != null)
+          'purchase_price_per_unit': purchasePricePerUnit,
+        if (purchaseUnit != null && purchaseUnit.trim().isNotEmpty)
+          'purchase_unit': purchaseUnit.trim(),
       },
     );
     return Ingredient.fromJson(response.data as Map<String, dynamic>);
@@ -255,6 +272,7 @@ class StockRepository {
     required int productId,
     required int ingredientId,
     required double quantity,
+    String? unit,
   }) async {
     await _apiClient.post(
       ApiEndpoints.stockRecipeProduct,
@@ -262,6 +280,7 @@ class StockRepository {
         'product_id': productId,
         'ingredient_id': ingredientId,
         'quantity': quantity,
+        if (unit != null && unit.trim().isNotEmpty) 'unit': unit.trim(),
       },
     );
   }
@@ -270,6 +289,7 @@ class StockRepository {
     required int variantId,
     required int ingredientId,
     required double quantity,
+    String? unit,
   }) async {
     await _apiClient.post(
       ApiEndpoints.stockRecipeVariant,
@@ -277,6 +297,7 @@ class StockRepository {
         'variant_id': variantId,
         'ingredient_id': ingredientId,
         'quantity': quantity,
+        if (unit != null && unit.trim().isNotEmpty) 'unit': unit.trim(),
       },
     );
   }
@@ -285,6 +306,7 @@ class StockRepository {
     required int extraId,
     required int ingredientId,
     required double quantity,
+    String? unit,
   }) async {
     await _apiClient.post(
       ApiEndpoints.stockRecipeExtra,
@@ -292,8 +314,77 @@ class StockRepository {
         'extra_id': extraId,
         'ingredient_id': ingredientId,
         'quantity': quantity,
+        if (unit != null && unit.trim().isNotEmpty) 'unit': unit.trim(),
       },
     );
+  }
+
+  Future<StockRecipe> getProductRecipe(int productId) async {
+    final response = await _apiClient.get(ApiEndpoints.stockProductRecipe(productId));
+    return StockRecipe.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<StockRecipe> getVariantRecipe(int variantId) async {
+    final response = await _apiClient.get(ApiEndpoints.stockVariantRecipe(variantId));
+    return StockRecipe.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<StockRecipe> getExtraRecipe(int extraId) async {
+    final response = await _apiClient.get(ApiEndpoints.stockExtraRecipe(extraId));
+    return StockRecipe.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<StockRecipe> replaceProductRecipe({
+    required int productId,
+    required List<StockRecipeInputLine> items,
+  }) async {
+    final response = await _apiClient.put(
+      ApiEndpoints.stockProductRecipe(productId),
+      data: {'items': items.map((item) => item.toJson()).toList()},
+    );
+    return StockRecipe.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<StockRecipe> replaceVariantRecipe({
+    required int variantId,
+    required List<StockRecipeInputLine> items,
+  }) async {
+    final response = await _apiClient.put(
+      ApiEndpoints.stockVariantRecipe(variantId),
+      data: {'items': items.map((item) => item.toJson()).toList()},
+    );
+    return StockRecipe.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<StockRecipe> replaceExtraRecipe({
+    required int extraId,
+    required List<StockRecipeInputLine> items,
+  }) async {
+    final response = await _apiClient.put(
+      ApiEndpoints.stockExtraRecipe(extraId),
+      data: {'items': items.map((item) => item.toJson()).toList()},
+    );
+    return StockRecipe.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteRecipeLine({
+    required String recipeType,
+    required int recipeLineId,
+  }) async {
+    await _apiClient.delete(
+      ApiEndpoints.stockRecipeLine(recipeType, recipeLineId),
+    );
+  }
+
+  Future<List<MissingStockRecipe>> listMissingRecipes() async {
+    final response = await _apiClient.get(ApiEndpoints.stockRecipesMissing);
+    return (response.data as List? ?? const [])
+        .whereType<Map>()
+        .map(
+          (value) =>
+              MissingStockRecipe.fromJson(Map<String, dynamic>.from(value)),
+        )
+        .toList();
   }
 }
 
@@ -305,6 +396,8 @@ class Ingredient {
     required this.currentQty,
     required this.alertThreshold,
     required this.isBelowThreshold,
+    this.purchasePricePerUnit,
+    this.purchaseUnit,
   });
 
   final int id;
@@ -313,6 +406,8 @@ class Ingredient {
   final double currentQty;
   final double alertThreshold;
   final bool isBelowThreshold;
+  final double? purchasePricePerUnit;
+  final String? purchaseUnit;
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     return Ingredient(
@@ -322,6 +417,112 @@ class Ingredient {
       currentQty: readDouble(json['current_qty']),
       alertThreshold: readDouble(json['alert_threshold']),
       isBelowThreshold: readBool(json['is_below_threshold']),
+      purchasePricePerUnit: json['purchase_price_per_unit'] == null
+          ? null
+          : readDouble(json['purchase_price_per_unit']),
+      purchaseUnit: json['purchase_unit']?.toString(),
+    );
+  }
+}
+
+class StockRecipeInputLine {
+  const StockRecipeInputLine({
+    required this.ingredientId,
+    required this.quantity,
+    this.unit,
+  });
+
+  final int ingredientId;
+  final double quantity;
+  final String? unit;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'ingredient_id': ingredientId,
+      'quantity': quantity,
+      if (unit != null && unit!.trim().isNotEmpty) 'unit': unit!.trim(),
+    };
+  }
+}
+
+class StockRecipe {
+  const StockRecipe({
+    required this.recipeType,
+    required this.targetId,
+    required this.items,
+  });
+
+  final String recipeType;
+  final int targetId;
+  final List<StockRecipeLine> items;
+
+  factory StockRecipe.fromJson(Map<String, dynamic> json) {
+    return StockRecipe(
+      recipeType: json['recipe_type']?.toString() ?? 'product',
+      targetId: readInt(json['target_id']),
+      items: (json['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((value) => StockRecipeLine.fromJson(Map<String, dynamic>.from(value)))
+          .toList(),
+    );
+  }
+}
+
+class StockRecipeLine {
+  const StockRecipeLine({
+    required this.id,
+    required this.recipeType,
+    required this.targetId,
+    required this.ingredientId,
+    required this.quantity,
+    this.ingredientName,
+    this.unit,
+  });
+
+  final int id;
+  final String recipeType;
+  final int targetId;
+  final int ingredientId;
+  final String? ingredientName;
+  final double quantity;
+  final String? unit;
+
+  factory StockRecipeLine.fromJson(Map<String, dynamic> json) {
+    return StockRecipeLine(
+      id: readInt(json['id']),
+      recipeType: json['recipe_type']?.toString() ?? 'product',
+      targetId: readInt(json['target_id']),
+      ingredientId: readInt(json['ingredient_id']),
+      ingredientName: json['ingredient_name']?.toString(),
+      quantity: readDouble(json['quantity']),
+      unit: json['unit']?.toString(),
+    );
+  }
+}
+
+class MissingStockRecipe {
+  const MissingStockRecipe({
+    required this.recipeType,
+    required this.targetId,
+    required this.name,
+    this.productId,
+  });
+
+  final String recipeType;
+  final int targetId;
+  final String name;
+  final int? productId;
+
+  bool get isProduct => recipeType == 'product';
+  bool get isVariant => recipeType == 'variant';
+  bool get isExtra => recipeType == 'extra';
+
+  factory MissingStockRecipe.fromJson(Map<String, dynamic> json) {
+    return MissingStockRecipe(
+      recipeType: json['recipe_type']?.toString() ?? 'product',
+      targetId: readInt(json['target_id']),
+      name: json['name']?.toString() ?? '',
+      productId: json['product_id'] == null ? null : readInt(json['product_id']),
     );
   }
 }

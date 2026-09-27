@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/app/permissions/permissions.dart';
 import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
 import 'package:app_admin_staff/features/catalog/presentation/catalog_page.dart';
+import 'package:app_admin_staff/features/stock/data/stock_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,6 +31,9 @@ void main() {
           overrides: [
             catalogProductsProvider.overrideWith((ref) async => _products),
             catalogCategoriesProvider.overrideWith((ref) async => _categories),
+            stockMissingRecipesProvider.overrideWith(
+              (ref) async => _missingRecipes,
+            ),
             currentPermissionSetProvider.overrideWithValue(
               const PermissionSet(role: 'admin', permissions: null),
             ),
@@ -44,6 +48,13 @@ void main() {
       await tester.pump();
 
       expect(find.text('Catalogue'), findsOneWidget);
+      if (find.text('Margherita').evaluate().isEmpty) {
+        await tester.scrollUntilVisible(
+          find.text('Margherita'),
+          260,
+          scrollable: find.byType(Scrollable).first,
+        );
+      }
       expect(find.text('Margherita'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
@@ -104,5 +115,19 @@ const _products = [
     available: true,
     effectivePreparationStation: 'counter',
     regulatoryComplete: true,
+  ),
+];
+
+const _missingRecipes = [
+  MissingStockRecipe(
+    recipeType: 'product',
+    targetId: 2,
+    name: 'Regina',
+    productId: 2,
+  ),
+  MissingStockRecipe(
+    recipeType: 'extra',
+    targetId: 9,
+    name: 'Supplement mozzarella',
   ),
 ];

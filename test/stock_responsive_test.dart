@@ -35,6 +35,9 @@ void main() {
                   _ingredients.where((item) => item.isBelowThreshold).toList(),
             ),
             stockMovementsProvider.overrideWith((ref) async => _movements),
+            stockMissingRecipesProvider.overrideWith(
+              (ref) async => _missingRecipes,
+            ),
             adjustmentRequestsProvider.overrideWith((ref) async => _requests),
             currentEstablishmentProvider.overrideWith(
               (ref) async => const Establishment(
@@ -131,5 +134,19 @@ final _requests = [
     isLargeAdjustment: false,
     note: 'Comptage rush',
     createdAt: DateTime(2026, 9, 25, 12),
+  ),
+];
+
+const _missingRecipes = [
+  MissingStockRecipe(
+    recipeType: 'product',
+    targetId: 10,
+    name: 'Margherita',
+    productId: 10,
+  ),
+  MissingStockRecipe(
+    recipeType: 'extra',
+    targetId: 30,
+    name: 'Supplement mozzarella',
   ),
 ];

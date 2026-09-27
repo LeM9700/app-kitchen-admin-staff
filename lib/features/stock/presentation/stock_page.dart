@@ -10,6 +10,7 @@ import 'package:app_admin_staff/design_system/tokens/app_breakpoints.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
+import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
 import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:app_admin_staff/features/stock/application/stock_view_state.dart';
 import 'package:app_admin_staff/features/stock/data/stock_repository.dart';
@@ -38,6 +39,7 @@ class _StockPageState extends ConsumerState<StockPage> {
     final ingredients = ref.watch(ingredientsProvider);
     final alerts = ref.watch(stockAlertsProvider);
     final movements = ref.watch(stockMovementsProvider);
+    final missingRecipes = ref.watch(stockMissingRecipesProvider);
     final levelFilter = ref.watch(stockLevelFilterProvider);
     final permissions = ref.watch(currentPermissionSetProvider);
     final currentEstablishment = ref.watch(currentEstablishmentProvider);
@@ -114,6 +116,11 @@ class _StockPageState extends ConsumerState<StockPage> {
                     _StockHealthPanel(
                       alerts: alerts,
                       ingredients: ingredients.valueOrNull,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _MissingRecipesPanel(
+                      missingRecipes: missingRecipes,
+                      onManageRecipe: () => _recipeDialog(context, ref),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     _AdjustmentRequestsPanel(
@@ -209,11 +216,13 @@ class _StockPageState extends ConsumerState<StockPage> {
     ref.invalidate(ingredientsProvider);
     ref.invalidate(stockAlertsProvider);
     ref.invalidate(stockMovementsProvider);
+    ref.invalidate(stockMissingRecipesProvider);
     ref.invalidate(adjustmentRequestsProvider);
     await Future.wait([
       ref.read(ingredientsProvider.future),
       ref.read(stockAlertsProvider.future),
       ref.read(stockMovementsProvider.future),
+      ref.read(stockMissingRecipesProvider.future),
       ref.read(adjustmentRequestsProvider.future),
     ]);
   }
@@ -229,6 +238,12 @@ class _StockPageState extends ConsumerState<StockPage> {
         TextEditingController(text: ingredient?.currentQty.toString() ?? '0');
     final threshold = TextEditingController(
       text: ingredient?.alertThreshold.toString() ?? '0',
+    );
+    final purchasePrice = TextEditingController(
+      text: ingredient?.purchasePricePerUnit?.toString() ?? '',
+    );
+    final purchaseUnit = TextEditingController(
+      text: ingredient?.purchaseUnit ?? ingredient?.unit ?? '',
     );
     final confirmed = await showDialog<bool>(
       context: context,
@@ -261,6 +276,23 @@ class _StockPageState extends ConsumerState<StockPage> {
               decoration: const InputDecoration(labelText: 'Seuil alerte'),
               keyboardType: TextInputType.number,
             ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: purchasePrice,
+              decoration: const InputDecoration(
+                labelText: 'Prix achat par unite',
+                hintText: 'Ex. 2.40',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: purchaseUnit,
+              decoration: const InputDecoration(
+                labelText: 'Unite achat',
+                hintText: 'Ex. kg, l, piece',
+              ),
+            ),
           ],
         ),
         actions: [
@@ -286,6 +318,8 @@ class _StockPageState extends ConsumerState<StockPage> {
           unit: unit.text.trim(),
           currentQty: _parseDouble(qty.text) ?? 0,
           alertThreshold: _parseDouble(threshold.text) ?? 0,
+          purchasePricePerUnit: _parseDouble(purchasePrice.text),
+          purchaseUnit: purchaseUnit.text.trim(),
         );
       } else {
         await repository.patchIngredient(
@@ -293,6 +327,8 @@ class _StockPageState extends ConsumerState<StockPage> {
           name: name.text.trim(),
           unit: unit.text.trim(),
           alertThreshold: _parseDouble(threshold.text) ?? 0,
+          purchasePricePerUnit: _parseDouble(purchasePrice.text),
+          purchaseUnit: purchaseUnit.text.trim(),
         );
       }
       ref.invalidate(ingredientsProvider);
@@ -305,105 +341,16 @@ class _StockPageState extends ConsumerState<StockPage> {
   }
 
   Future<void> _recipeDialog(BuildContext context, WidgetRef ref) async {
-    var targetType = 'product';
-    final targetId = TextEditingController();
-    final ingredientId = TextEditingController();
-    final quantity = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final saved = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Recette stock'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'product', label: Text('Produit')),
-                  ButtonSegment(value: 'variant', label: Text('Variante')),
-                  ButtonSegment(value: 'extra', label: Text('Extra')),
-                ],
-                selected: {targetType},
-                onSelectionChanged: (value) {
-                  setState(() => targetType = value.first);
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: targetId,
-                decoration: InputDecoration(labelText: '$targetType ID'),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: ingredientId,
-                decoration: const InputDecoration(labelText: 'Ingredient ID'),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: quantity,
-                decoration:
-                    const InputDecoration(labelText: 'Quantite consommee'),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Enregistrer'),
-            ),
-          ],
-        ),
+      builder: (context) => StockRecipeDialog(
+        catalogRepository: ref.read(catalogRepositoryProvider),
+        stockRepository: ref.read(stockRepositoryProvider),
       ),
     );
-    if (confirmed != true) {
-      return;
-    }
-    final parsedTargetId = int.tryParse(targetId.text.trim());
-    final parsedIngredientId = int.tryParse(ingredientId.text.trim());
-    final parsedQuantity = _parseDouble(quantity.text);
-    if (parsedTargetId == null ||
-        parsedIngredientId == null ||
-        parsedQuantity == null) {
-      if (context.mounted) {
-        _snack(context, 'Saisie invalide');
-      }
-      return;
-    }
-    try {
-      final repository = ref.read(stockRepositoryProvider);
-      if (targetType == 'product') {
-        await repository.createProductRecipe(
-          productId: parsedTargetId,
-          ingredientId: parsedIngredientId,
-          quantity: parsedQuantity,
-        );
-      } else if (targetType == 'variant') {
-        await repository.createVariantRecipe(
-          variantId: parsedTargetId,
-          ingredientId: parsedIngredientId,
-          quantity: parsedQuantity,
-        );
-      } else {
-        await repository.createExtraRecipe(
-          extraId: parsedTargetId,
-          ingredientId: parsedIngredientId,
-          quantity: parsedQuantity,
-        );
-      }
-      if (context.mounted) {
-        _snack(context, 'Recette enregistree');
-      }
-    } catch (error) {
-      if (context.mounted) {
-        _snack(context, error.toString());
-      }
+    if (saved == true && context.mounted) {
+      ref.invalidate(stockMissingRecipesProvider);
+      _snack(context, 'Recette enregistree');
     }
   }
 
@@ -521,6 +468,1136 @@ class _StockPageState extends ConsumerState<StockPage> {
   void _snack(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class StockRecipeDialog extends StatefulWidget {
+  const StockRecipeDialog({
+    super.key,
+    required this.catalogRepository,
+    required this.stockRepository,
+    this.initialTargetType = 'product',
+    this.initialProductId,
+  });
+
+  final CatalogRepository catalogRepository;
+  final StockRepository stockRepository;
+  final String initialTargetType;
+  final int? initialProductId;
+
+  @override
+  State<StockRecipeDialog> createState() => _RecipeDialogState();
+}
+
+class _RecipeDialogState extends State<StockRecipeDialog> {
+  static const _units = ['g', 'kg', 'ml', 'l', 'piece', 'portion'];
+
+  final _productSearchController = TextEditingController();
+  final _ingredientSearchController = TextEditingController();
+  final _quantityController = TextEditingController();
+
+  String _targetType = 'product';
+  List<CatalogProduct> _products = const [];
+  List<Ingredient> _ingredients = const [];
+  List<_RecipeDraftLine> _lines = const [];
+  int? _selectedProductId;
+  int? _selectedVariantId;
+  int? _selectedExtraId;
+  int? _selectedIngredientId;
+  String _selectedUnit = 'g';
+  bool _loading = true;
+  bool _loadingRecipe = false;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _targetType = widget.initialTargetType;
+    _loadLookups();
+  }
+
+  @override
+  void dispose() {
+    _productSearchController.dispose();
+    _ingredientSearchController.dispose();
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  CatalogProduct? get _selectedProduct => _productById(_selectedProductId);
+
+  CatalogVariant? get _selectedVariant {
+    final id = _selectedVariantId;
+    if (id == null) {
+      return null;
+    }
+    for (final product in _products) {
+      for (final variant in product.variants) {
+        if (variant.id == id) {
+          return variant;
+        }
+      }
+    }
+    return null;
+  }
+
+  CatalogExtra? get _selectedExtra {
+    final id = _selectedExtraId;
+    if (id == null) {
+      return null;
+    }
+    for (final product in _products) {
+      for (final extra in product.extras) {
+        if (extra.id == id) {
+          return extra;
+        }
+      }
+    }
+    return null;
+  }
+
+  Ingredient? get _selectedIngredient {
+    final id = _selectedIngredientId;
+    if (id == null) {
+      return null;
+    }
+    for (final ingredient in _ingredients) {
+      if (ingredient.id == id) {
+        return ingredient;
+      }
+    }
+    return null;
+  }
+
+  int? get _targetId {
+    return switch (_targetType) {
+      'variant' => _selectedVariantId,
+      'extra' => _selectedExtraId,
+      _ => _selectedProductId,
+    };
+  }
+
+  String get _targetName {
+    return switch (_targetType) {
+      'variant' => _selectedVariant?.name ?? 'Variante',
+      'extra' => _selectedExtra?.name ?? 'Extra',
+      _ => _selectedProduct?.name ?? 'Produit',
+    };
+  }
+
+  Future<void> _loadLookups() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final products = await widget.catalogRepository.listProducts(
+        pageSize: 100,
+      );
+      final ingredients = await widget.stockRepository.listIngredients(
+        pageSize: 100,
+      );
+      if (!mounted) {
+        return;
+      }
+      final initialProductId = widget.initialProductId;
+      final productId = initialProductId != null &&
+              products.any((product) => product.id == initialProductId)
+          ? initialProductId
+          : (products.isEmpty ? null : products.first.id);
+      setState(() {
+        _products = products;
+        _ingredients = ingredients;
+        _selectedProductId = productId;
+        _selectedIngredientId =
+            _ingredients.isEmpty ? null : _ingredients.first.id;
+        _selectedUnit = _ingredients.isEmpty
+            ? _selectedUnit
+            : _normalizedUnit(_ingredients.first.unit);
+        _syncTargetChildren();
+        _loading = false;
+      });
+      await _loadSelectedRecipe();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loading = false;
+        _error = error.toString();
+      });
+    }
+  }
+
+  Future<void> _loadSelectedRecipe() async {
+    final targetId = _targetId;
+    if (targetId == null) {
+      setState(() {
+        _lines = const [];
+      });
+      return;
+    }
+    setState(() {
+      _loadingRecipe = true;
+      _error = null;
+    });
+    try {
+      final recipe = switch (_targetType) {
+        'variant' => await widget.stockRepository.getVariantRecipe(targetId),
+        'extra' => await widget.stockRepository.getExtraRecipe(targetId),
+        _ => await widget.stockRepository.getProductRecipe(targetId),
+      };
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _lines = recipe.items
+            .map(
+              (line) => _RecipeDraftLine.fromRecipeLine(
+                  line,
+                  _ingredientById(line.ingredientId),
+                ),
+            )
+            .toList();
+        _loadingRecipe = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loadingRecipe = false;
+        _error = error.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = _knownTotalCost();
+    return AlertDialog(
+      title: const Text('Recette stock'),
+      content: SizedBox(
+        width: 760,
+        child: _loading
+            ? const Padding(
+                padding: EdgeInsets.all(AppSpacing.lg),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: 'product',
+                          icon: Icon(Icons.local_pizza_outlined),
+                          label: Text('Produit'),
+                        ),
+                        ButtonSegment(
+                          value: 'variant',
+                          icon: Icon(Icons.tune_outlined),
+                          label: Text('Variante'),
+                        ),
+                        ButtonSegment(
+                          value: 'extra',
+                          icon: Icon(Icons.add_circle_outline),
+                          label: Text('Extra'),
+                        ),
+                      ],
+                      selected: {_targetType},
+                      onSelectionChanged: _saving
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _targetType = value.first;
+                                _syncTargetChildren();
+                              });
+                              _loadSelectedRecipe();
+                            },
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _targetFields(),
+                    const SizedBox(height: AppSpacing.lg),
+                    _recipeLines(total),
+                    const SizedBox(height: AppSpacing.lg),
+                    _ingredientPicker(),
+                    if (_error != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        _error!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton.icon(
+          onPressed: _saving ? null : _save,
+          icon: _saving
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+          label: const Text('Enregistrer'),
+        ),
+      ],
+    );
+  }
+
+  Widget _targetFields() {
+    final products = _filteredProducts();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _productSearchController,
+          decoration: const InputDecoration(
+            labelText: 'Recherche produit',
+            prefixIcon: Icon(Icons.search),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        DropdownButtonFormField<int>(
+          initialValue: _valueIfPresent(
+            _selectedProductId,
+            products.map((product) => product.id),
+          ),
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Produit',
+            prefixIcon: Icon(Icons.restaurant_menu_outlined),
+          ),
+          items: products
+              .map(
+                (product) => DropdownMenuItem<int>(
+                  value: product.id,
+                  child: Text(
+                    product.name,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: _saving
+              ? null
+              : (value) {
+                  setState(() {
+                    _selectedProductId = value;
+                    _syncTargetChildren();
+                  });
+                  _loadSelectedRecipe();
+                },
+        ),
+        if (_targetType == 'variant') ...[
+          const SizedBox(height: AppSpacing.sm),
+          DropdownButtonFormField<int>(
+            initialValue: _valueIfPresent(
+              _selectedVariantId,
+              (_selectedProduct?.variants ?? const <CatalogVariant>[])
+                  .map((variant) => variant.id),
+            ),
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Variante',
+              prefixIcon: Icon(Icons.tune_outlined),
+            ),
+            items: (_selectedProduct?.variants ?? const <CatalogVariant>[])
+                .map(
+                  (variant) => DropdownMenuItem<int>(
+                    value: variant.id,
+                    child: Text(variant.name, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged: _saving
+                ? null
+                : (value) {
+                    setState(() => _selectedVariantId = value);
+                    _loadSelectedRecipe();
+                  },
+          ),
+        ],
+        if (_targetType == 'extra') ...[
+          const SizedBox(height: AppSpacing.sm),
+          DropdownButtonFormField<int>(
+            initialValue: _valueIfPresent(
+              _selectedExtraId,
+              (_selectedProduct?.extras ?? const <CatalogExtra>[])
+                  .map((extra) => extra.id),
+            ),
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Extra',
+              prefixIcon: Icon(Icons.add_circle_outline),
+            ),
+            items: (_selectedProduct?.extras ?? const <CatalogExtra>[])
+                .map(
+                  (extra) => DropdownMenuItem<int>(
+                    value: extra.id,
+                    child: Text(extra.name, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged: _saving
+                ? null
+                : (value) {
+                    setState(() => _selectedExtraId = value);
+                    _loadSelectedRecipe();
+                  },
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _recipeLines(double? total) {
+    final textTheme = Theme.of(context).textTheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFD8D0C3)),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _targetName,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                if (_loadingRecipe)
+                  const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Text(
+                    total == null ? 'Cout incomplet' : formatMoney(total),
+                    style: textTheme.labelLarge?.copyWith(
+                      color:
+                          total == null ? AppColors.warning : AppColors.success,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            if (_lines.isEmpty)
+              Text(
+                'Recette manquante',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: AppColors.warning,
+                  fontWeight: FontWeight.w800,
+                ),
+              )
+            else
+              ..._lines.map(
+                (line) {
+                  final cost = _lineCost(line);
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.inventory_2_outlined),
+                    title: Text(line.ingredientName),
+                    subtitle: Text(
+                      '${formatStockQty(line.quantity)} ${line.unit}'
+                      '${cost == null ? ' - prix achat manquant' : ' - ${formatMoney(cost)}'}',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Modifier',
+                          onPressed: _saving ? null : () => _editLine(line),
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
+                        IconButton(
+                          tooltip: 'Retirer',
+                          onPressed: _saving
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _lines = _lines
+                                        .where(
+                                          (item) =>
+                                              item.ingredientId !=
+                                              line.ingredientId,
+                                        )
+                                        .toList();
+                                  });
+                                },
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ingredientPicker() {
+    final ingredients = _ingredientsForDropdown();
+    final suggestions = _ingredientSuggestions();
+    final canCreateIngredient = _canCreateIngredientFromSearch();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Ajouter un ingredient',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextField(
+          controller: _ingredientSearchController,
+          decoration: const InputDecoration(
+            labelText: 'Recherche ingredient',
+            prefixIcon: Icon(Icons.search),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        if (suggestions.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: suggestions
+                .map(
+                  (ingredient) => ActionChip(
+                    avatar: const Icon(Icons.add, size: 16),
+                    label: Text(ingredient.name),
+                    onPressed: () => _selectIngredient(ingredient),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+        if (canCreateIngredient) ...[
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: _saving ? null : _createIngredientFromRecipe,
+            icon: const Icon(Icons.add_box_outlined),
+            label: Text(
+              suggestions.isEmpty
+                  ? 'Creer cet ingredient'
+                  : 'Creer un nouvel ingredient',
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        DropdownButtonFormField<int>(
+          initialValue: _valueIfPresent(
+            _selectedIngredientId,
+            ingredients.map((ingredient) => ingredient.id),
+          ),
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Ingredient',
+            prefixIcon: Icon(Icons.inventory_outlined),
+          ),
+          items: ingredients
+              .map(
+                (ingredient) => DropdownMenuItem<int>(
+                  value: ingredient.id,
+                  child: Text(
+                    ingredient.name,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: _saving
+              ? null
+              : (value) {
+                  final ingredient = _ingredientById(value);
+                  if (ingredient != null) {
+                    _selectIngredient(ingredient);
+                  }
+                },
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _quantityController,
+                decoration: const InputDecoration(
+                  labelText: 'Quantite',
+                  prefixIcon: Icon(Icons.scale_outlined),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            SizedBox(
+              width: 150,
+              child: DropdownButtonFormField<String>(
+                initialValue: _selectedUnit,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Unite'),
+                items: _units
+                    .map(
+                      (unit) => DropdownMenuItem<String>(
+                        value: unit,
+                        child: Text(unit),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _saving
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _selectedUnit = value);
+                        }
+                      },
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            SizedBox(
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: _saving ? null : _addLine,
+                icon: const Icon(Icons.add),
+                label: const Text('Ajouter'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _selectIngredient(Ingredient ingredient) {
+    setState(() {
+      _selectedIngredientId = ingredient.id;
+      _selectedUnit = _normalizedUnit(ingredient.unit);
+      _error = null;
+    });
+  }
+
+  bool _canCreateIngredientFromSearch() {
+    final query = _ingredientSearchController.text.trim().toLowerCase();
+    if (query.length < 3) {
+      return false;
+    }
+    return !_ingredients.any(
+      (ingredient) => ingredient.name.trim().toLowerCase() == query,
+    );
+  }
+
+  Future<void> _createIngredientFromRecipe() async {
+    final created = await _ingredientInlineDialog(
+      initialName: _ingredientSearchController.text.trim(),
+    );
+    if (created == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _ingredients = [..._ingredients, created]
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      _selectedIngredientId = created.id;
+      _selectedUnit = _normalizedUnit(created.unit);
+      _ingredientSearchController.text = created.name;
+      _error = null;
+    });
+  }
+
+  Future<Ingredient?> _ingredientInlineDialog({
+    required String initialName,
+  }) async {
+    final name = TextEditingController(text: initialName);
+    final qty = TextEditingController(text: '0');
+    final threshold = TextEditingController(text: '0');
+    final purchasePrice = TextEditingController();
+    var unit = _selectedUnit;
+    var purchaseUnit = _selectedUnit;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Nouvel ingredient'),
+          content: SizedBox(
+            width: 520,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(
+                    labelText: 'Nom ingredient',
+                    prefixIcon: Icon(Icons.inventory_outlined),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    SizedBox(
+                      width: 150,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: unit,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Unite stock',
+                        ),
+                        items: _units
+                            .map(
+                              (value) => DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() {
+                            unit = value;
+                            purchaseUnit = value;
+                          });
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 150,
+                      child: TextField(
+                        controller: qty,
+                        decoration: const InputDecoration(
+                          labelText: 'Stock initial',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 150,
+                      child: TextField(
+                        controller: threshold,
+                        decoration: const InputDecoration(
+                          labelText: 'Seuil alerte',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    SizedBox(
+                      width: 190,
+                      child: TextField(
+                        controller: purchasePrice,
+                        decoration: const InputDecoration(
+                          labelText: 'Prix achat par unite',
+                          prefixIcon: Icon(Icons.euro_outlined),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 150,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: purchaseUnit,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Unite achat',
+                        ),
+                        items: _units
+                            .map(
+                              (value) => DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => purchaseUnit = value);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.check_outlined),
+              label: const Text('Creer'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) {
+      return null;
+    }
+
+    final ingredientName = name.text.trim();
+    if (ingredientName.isEmpty) {
+      setState(() => _error = 'Nom ingredient obligatoire.');
+      return null;
+    }
+    try {
+      return await widget.stockRepository.createIngredient(
+        name: ingredientName,
+        unit: unit,
+        currentQty: _parseDouble(qty.text) ?? 0,
+        alertThreshold: _parseDouble(threshold.text) ?? 0,
+        purchasePricePerUnit: _parseDouble(purchasePrice.text),
+        purchaseUnit: purchaseUnit,
+      );
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error = error.toString());
+      }
+      return null;
+    }
+  }
+
+  void _editLine(_RecipeDraftLine line) {
+    setState(() {
+      _selectedIngredientId = line.ingredientId;
+      _selectedUnit = _normalizedUnit(line.unit);
+      _quantityController.text = formatStockQty(line.quantity);
+      _ingredientSearchController.text = line.ingredientName;
+      _lines = _lines
+          .where((item) => item.ingredientId != line.ingredientId)
+          .toList();
+      _error = null;
+    });
+  }
+
+  double? _parseDouble(String value) {
+    return double.tryParse(value.trim().replaceAll(',', '.'));
+  }
+
+  void _addLine() {
+    final ingredient = _selectedIngredient;
+    final quantity =
+        double.tryParse(_quantityController.text.trim().replaceAll(',', '.'));
+    if (ingredient == null || quantity == null || quantity <= 0) {
+      setState(() => _error = 'Saisie ingredient invalide.');
+      return;
+    }
+    final draft = _RecipeDraftLine.fromIngredient(
+      ingredient,
+      quantity: quantity,
+      unit: _selectedUnit,
+    );
+    final next = [..._lines];
+    final existingIndex = next.indexWhere(
+      (line) => line.ingredientId == draft.ingredientId,
+    );
+    if (existingIndex >= 0) {
+      final existing = next[existingIndex];
+      next[existingIndex] = existing.copyWith(
+        quantity: existing.quantity + draft.quantity,
+        unit: draft.unit,
+      );
+    } else {
+      next.add(draft);
+    }
+    setState(() {
+      _lines = next;
+      _quantityController.clear();
+      _error = null;
+    });
+  }
+
+  Future<void> _save() async {
+    final targetId = _targetId;
+    if (targetId == null) {
+      setState(() => _error = 'Selectionnez une cible valide.');
+      return;
+    }
+    if (_lines.isEmpty) {
+      setState(() => _error = 'Ajoutez au moins un ingredient.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final items = _lines
+        .map(
+          (line) => StockRecipeInputLine(
+            ingredientId: line.ingredientId,
+            quantity: line.quantity,
+            unit: line.unit,
+          ),
+        )
+        .toList();
+    try {
+      switch (_targetType) {
+        case 'variant':
+          await widget.stockRepository.replaceVariantRecipe(
+            variantId: targetId,
+            items: items,
+          );
+        case 'extra':
+          await widget.stockRepository.replaceExtraRecipe(
+            extraId: targetId,
+            items: items,
+          );
+        default:
+          await widget.stockRepository.replaceProductRecipe(
+            productId: targetId,
+            items: items,
+          );
+      }
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _saving = false;
+        _error = error.toString();
+      });
+    }
+  }
+
+  void _syncTargetChildren() {
+    final product = _selectedProduct;
+    final variants = product?.variants ?? const <CatalogVariant>[];
+    final extras = product?.extras ?? const <CatalogExtra>[];
+    if (variants.every((variant) => variant.id != _selectedVariantId)) {
+      _selectedVariantId = variants.isEmpty ? null : variants.first.id;
+    }
+    if (extras.every((extra) => extra.id != _selectedExtraId)) {
+      _selectedExtraId = extras.isEmpty ? null : extras.first.id;
+    }
+  }
+
+  List<CatalogProduct> _filteredProducts() {
+    final query = _productSearchController.text.trim().toLowerCase();
+    final filtered = query.length < 3
+        ? _products
+        : _products
+            .where((product) => product.name.toLowerCase().contains(query))
+            .toList();
+    final selected = _selectedProduct;
+    if (selected == null ||
+        filtered.any((product) => product.id == selected.id)) {
+      return filtered;
+    }
+    return [selected, ...filtered];
+  }
+
+  List<Ingredient> _ingredientsForDropdown() {
+    final selected = _selectedIngredient;
+    if (selected == null ||
+        _ingredients.any((ingredient) => ingredient.id == selected.id)) {
+      return _ingredients;
+    }
+    return [selected, ..._ingredients];
+  }
+
+  List<Ingredient> _ingredientSuggestions() {
+    final query = _ingredientSearchController.text.trim().toLowerCase();
+    if (query.length < 3) {
+      return const [];
+    }
+    return _ingredients
+        .where((ingredient) => ingredient.name.toLowerCase().contains(query))
+        .take(8)
+        .toList();
+  }
+
+  CatalogProduct? _productById(int? id) {
+    if (id == null) {
+      return null;
+    }
+    for (final product in _products) {
+      if (product.id == id) {
+        return product;
+      }
+    }
+    return null;
+  }
+
+  Ingredient? _ingredientById(int? id) {
+    if (id == null) {
+      return null;
+    }
+    for (final ingredient in _ingredients) {
+      if (ingredient.id == id) {
+        return ingredient;
+      }
+    }
+    return null;
+  }
+
+  int? _valueIfPresent(int? value, Iterable<int> values) {
+    if (value == null) {
+      return null;
+    }
+    return values.contains(value) ? value : null;
+  }
+
+  double? _knownTotalCost() {
+    if (_lines.isEmpty) {
+      return null;
+    }
+    var total = 0.0;
+    for (final line in _lines) {
+      final cost = _lineCost(line);
+      if (cost == null) {
+        return null;
+      }
+      total += cost;
+    }
+    return total;
+  }
+
+  double? _lineCost(_RecipeDraftLine line) {
+    final price = line.purchasePricePerUnit;
+    final purchaseUnit = line.purchaseUnit;
+    if (price == null || purchaseUnit == null || purchaseUnit.isEmpty) {
+      return null;
+    }
+    final converted = _convertQuantity(
+      line.quantity,
+      fromUnit: line.unit,
+      toUnit: purchaseUnit,
+    );
+    return converted == null ? null : converted * price;
+  }
+
+  double? _convertQuantity(
+    double quantity, {
+    required String fromUnit,
+    required String toUnit,
+  }) {
+    final from = fromUnit.trim().toLowerCase();
+    final to = toUnit.trim().toLowerCase();
+    if (from == to) {
+      return quantity;
+    }
+    const factors = {
+      'g': 1.0,
+      'kg': 1000.0,
+      'ml': 1.0,
+      'l': 1000.0,
+    };
+    final mass = factors[from] != null && factors[to] != null;
+    final bothMass = (from == 'g' || from == 'kg') && (to == 'g' || to == 'kg');
+    final bothVolume =
+        (from == 'ml' || from == 'l') && (to == 'ml' || to == 'l');
+    if (!mass || (!bothMass && !bothVolume)) {
+      return null;
+    }
+    return quantity * factors[from]! / factors[to]!;
+  }
+
+  String _normalizedUnit(String unit) {
+    final normalized = unit.trim().toLowerCase();
+    return _units.contains(normalized) ? normalized : 'piece';
+  }
+}
+
+class _RecipeDraftLine {
+  const _RecipeDraftLine({
+    required this.ingredientId,
+    required this.ingredientName,
+    required this.quantity,
+    required this.unit,
+    this.purchasePricePerUnit,
+    this.purchaseUnit,
+  });
+
+  factory _RecipeDraftLine.fromIngredient(
+    Ingredient ingredient, {
+    required double quantity,
+    required String unit,
+  }) {
+    return _RecipeDraftLine(
+      ingredientId: ingredient.id,
+      ingredientName: ingredient.name,
+      quantity: quantity,
+      unit: unit,
+      purchasePricePerUnit: ingredient.purchasePricePerUnit,
+      purchaseUnit: ingredient.purchaseUnit,
+    );
+  }
+
+  factory _RecipeDraftLine.fromRecipeLine(
+    StockRecipeLine line,
+    Ingredient? ingredient,
+  ) {
+    return _RecipeDraftLine(
+      ingredientId: line.ingredientId,
+      ingredientName:
+          line.ingredientName ?? ingredient?.name ?? 'Ingredient #${line.ingredientId}',
+      quantity: line.quantity,
+      unit: line.unit ?? ingredient?.unit ?? 'piece',
+      purchasePricePerUnit: ingredient?.purchasePricePerUnit,
+      purchaseUnit: ingredient?.purchaseUnit,
+    );
+  }
+
+  final int ingredientId;
+  final String ingredientName;
+  final double quantity;
+  final String unit;
+  final double? purchasePricePerUnit;
+  final String? purchaseUnit;
+
+  _RecipeDraftLine copyWith({
+    double? quantity,
+    String? unit,
+  }) {
+    return _RecipeDraftLine(
+      ingredientId: ingredientId,
+      ingredientName: ingredientName,
+      quantity: quantity ?? this.quantity,
+      unit: unit ?? this.unit,
+      purchasePricePerUnit: purchasePricePerUnit,
+      purchaseUnit: purchaseUnit,
+    );
   }
 }
 
@@ -1734,6 +2811,137 @@ class _StockHealthPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MissingRecipesPanel extends StatelessWidget {
+  const _MissingRecipesPanel({
+    required this.missingRecipes,
+    required this.onManageRecipe,
+  });
+
+  final AsyncValue<List<MissingStockRecipe>> missingRecipes;
+  final VoidCallback onManageRecipe;
+
+  @override
+  Widget build(BuildContext context) {
+    return DsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Recettes a completer',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          missingRecipes.when(
+            data: (items) {
+              if (items.isEmpty) {
+                return const StatusBadge(
+                  label: 'Toutes les recettes sont definies',
+                  tone: StatusTone.success,
+                  icon: Icons.check_circle_outline,
+                );
+              }
+              final productCount = items.where((item) => item.isProduct).length;
+              final variantCount = items.where((item) => item.isVariant).length;
+              final extraCount = items.where((item) => item.isExtra).length;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  StatusBadge(
+                    label: '${items.length} recette(s) manquante(s)',
+                    tone: StatusTone.warning,
+                    icon: Icons.menu_book_outlined,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      _RecipeCountChip(
+                        label: 'Produits',
+                        value: productCount,
+                        icon: Icons.local_pizza_outlined,
+                      ),
+                      _RecipeCountChip(
+                        label: 'Variantes',
+                        value: variantCount,
+                        icon: Icons.tune_outlined,
+                      ),
+                      _RecipeCountChip(
+                        label: 'Extras',
+                        value: extraCount,
+                        icon: Icons.add_circle_outline,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  for (final item in items.take(6))
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(_missingRecipeIcon(item.recipeType)),
+                      title: Text(item.name),
+                      subtitle: Text(_missingRecipeLabel(item.recipeType)),
+                    ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: onManageRecipe,
+                      icon: const Icon(Icons.edit_note_outlined),
+                      label: const Text('Gerer les recettes'),
+                    ),
+                  ),
+                ],
+              );
+            },
+            loading: () => const LinearProgressIndicator(),
+            error: (error, stackTrace) => const Text(
+              'Recettes manquantes indisponibles pour le moment.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecipeCountChip extends StatelessWidget {
+  const _RecipeCountChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final int value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return StatusBadge(
+      label: '$label $value',
+      tone: value == 0 ? StatusTone.success : StatusTone.warning,
+      icon: icon,
+      compact: true,
+    );
+  }
+}
+
+IconData _missingRecipeIcon(String recipeType) {
+  return switch (recipeType) {
+    'variant' => Icons.tune_outlined,
+    'extra' => Icons.add_circle_outline,
+    _ => Icons.local_pizza_outlined,
+  };
+}
+
+String _missingRecipeLabel(String recipeType) {
+  return switch (recipeType) {
+    'variant' => 'Variante a verifier',
+    'extra' => 'Extra sans recette',
+    _ => 'Produit sans recette',
+  };
 }
 
 class _AdjustmentRequestsPanel extends StatelessWidget {

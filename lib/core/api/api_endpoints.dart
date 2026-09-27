@@ -126,6 +126,23 @@ class ApiEndpoints {
   static const stockRecipeProduct = '/stock/recipes';
   static const stockRecipeVariant = '/stock/recipes/variant';
   static const stockRecipeExtra = '/stock/recipes/extra';
+  static const stockRecipesMissing = '/stock/recipes/missing';
+  static String stockProductRecipe(int productId) {
+    return '/stock/recipes/products/$productId';
+  }
+
+  static String stockVariantRecipe(int variantId) {
+    return '/stock/recipes/variants/$variantId';
+  }
+
+  static String stockExtraRecipe(int extraId) {
+    return '/stock/recipes/extras/$extraId';
+  }
+
+  static String stockRecipeLine(String recipeType, int recipeLineId) {
+    return '/stock/recipes/$recipeType/$recipeLineId';
+  }
+
   static String stockIngredientBatches(int ingredientId) {
     return '/stock/ingredients/$ingredientId/batches';
   }

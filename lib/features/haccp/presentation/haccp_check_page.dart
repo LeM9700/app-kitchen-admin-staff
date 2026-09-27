@@ -444,8 +444,8 @@ class _SessionTabState extends ConsumerState<_SessionTab> {
                       : 'Check $_label validé',
                   message: widget.canProceed
                       ? widget.sessionType == 'opening'
-                            ? 'Le restaurant peut ouvrir.'
-                            : 'La fermeture peut être confirmée.'
+                          ? 'Le restaurant peut ouvrir.'
+                          : 'La fermeture peut être confirmée.'
                       : 'Validation enregistrée.',
                   tone: summary.status == 'incomplete_validated'
                       ? HaccpTone.warning
@@ -477,29 +477,28 @@ class _ProgressBanner extends ConsumerWidget {
     final ncCount = sessionId == null
         ? 0
         : (ref
-                  .watch(haccpOpenNcProvider)
-                  .valueOrNull
-                  ?.where((nc) => nc.sessionId == sessionId)
-                  .length ??
-              0);
+                .watch(haccpOpenNcProvider)
+                .valueOrNull
+                ?.where((nc) => nc.sessionId == sessionId)
+                .length ??
+            0);
 
     final tone = summary.isComplete
         ? (summary.status == 'incomplete_validated'
-              ? HaccpTone.warning
-              : HaccpTone.ok)
+            ? HaccpTone.warning
+            : HaccpTone.ok)
         : started
-        ? HaccpTone.info
-        : HaccpTone.neutral;
+            ? HaccpTone.info
+            : HaccpTone.neutral;
 
     final remainingTemps =
         (summary.temperaturesTotal - summary.temperaturesDone).clamp(0, 9999);
-    final remainingCleaning = (summary.cleaningTotal - summary.cleaningDone)
-        .clamp(0, 9999);
+    final remainingCleaning =
+        (summary.cleaningTotal - summary.cleaningDone).clamp(0, 9999);
 
     return HaccpProgressCard(
-      title: sessionType == 'opening'
-          ? 'HACCP — Ouverture'
-          : 'HACCP — Fermeture',
+      title:
+          sessionType == 'opening' ? 'HACCP — Ouverture' : 'HACCP — Fermeture',
       statusLabel: _statusLabel(summary.status),
       tone: tone,
       done: done,
@@ -585,14 +584,13 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
     if (entry == null) return;
 
     try {
-      final saveResult = await ref
-          .read(haccpOfflineServiceProvider)
-          .logTemperature(
-            widget.sessionId,
-            equipmentId: equipment.id,
-            measuredTemp: entry['temp'] as double,
-            correctiveAction: entry['action'] as String?,
-          );
+      final saveResult =
+          await ref.read(haccpOfflineServiceProvider).logTemperature(
+                widget.sessionId,
+                equipmentId: equipment.id,
+                measuredTemp: entry['temp'] as double,
+                correctiveAction: entry['action'] as String?,
+              );
       ref.invalidate(haccpStatusProvider);
       ref.invalidate(haccpTemperatureLogsProvider(widget.sessionId));
 
@@ -665,12 +663,10 @@ class _TemperatureSectionState extends ConsumerState<_TemperatureSection> {
             ),
             data: (logs) {
               final loggedIds = logs.map((l) => l.equipmentId).toSet();
-              final todo = filtered
-                  .where((e) => !loggedIds.contains(e.id))
-                  .toList();
-              final doneList = filtered
-                  .where((e) => loggedIds.contains(e.id))
-                  .toList();
+              final todo =
+                  filtered.where((e) => !loggedIds.contains(e.id)).toList();
+              final doneList =
+                  filtered.where((e) => loggedIds.contains(e.id)).toList();
               Widget tile(HaccpEquipment equipment) {
                 final done = loggedIds.contains(equipment.id);
                 final log = done
@@ -742,8 +738,8 @@ class _EquipmentTile extends StatelessWidget {
 
   String get _rangeSubtitle =>
       equipment.targetMinTemp == null || equipment.targetMaxTemp == null
-      ? 'À relever'
-      : 'À relever · cible ${equipment.tempRangeLabel}';
+          ? 'À relever'
+          : 'À relever · cible ${equipment.tempRangeLabel}';
 
   @override
   Widget build(BuildContext context) {
@@ -1165,9 +1161,8 @@ class _CleaningSectionState extends ConsumerState<_CleaningSection> {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Material(
-                    color: isDone
-                        ? AppColors.successBg
-                        : HaccpPalette.surfaceWarm,
+                    color:
+                        isDone ? AppColors.successBg : HaccpPalette.surfaceWarm,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -1268,9 +1263,8 @@ class _NonConformitySection extends ConsumerWidget {
       error: (_, __) => const SizedBox.shrink(),
       data: (ncs) {
         // Filtre les NC de cette session
-        final sessionNcs = ncs
-            .where((nc) => nc.sessionId == sessionId)
-            .toList();
+        final sessionNcs =
+            ncs.where((nc) => nc.sessionId == sessionId).toList();
         if (sessionNcs.isEmpty) return const SizedBox.shrink();
 
         return Padding(
@@ -1501,9 +1495,7 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
     setState(() => _saving = true);
 
     try {
-      final result = await ref
-          .read(haccpOfflineServiceProvider)
-          .logFryingOil(
+      final result = await ref.read(haccpOfflineServiceProvider).logFryingOil(
             widget.sessionId,
             polarityPercent: _polarity!,
             color: _color,
@@ -1583,8 +1575,8 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                 helperText: _polarity == null
                     ? null
                     : _nonCompliant
-                    ? '⚠️ NC — dépasse 25% : changer l\'huile'
-                    : '✓ Conforme',
+                        ? '⚠️ NC — dépasse 25% : changer l\'huile'
+                        : '✓ Conforme',
                 helperStyle: TextStyle(
                   color: _nonCompliant ? Colors.red : Colors.green,
                   fontWeight: FontWeight.w600,
@@ -1646,8 +1638,8 @@ class _OilInputFormState extends ConsumerState<_OilInputForm> {
                 ),
                 validator: (v) =>
                     _nonCompliant && (v == null || v.trim().isEmpty)
-                    ? 'Requis en cas de NC'
-                    : null,
+                        ? 'Requis en cas de NC'
+                        : null,
               ),
             ],
             const SizedBox(height: AppSpacing.lg),

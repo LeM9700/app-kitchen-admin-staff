@@ -351,10 +351,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
     setState(() => _submitting = true);
     try {
-      final currentEstablishmentId = ref
-          .read(currentEstablishmentProvider)
-          .valueOrNull
-          ?.id;
+      final currentEstablishmentId =
+          ref.read(currentEstablishmentProvider).valueOrNull?.id;
       final draft = ManualOrderDraft(
         idempotencyKey: _newIdempotencyKey(),
         orderType: _orderType,
@@ -370,9 +368,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         promoCode: _emptyToNull(_promoCodeController.text),
         loyaltyCustomerId: _loyaltyCustomer?.id,
         loyaltyRewardId: _selectedLoyaltyRewardId,
-        loyaltyIdentificationMethod: _loyaltyCustomer == null
-            ? null
-            : _loyaltyIdentificationMethod,
+        loyaltyIdentificationMethod:
+            _loyaltyCustomer == null ? null : _loyaltyIdentificationMethod,
         loyaltyOralConfirmed: _loyaltyOralConfirmed,
         note: _emptyToNull(_noteController.text),
         items: _cart.values
@@ -388,9 +385,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             )
             .toList(),
       );
-      final result = await ref
-          .read(ordersRepositoryProvider)
-          .createManualOrder(draft);
+      final result =
+          await ref.read(ordersRepositoryProvider).createManualOrder(draft);
       final receipt = ReceiptBuilder.customerReceipt(result.order);
       final tickets = ReceiptBuilder.kitchenTickets(result.order);
       ref.read(printJobsProvider.notifier).enqueue(receipt);
@@ -423,10 +419,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
   CheckoutValidationResult _validate() {
     final tenant = ref.read(tenantStatusProvider).valueOrNull;
-    final currentEstablishmentId = ref
-        .read(currentEstablishmentProvider)
-        .valueOrNull
-        ?.id;
+    final currentEstablishmentId =
+        ref.read(currentEstablishmentProvider).valueOrNull?.id;
     return validateCheckout(
       CheckoutValidationInput(
         hasItems: _cart.isNotEmpty,
@@ -462,10 +456,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     _loyaltyIdentificationMethod = null;
     _loyaltyOralConfirmed = false;
     _validationMessage = null;
-    _cartEstablishmentId = ref
-        .read(currentEstablishmentProvider)
-        .valueOrNull
-        ?.id;
+    _cartEstablishmentId =
+        ref.read(currentEstablishmentProvider).valueOrNull?.id;
   }
 
   String _newIdempotencyKey() {
@@ -476,14 +468,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     if (!product.isActive || product.available == false) {
       return;
     }
-    final establishmentId = ref
-        .read(currentEstablishmentProvider)
-        .valueOrNull
-        ?.id;
+    final establishmentId =
+        ref.read(currentEstablishmentProvider).valueOrNull?.id;
     CatalogProduct detail;
     try {
-      detail =
-          _productDetails[product.id] ??
+      detail = _productDetails[product.id] ??
           await ref.read(catalogRepositoryProvider).getProduct(product.id);
       _productDetails[product.id] = detail;
     } catch (error) {
@@ -522,9 +511,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   Future<CheckoutCartSelection?> _selectionDialog(
     CatalogProduct product,
   ) async {
-    final variants = product.variants
-        .where((variant) => variant.isActive)
-        .toList();
+    final variants =
+        product.variants.where((variant) => variant.isActive).toList();
     final extras = product.extras.where((extra) => extra.isActive).toList();
     if (variants.isEmpty && extras.isEmpty) {
       return CheckoutCartSelection(product: product);
@@ -556,7 +544,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   children: [
                     Text(
                       product.name,
-                      style: Theme.of(context).textTheme.headlineSmall
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     if (variants.isNotEmpty) ...[
@@ -622,7 +612,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                           const Spacer(),
                           Text(
                             formatMoney(selection.unitPrice),
-                            style: Theme.of(context).textTheme.titleLarge
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                         ],
@@ -675,9 +667,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     }
     setState(() => _loyaltyLoading = true);
     try {
-      final matches = await ref
-          .read(loyaltyRepositoryProvider)
-          .searchStaffCustomers(query);
+      final matches =
+          await ref.read(loyaltyRepositoryProvider).searchStaffCustomers(query);
       if (!mounted) {
         return;
       }
@@ -713,9 +704,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     }
     setState(() => _loyaltyLoading = true);
     try {
-      final wallet = await ref
-          .read(loyaltyRepositoryProvider)
-          .identifyQr(token);
+      final wallet =
+          await ref.read(loyaltyRepositoryProvider).identifyQr(token);
       if (!mounted) {
         return;
       }
@@ -828,13 +818,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     }
     setState(() => _loyaltyLoading = true);
     try {
-      final wallet = await ref
-          .read(loyaltyRepositoryProvider)
-          .createStaffCustomer(
-            phone: result.phone,
-            firstName: result.firstName,
-            lastName: result.lastName,
-          );
+      final wallet =
+          await ref.read(loyaltyRepositoryProvider).createStaffCustomer(
+                phone: result.phone,
+                firstName: result.firstName,
+                lastName: result.lastName,
+              );
       if (!mounted) {
         return;
       }
@@ -900,8 +889,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 'Commande #${result.order.id} encaissee',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+                      fontWeight: FontWeight.w900,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -994,9 +983,9 @@ class _CheckoutHeader extends StatelessWidget {
         Text(
           'Caisse',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w900,
-            color: _posInk,
-          ),
+                fontWeight: FontWeight.w900,
+                color: _posInk,
+              ),
         ),
         const SizedBox(height: 2),
         Text(
@@ -1099,14 +1088,13 @@ class _CheckoutCatalog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categories =
-        allProducts
-            .map((product) => product.categoryName?.trim())
-            .whereType<String>()
-            .where((name) => name.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
+    final categories = allProducts
+        .map((product) => product.categoryName?.trim())
+        .whereType<String>()
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
 
     return Column(
       children: [
@@ -1204,9 +1192,9 @@ class _ProductTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: _posMuted,
-                  fontWeight: FontWeight.w800,
-                ),
+                      color: _posMuted,
+                      fontWeight: FontWeight.w800,
+                    ),
               ),
             const SizedBox(height: 4),
             Expanded(
@@ -1215,9 +1203,9 @@ class _ProductTile extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: _posInk,
-                ),
+                      fontWeight: FontWeight.w900,
+                      color: _posInk,
+                    ),
               ),
             ),
             Row(
@@ -1229,9 +1217,9 @@ class _ProductTile extends StatelessWidget {
                     child: Text(
                       formatMoney(product.basePrice),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.accent,
-                      ),
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.accent,
+                          ),
                     ),
                   ),
                 ),
@@ -1368,8 +1356,7 @@ class _CartPanel extends StatelessWidget {
           _WarningBanner(
             icon: Icons.lock_clock_outlined,
             title: 'Restaurant ferme',
-            message:
-                tenantStatus.valueOrNull?.message ??
+            message: tenantStatus.valueOrNull?.message ??
                 'Les commandes manuelles sont indisponibles.',
           ),
         _ContextSection(
@@ -1683,11 +1670,11 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
                       if (widget.customer!.pendingProfileCompletion)
                         Text(
                           'Profil a completer dans l app client',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppColors.warning,
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.warning,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                         ),
                     ],
                   ),
@@ -2193,8 +2180,8 @@ class _PaymentSection extends StatelessWidget {
                       child: Text(
                         'Montant insuffisant',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.danger,
-                        ),
+                              color: AppColors.danger,
+                            ),
                       ),
                     ),
                 ],
@@ -2239,17 +2226,17 @@ class _CheckoutFooter extends StatelessWidget {
               Text(
                 'TOTAL ESTIME',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: _posMuted,
-                  fontWeight: FontWeight.w900,
-                ),
+                      color: _posMuted,
+                      fontWeight: FontWeight.w900,
+                    ),
               ),
               const Spacer(),
               Text(
                 formatMoney(total),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: _posInk,
-                ),
+                      fontWeight: FontWeight.w900,
+                      color: _posInk,
+                    ),
               ),
             ],
           ),
@@ -2563,9 +2550,8 @@ class _ExpandableSectionState extends State<_ExpandableSection> {
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: widget.child,
             ),
-            crossFadeState: _open
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+            crossFadeState:
+                _open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 160),
           ),
         ],
@@ -2873,9 +2859,9 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-        color: _posMuted,
-        fontWeight: FontWeight.w900,
-      ),
+            color: _posMuted,
+            fontWeight: FontWeight.w900,
+          ),
     );
   }
 }

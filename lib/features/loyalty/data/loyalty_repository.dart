@@ -30,8 +30,8 @@ final loyaltyStatsProvider = FutureProvider.autoDispose<LoyaltyStats>((ref) {
 
 final loyaltyAuditProvider =
     FutureProvider.autoDispose<List<LoyaltyAuditEntry>>((ref) {
-      return ref.watch(loyaltyRepositoryProvider).audit();
-    });
+  return ref.watch(loyaltyRepositoryProvider).audit();
+});
 
 class LoyaltyRepository {
   const LoyaltyRepository(this._apiClient);
@@ -300,9 +300,8 @@ class LoyaltyRule {
       id: readInt(json['id']),
       name: json['name']?.toString() ?? '',
       ruleType: json['rule_type']?.toString() ?? '',
-      categoryId: json['category_id'] == null
-          ? null
-          : readInt(json['category_id']),
+      categoryId:
+          json['category_id'] == null ? null : readInt(json['category_id']),
       multiplier: readDouble(json['multiplier']),
       priority: readInt(json['priority']),
       isActive: readBool(json['is_active'], fallback: true),
@@ -338,9 +337,8 @@ class LoyaltyReward {
       discountAmount: json['discount_amount'] == null
           ? null
           : readDouble(json['discount_amount']),
-      productId: json['product_id'] == null
-          ? null
-          : readInt(json['product_id']),
+      productId:
+          json['product_id'] == null ? null : readInt(json['product_id']),
       isActive: readBool(json['is_active'], fallback: true),
     );
   }
@@ -511,9 +509,8 @@ class LoyaltyAuditEntry {
   factory LoyaltyAuditEntry.fromJson(Map<String, dynamic> json) {
     return LoyaltyAuditEntry(
       id: readInt(json['id']),
-      actorUserId: json['actor_user_id'] == null
-          ? null
-          : readInt(json['actor_user_id']),
+      actorUserId:
+          json['actor_user_id'] == null ? null : readInt(json['actor_user_id']),
       actorEmail: json['actor_email']?.toString(),
       action: json['action']?.toString() ?? '',
       targetType: json['target_type']?.toString() ?? '',

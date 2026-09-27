@@ -12,13 +12,15 @@ final loyaltyConfigProvider = FutureProvider.autoDispose<LoyaltyConfig>((ref) {
   return ref.watch(loyaltyRepositoryProvider).config();
 });
 
-final loyaltyRulesProvider =
-    FutureProvider.autoDispose<List<LoyaltyRule>>((ref) {
+final loyaltyRulesProvider = FutureProvider.autoDispose<List<LoyaltyRule>>((
+  ref,
+) {
   return ref.watch(loyaltyRepositoryProvider).rules();
 });
 
-final loyaltyRewardsProvider =
-    FutureProvider.autoDispose<List<LoyaltyReward>>((ref) {
+final loyaltyRewardsProvider = FutureProvider.autoDispose<List<LoyaltyReward>>((
+  ref,
+) {
   return ref.watch(loyaltyRepositoryProvider).rewards();
 });
 
@@ -28,8 +30,8 @@ final loyaltyStatsProvider = FutureProvider.autoDispose<LoyaltyStats>((ref) {
 
 final loyaltyAuditProvider =
     FutureProvider.autoDispose<List<LoyaltyAuditEntry>>((ref) {
-  return ref.watch(loyaltyRepositoryProvider).audit();
-});
+      return ref.watch(loyaltyRepositoryProvider).audit();
+    });
 
 class LoyaltyRepository {
   const LoyaltyRepository(this._apiClient);
@@ -173,11 +175,7 @@ class LoyaltyRepository {
   Future<List<LoyaltyAuditEntry>> audit({int pageSize = 20}) async {
     final response = await _apiClient.get(
       ApiEndpoints.adminCustomerAudit,
-      queryParameters: {
-        'loyalty_only': true,
-        'page': 1,
-        'page_size': pageSize,
-      },
+      queryParameters: {'loyalty_only': true, 'page': 1, 'page_size': pageSize},
     );
     return PaginatedResult.fromJson(
       readMap(response.data),
@@ -199,9 +197,8 @@ class LoyaltyRepository {
     return (data['items'] as List? ?? const [])
         .whereType<Map>()
         .map(
-          (value) => LoyaltyStaffCustomer.fromJson(
-            Map<String, dynamic>.from(value),
-          ),
+          (value) =>
+              LoyaltyStaffCustomer.fromJson(Map<String, dynamic>.from(value)),
         )
         .toList();
   }
@@ -228,11 +225,7 @@ class LoyaltyRepository {
   }) async {
     final response = await _apiClient.post(
       ApiEndpoints.loyaltyStaffCustomers,
-      data: {
-        'phone': phone,
-        'first_name': firstName,
-        'last_name': lastName,
-      },
+      data: {'phone': phone, 'first_name': firstName, 'last_name': lastName},
     );
     return LoyaltyStaffWallet.fromJson(readMap(response.data));
   }
@@ -245,9 +238,8 @@ class LoyaltyRepository {
     return (readMap(response.data)['items'] as List? ?? const [])
         .whereType<Map>()
         .map(
-          (value) => LoyaltyTransaction.fromJson(
-            Map<String, dynamic>.from(value),
-          ),
+          (value) =>
+              LoyaltyTransaction.fromJson(Map<String, dynamic>.from(value)),
         )
         .toList();
   }
@@ -308,8 +300,9 @@ class LoyaltyRule {
       id: readInt(json['id']),
       name: json['name']?.toString() ?? '',
       ruleType: json['rule_type']?.toString() ?? '',
-      categoryId:
-          json['category_id'] == null ? null : readInt(json['category_id']),
+      categoryId: json['category_id'] == null
+          ? null
+          : readInt(json['category_id']),
       multiplier: readDouble(json['multiplier']),
       priority: readInt(json['priority']),
       isActive: readBool(json['is_active'], fallback: true),
@@ -345,8 +338,9 @@ class LoyaltyReward {
       discountAmount: json['discount_amount'] == null
           ? null
           : readDouble(json['discount_amount']),
-      productId:
-          json['product_id'] == null ? null : readInt(json['product_id']),
+      productId: json['product_id'] == null
+          ? null
+          : readInt(json['product_id']),
       isActive: readBool(json['is_active'], fallback: true),
     );
   }
@@ -440,18 +434,13 @@ class LoyaltyStaffCustomer {
       points: readInt(json['points']),
       availablePoints: readInt(json['available_points']),
       phoneVerified: readBool(json['phone_verified']),
-      pendingProfileCompletion: readBool(
-        json['pending_profile_completion'],
-      ),
+      pendingProfileCompletion: readBool(json['pending_profile_completion']),
     );
   }
 }
 
 class LoyaltyStaffWallet {
-  const LoyaltyStaffWallet({
-    required this.customer,
-    required this.rewards,
-  });
+  const LoyaltyStaffWallet({required this.customer, required this.rewards});
 
   final LoyaltyStaffCustomer customer;
   final List<LoyaltyReward> rewards;
@@ -462,9 +451,7 @@ class LoyaltyStaffWallet {
       rewards: (json['rewards'] as List? ?? const [])
           .whereType<Map>()
           .map(
-            (value) => LoyaltyReward.fromJson(
-              Map<String, dynamic>.from(value),
-            ),
+            (value) => LoyaltyReward.fromJson(Map<String, dynamic>.from(value)),
           )
           .toList(),
     );

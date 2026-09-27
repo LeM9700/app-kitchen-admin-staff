@@ -108,8 +108,7 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                   const AppFeedback(
                     kind: AppFeedbackKind.forbidden,
                     title: 'Configuration reservee aux admins',
-                    message:
-                        'La consultation client reste accessible aux roles staff.',
+                    message: 'La consultation client reste accessible aux roles staff.',
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _customerLookup(context, ref),
@@ -190,8 +189,9 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                                         kind: AppFeedbackKind.error,
                                         title: 'Configuration indisponible',
                                         message: _errorMessage(error),
-                                        onRetry: () => ref
-                                            .invalidate(loyaltyConfigProvider),
+                                        onRetry: () => ref.invalidate(
+                                          loyaltyConfigProvider,
+                                        ),
                                       ),
                                     ) ??
                                     const SizedBox.shrink(),
@@ -315,8 +315,9 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                   title: Text(
                     '${transaction.pointsDelta > 0 ? '+' : ''}${transaction.pointsDelta} pts',
                   ),
-                  subtitle:
-                      Text('${transaction.reason} - ${transaction.source}'),
+                  subtitle: Text(
+                    '${transaction.reason} - ${transaction.source}',
+                  ),
                   trailing: Text(formatDateTime(transaction.createdAt)),
                 ),
           ],
@@ -363,12 +364,15 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
     LoyaltyConfig config,
   ) async {
     final base = TextEditingController(text: config.baseRatio.toString());
-    final rate =
-        TextEditingController(text: config.pointsToEuroRate.toString());
-    final cap =
-        TextEditingController(text: config.maxCumulativeMultiplier.toString());
-    final expiry =
-        TextEditingController(text: config.pointsExpiryDays?.toString() ?? '');
+    final rate = TextEditingController(
+      text: config.pointsToEuroRate.toString(),
+    );
+    final cap = TextEditingController(
+      text: config.maxCumulativeMultiplier.toString(),
+    );
+    final expiry = TextEditingController(
+      text: config.pointsExpiryDays?.toString() ?? '',
+    );
     var active = config.isActive;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -388,15 +392,17 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                 ),
                 TextField(
                   controller: base,
-                  decoration:
-                      const InputDecoration(labelText: 'Points par euro'),
+                  decoration: const InputDecoration(
+                    labelText: 'Points par euro',
+                  ),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: rate,
-                  decoration:
-                      const InputDecoration(labelText: 'Valeur du point EUR'),
+                  decoration: const InputDecoration(
+                    labelText: 'Valeur du point EUR',
+                  ),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -410,8 +416,9 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: expiry,
-                  decoration:
-                      const InputDecoration(labelText: 'Expiration jours'),
+                  decoration: const InputDecoration(
+                    labelText: 'Expiration jours',
+                  ),
                   keyboardType: TextInputType.number,
                 ),
               ],
@@ -437,11 +444,15 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
       return;
     }
     try {
-      await ref.read(loyaltyRepositoryProvider).updateConfig(
+      await ref
+          .read(loyaltyRepositoryProvider)
+          .updateConfig(
             baseRatio: _double(base.text, fallback: config.baseRatio),
             pointsExpiryDays: int.tryParse(expiry.text),
-            pointsToEuroRate:
-                _double(rate.text, fallback: config.pointsToEuroRate),
+            pointsToEuroRate: _double(
+              rate.text,
+              fallback: config.pointsToEuroRate,
+            ),
             maxCumulativeMultiplier: _double(
               cap.text,
               fallback: config.maxCumulativeMultiplier,
@@ -498,8 +509,9 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: multiplier,
-                  decoration:
-                      const InputDecoration(labelText: 'Multiplicateur'),
+                  decoration: const InputDecoration(
+                    labelText: 'Multiplicateur',
+                  ),
                   keyboardType: TextInputType.number,
                 ),
               ],
@@ -529,7 +541,9 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
       return;
     }
     try {
-      await ref.read(loyaltyRepositoryProvider).createRule(
+      await ref
+          .read(loyaltyRepositoryProvider)
+          .createRule(
             name: name.text.trim(),
             ruleType: type,
             multiplier: _double(multiplier.text, fallback: 2),
@@ -601,7 +615,9 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
       return;
     }
     try {
-      await ref.read(loyaltyRepositoryProvider).createReward(
+      await ref
+          .read(loyaltyRepositoryProvider)
+          .createReward(
             name: name.text.trim(),
             rewardType: 'discount_euros',
             pointsRequired: int.tryParse(points.text) ?? 100,
@@ -664,10 +680,7 @@ class _LoyaltyStats extends StatelessWidget {
 }
 
 class _ConfigPanel extends StatelessWidget {
-  const _ConfigPanel({
-    required this.config,
-    required this.onEdit,
-  });
+  const _ConfigPanel({required this.config, required this.onEdit});
 
   final LoyaltyConfig config;
   final VoidCallback onEdit;
@@ -756,10 +769,7 @@ class _RulesPanel extends ConsumerWidget {
                             try {
                               await ref
                                   .read(loyaltyRepositoryProvider)
-                                  .updateRule(
-                                    ruleId: rule.id,
-                                    isActive: value,
-                                  );
+                                  .updateRule(ruleId: rule.id, isActive: value);
                               ref.invalidate(loyaltyRulesProvider);
                             } catch (error) {
                               if (context.mounted) {
@@ -911,7 +921,8 @@ class _AuditRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metadata = entry.metadata;
-    final actor = entry.actorEmail ??
+    final actor =
+        entry.actorEmail ??
         (entry.actorUserId == null ? 'Systeme' : 'Staff #${entry.actorUserId}');
     final method = metadata['loyalty_identification_method']?.toString();
     final oralConfirmed = metadata['loyalty_oral_confirmed'] == true;
@@ -949,10 +960,7 @@ class _AuditRow extends StatelessWidget {
 }
 
 class _RuleRow extends StatelessWidget {
-  const _RuleRow({
-    required this.rule,
-    required this.onToggle,
-  });
+  const _RuleRow({required this.rule, required this.onToggle});
 
   final LoyaltyRule rule;
   final ValueChanged<bool> onToggle;
@@ -979,10 +987,7 @@ class _RuleRow extends StatelessWidget {
 }
 
 class _RewardRow extends StatelessWidget {
-  const _RewardRow({
-    required this.reward,
-    required this.onToggle,
-  });
+  const _RewardRow({required this.reward, required this.onToggle});
 
   final LoyaltyReward reward;
   final ValueChanged<bool> onToggle;
@@ -1018,8 +1023,9 @@ class _MiniMetric extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 140, minHeight: 64),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          border:
-              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Padding(
@@ -1076,13 +1082,11 @@ String _rewardLabel(LoyaltyReward reward) {
 IconData _auditIcon(String action) {
   return switch (action) {
     'loyalty_staff_phone_search' ||
-    'loyalty_staff_search_too_short' =>
-      Icons.phone_in_talk_outlined,
-    'loyalty_staff_qr_identified' || 'loyalty_qr_generated' =>
-      Icons.qr_code_2_outlined,
+    'loyalty_staff_search_too_short' => Icons.phone_in_talk_outlined,
+    'loyalty_staff_qr_identified' ||
+    'loyalty_qr_generated' => Icons.qr_code_2_outlined,
     'loyalty_staff_customer_created' ||
-    'loyalty_staff_customer_reused' =>
-      Icons.person_add_alt_1_outlined,
+    'loyalty_staff_customer_reused' => Icons.person_add_alt_1_outlined,
     'loyalty_staff_signup_sms_sent' => Icons.sms_outlined,
     'loyalty_staff_reward_applied' => Icons.redeem_outlined,
     'loyalty_staff_wallet_viewed' => Icons.account_balance_wallet_outlined,

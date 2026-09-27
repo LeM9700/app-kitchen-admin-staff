@@ -85,8 +85,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<Establishment?>>(currentEstablishmentProvider,
-        (previous, next) {
+    ref.listen<AsyncValue<Establishment?>>(currentEstablishmentProvider, (
+      previous,
+      next,
+    ) {
       final previousId = previous?.valueOrNull?.id;
       final nextId = next.valueOrNull?.id;
       if (previousId == null || nextId == null || previousId == nextId) {
@@ -349,8 +351,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
     setState(() => _submitting = true);
     try {
-      final currentEstablishmentId =
-          ref.read(currentEstablishmentProvider).valueOrNull?.id;
+      final currentEstablishmentId = ref
+          .read(currentEstablishmentProvider)
+          .valueOrNull
+          ?.id;
       final draft = ManualOrderDraft(
         idempotencyKey: _newIdempotencyKey(),
         orderType: _orderType,
@@ -384,8 +388,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             )
             .toList(),
       );
-      final result =
-          await ref.read(ordersRepositoryProvider).createManualOrder(draft);
+      final result = await ref
+          .read(ordersRepositoryProvider)
+          .createManualOrder(draft);
       final receipt = ReceiptBuilder.customerReceipt(result.order);
       final tickets = ReceiptBuilder.kitchenTickets(result.order);
       ref.read(printJobsProvider.notifier).enqueue(receipt);
@@ -418,8 +423,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
   CheckoutValidationResult _validate() {
     final tenant = ref.read(tenantStatusProvider).valueOrNull;
-    final currentEstablishmentId =
-        ref.read(currentEstablishmentProvider).valueOrNull?.id;
+    final currentEstablishmentId = ref
+        .read(currentEstablishmentProvider)
+        .valueOrNull
+        ?.id;
     return validateCheckout(
       CheckoutValidationInput(
         hasItems: _cart.isNotEmpty,
@@ -455,8 +462,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     _loyaltyIdentificationMethod = null;
     _loyaltyOralConfirmed = false;
     _validationMessage = null;
-    _cartEstablishmentId =
-        ref.read(currentEstablishmentProvider).valueOrNull?.id;
+    _cartEstablishmentId = ref
+        .read(currentEstablishmentProvider)
+        .valueOrNull
+        ?.id;
   }
 
   String _newIdempotencyKey() {
@@ -467,11 +476,14 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     if (!product.isActive || product.available == false) {
       return;
     }
-    final establishmentId =
-        ref.read(currentEstablishmentProvider).valueOrNull?.id;
+    final establishmentId = ref
+        .read(currentEstablishmentProvider)
+        .valueOrNull
+        ?.id;
     CatalogProduct detail;
     try {
-      detail = _productDetails[product.id] ??
+      detail =
+          _productDetails[product.id] ??
           await ref.read(catalogRepositoryProvider).getProduct(product.id);
       _productDetails[product.id] = detail;
     } catch (error) {
@@ -510,8 +522,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   Future<CheckoutCartSelection?> _selectionDialog(
     CatalogProduct product,
   ) async {
-    final variants =
-        product.variants.where((variant) => variant.isActive).toList();
+    final variants = product.variants
+        .where((variant) => variant.isActive)
+        .toList();
     final extras = product.extras.where((extra) => extra.isActive).toList();
     if (variants.isEmpty && extras.isEmpty) {
       return CheckoutCartSelection(product: product);
@@ -543,9 +556,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   children: [
                     Text(
                       product.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
+                      style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     if (variants.isNotEmpty) ...[
@@ -611,9 +622,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                           const Spacer(),
                           Text(
                             formatMoney(selection.unitPrice),
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                         ],
@@ -666,8 +675,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     }
     setState(() => _loyaltyLoading = true);
     try {
-      final matches =
-          await ref.read(loyaltyRepositoryProvider).searchStaffCustomers(query);
+      final matches = await ref
+          .read(loyaltyRepositoryProvider)
+          .searchStaffCustomers(query);
       if (!mounted) {
         return;
       }
@@ -703,8 +713,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     }
     setState(() => _loyaltyLoading = true);
     try {
-      final wallet =
-          await ref.read(loyaltyRepositoryProvider).identifyQr(token);
+      final wallet = await ref
+          .read(loyaltyRepositoryProvider)
+          .identifyQr(token);
       if (!mounted) {
         return;
       }
@@ -817,12 +828,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     }
     setState(() => _loyaltyLoading = true);
     try {
-      final wallet =
-          await ref.read(loyaltyRepositoryProvider).createStaffCustomer(
-                phone: result.phone,
-                firstName: result.firstName,
-                lastName: result.lastName,
-              );
+      final wallet = await ref
+          .read(loyaltyRepositoryProvider)
+          .createStaffCustomer(
+            phone: result.phone,
+            firstName: result.firstName,
+            lastName: result.lastName,
+          );
       if (!mounted) {
         return;
       }
@@ -857,9 +869,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _showSuccessSheet({
@@ -887,18 +898,14 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               Text(
                 'Commande #${result.order.id} encaissee',
                 textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
+                style: Theme.of(context).textTheme.headlineSmall
                     ?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 8),
               Text(
                 formatMoney(result.order.total),
                 textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .displaySmall
+                style: Theme.of(context).textTheme.displaySmall
                     ?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 16),
@@ -948,10 +955,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Recu client'),
-        content: SizedBox(
-          width: 420,
-          child: SelectableText(receiptContent),
-        ),
+        content: SizedBox(width: 420, child: SelectableText(receiptContent)),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(context),
@@ -986,9 +990,7 @@ class _CheckoutHeader extends StatelessWidget {
       children: [
         Text(
           'Caisse',
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
+          style: Theme.of(context).textTheme.headlineSmall
               ?.copyWith(fontWeight: FontWeight.w900, color: _posInk),
         ),
         const SizedBox(height: 2),
@@ -996,9 +998,7 @@ class _CheckoutHeader extends StatelessWidget {
           establishmentName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
+          style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: _posMuted),
         ),
       ],
@@ -1093,13 +1093,14 @@ class _CheckoutCatalog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categories = allProducts
-        .map((product) => product.categoryName?.trim())
-        .whereType<String>()
-        .where((name) => name.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final categories =
+        allProducts
+            .map((product) => product.categoryName?.trim())
+            .whereType<String>()
+            .where((name) => name.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
 
     return Column(
       children: [
@@ -1172,10 +1173,7 @@ class _CheckoutCatalog extends StatelessWidget {
 }
 
 class _ProductTile extends StatelessWidget {
-  const _ProductTile({
-    required this.product,
-    required this.onTap,
-  });
+  const _ProductTile({required this.product, required this.onTap});
 
   final CatalogProduct product;
   final VoidCallback onTap;
@@ -1199,9 +1197,7 @@ class _ProductTile extends StatelessWidget {
                 product.categoryName!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
+                style: Theme.of(context).textTheme.labelSmall
                     ?.copyWith(color: _posMuted, fontWeight: FontWeight.w800),
               ),
             const SizedBox(height: 4),
@@ -1210,10 +1206,8 @@ class _ProductTile extends StatelessWidget {
                 product.name,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: _posInk,
-                    ),
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w900, color: _posInk),
               ),
             ),
             Row(
@@ -1225,9 +1219,9 @@ class _ProductTile extends StatelessWidget {
                     child: Text(
                       formatMoney(product.basePrice),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.accent,
-                          ),
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.accent,
+                      ),
                     ),
                   ),
                 ),
@@ -1340,17 +1334,13 @@ class _CartPanel extends StatelessWidget {
           children: [
             Text(
               'Commande',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
+              style: Theme.of(context).textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.w900),
             ),
             const Spacer(),
             Text(
               '${lines.fold<int>(0, (sum, line) => sum + line.quantity)} article(s)',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
+              style: Theme.of(context).textTheme.labelLarge
                   ?.copyWith(color: _posMuted),
             ),
           ],
@@ -1366,7 +1356,8 @@ class _CartPanel extends StatelessWidget {
           _WarningBanner(
             icon: Icons.lock_clock_outlined,
             title: 'Restaurant ferme',
-            message: tenantStatus.valueOrNull?.message ??
+            message:
+                tenantStatus.valueOrNull?.message ??
                 'Les commandes manuelles sont indisponibles.',
           ),
         _ContextSection(
@@ -1546,8 +1537,7 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
             child: _WarningBanner(
               icon: Icons.wifi_off_outlined,
               title: 'Fidelite hors ligne',
-              message:
-                  'Recherche, QR et creation client sont indisponibles sans serveur.',
+              message: 'Recherche, QR et creation client sont indisponibles sans serveur.',
             ),
           ),
         if (widget.customer == null) ...[
@@ -1673,19 +1663,17 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
                       const SizedBox(height: 2),
                       Text(
                         '${widget.customer!.maskedPhone ?? 'Telephone verifie'} - ${widget.customer!.availablePoints} pts disponibles',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
+                        style: Theme.of(context).textTheme.bodySmall
                             ?.copyWith(color: _posMuted),
                       ),
                       if (widget.customer!.pendingProfileCompletion)
                         Text(
                           'Profil a completer dans l app client',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.warning,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppColors.warning,
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                     ],
                   ),
@@ -1702,9 +1690,7 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
           if (widget.rewards.isEmpty)
             Text(
               'Aucune recompense utilisable pour ce client.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
+              style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: _posMuted),
             )
           else ...[
@@ -1732,9 +1718,7 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
                 ),
                 subtitle: Text(
                   'Le staff a relu nom, telephone masque, points et recompense avec le client.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
+                  style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: _posMuted),
                 ),
               ),
@@ -1747,10 +1731,7 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
 }
 
 class _LoyaltyCustomerChoice extends StatelessWidget {
-  const _LoyaltyCustomerChoice({
-    required this.customer,
-    required this.onTap,
-  });
+  const _LoyaltyCustomerChoice({required this.customer, required this.onTap});
 
   final LoyaltyStaffCustomer customer;
   final VoidCallback onTap;
@@ -1781,9 +1762,7 @@ class _LoyaltyCustomerChoice extends StatelessWidget {
                   ),
                   Text(
                     '${customer.maskedPhone ?? 'Telephone verifie'} - ${customer.availablePoints} pts',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
+                    style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: _posMuted),
                   ),
                 ],
@@ -1932,9 +1911,7 @@ class _CreateLoyaltyCustomerDialogState
                 alignment: Alignment.centerLeft,
                 child: Text(
                   _error!,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
+                  style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: AppColors.danger),
                 ),
               ),
@@ -2197,9 +2174,7 @@ class _PaymentSection extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'Montant insuffisant',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
+                        style: Theme.of(context).textTheme.bodySmall
                             ?.copyWith(color: AppColors.danger),
                       ),
                     ),
@@ -2244,17 +2219,13 @@ class _CheckoutFooter extends StatelessWidget {
             children: [
               Text(
                 'TOTAL ESTIME',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
+                style: Theme.of(context).textTheme.labelLarge
                     ?.copyWith(color: _posMuted, fontWeight: FontWeight.w900),
               ),
               const Spacer(),
               Text(
                 formatMoney(total),
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
+                style: Theme.of(context).textTheme.headlineSmall
                     ?.copyWith(fontWeight: FontWeight.w900, color: _posInk),
               ),
             ],
@@ -2263,9 +2234,7 @@ class _CheckoutFooter extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               validationMessage!,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
+              style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: AppColors.danger),
             ),
           ],
@@ -2294,10 +2263,7 @@ class _CheckoutFooter extends StatelessWidget {
 }
 
 class _OrderTypeSelector extends StatelessWidget {
-  const _OrderTypeSelector({
-    required this.value,
-    required this.onChanged,
-  });
+  const _OrderTypeSelector({required this.value, required this.onChanged});
 
   final String value;
   final ValueChanged<String> onChanged;
@@ -2455,9 +2421,7 @@ class _CartLineTile extends StatelessWidget {
               children: [
                 Text(
                   '${line.quantity} x ${line.product.name}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
+                  style: Theme.of(context).textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 if (details.isNotEmpty)
@@ -2465,18 +2429,14 @@ class _CartLineTile extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       details.join('\n'),
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
+                      style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: _posMuted),
                     ),
                   ),
                 const SizedBox(height: 5),
                 Text(
                   formatMoney(line.total),
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
+                  style: Theme.of(context).textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ],
@@ -2513,10 +2473,7 @@ class _CartLineTile extends StatelessWidget {
 }
 
 class _QtyButton extends StatelessWidget {
-  const _QtyButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _QtyButton({required this.icon, required this.onTap});
 
   final IconData icon;
   final VoidCallback onTap;
@@ -2579,8 +2536,9 @@ class _ExpandableSectionState extends State<_ExpandableSection> {
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: widget.child,
             ),
-            crossFadeState:
-                _open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: _open
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 160),
           ),
         ],
@@ -2736,10 +2694,7 @@ class _MobileCartBar extends StatelessWidget {
               ),
             ),
           ),
-          FilledButton(
-            onPressed: onOpen,
-            child: const Text('Voir panier'),
-          ),
+          FilledButton(onPressed: onOpen, child: const Text('Voir panier')),
         ],
       ),
     );
@@ -2827,10 +2782,7 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _SuccessRow extends StatelessWidget {
-  const _SuccessRow({
-    required this.icon,
-    required this.label,
-  });
+  const _SuccessRow({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -2893,10 +2845,8 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: _posMuted,
-            fontWeight: FontWeight.w900,
-          ),
+      style: Theme.of(context).textTheme.labelLarge
+          ?.copyWith(color: _posMuted, fontWeight: FontWeight.w900),
     );
   }
 }

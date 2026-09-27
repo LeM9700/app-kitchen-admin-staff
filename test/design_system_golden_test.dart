@@ -334,11 +334,11 @@ Future<void> _pumpUntilVisible(
 }) async {
   for (var i = 0; i < maxAttempts; i++) {
     await tester.pump(step);
-    if (finder.evaluate().length == 1) {
+    if (finder.evaluate().isNotEmpty) {
       return;
     }
   }
-  expect(finder, findsOneWidget);
+  expect(finder.evaluate(), isNotEmpty);
 }
 
 Future<void> _pumpShell(

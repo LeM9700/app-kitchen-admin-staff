@@ -365,9 +365,7 @@ class _StockPageState extends ConsumerState<StockPage> {
       return;
     }
     try {
-      await ref
-          .read(stockRepositoryProvider)
-          .createAdjustmentRequest(
+      await ref.read(stockRepositoryProvider).createAdjustmentRequest(
             ingredientId: ingredient.id,
             quantityDelta: draft.quantityDelta,
             reason: draft.reason,
@@ -596,8 +594,7 @@ class _RecipeDialogState extends State<StockRecipeDialog> {
         return;
       }
       final initialProductId = widget.initialProductId;
-      final productId =
-          initialProductId != null &&
+      final productId = initialProductId != null &&
               products.any((product) => product.id == initialProductId)
           ? initialProductId
           : (products.isEmpty ? null : products.first.id);
@@ -605,9 +602,8 @@ class _RecipeDialogState extends State<StockRecipeDialog> {
         _products = products;
         _ingredients = ingredients;
         _selectedProductId = productId;
-        _selectedIngredientId = _ingredients.isEmpty
-            ? null
-            : _ingredients.first.id;
+        _selectedIngredientId =
+            _ingredients.isEmpty ? null : _ingredients.first.id;
         _selectedUnit = _ingredients.isEmpty
             ? _selectedUnit
             : _normalizedUnit(_ingredients.first.unit);
@@ -726,9 +722,9 @@ class _RecipeDialogState extends State<StockRecipeDialog> {
                       Text(
                         _error!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.danger,
-                          fontWeight: FontWeight.w700,
-                        ),
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                     ],
                   ],
@@ -892,9 +888,8 @@ class _RecipeDialogState extends State<StockRecipeDialog> {
                   Text(
                     total == null ? 'Cout incomplet' : formatMoney(total),
                     style: textTheme.labelLarge?.copyWith(
-                      color: total == null
-                          ? AppColors.warning
-                          : AppColors.success,
+                      color:
+                          total == null ? AppColors.warning : AppColors.success,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1409,8 +1404,8 @@ class _RecipeDialogState extends State<StockRecipeDialog> {
     final filtered = query.length < 3
         ? _products
         : _products
-              .where((product) => product.name.toLowerCase().contains(query))
-              .toList();
+            .where((product) => product.name.toLowerCase().contains(query))
+            .toList();
     final selected = _selectedProduct;
     if (selected == null ||
         filtered.any((product) => product.id == selected.id)) {
@@ -1557,8 +1552,7 @@ class _RecipeDraftLine {
   ) {
     return _RecipeDraftLine(
       ingredientId: line.ingredientId,
-      ingredientName:
-          line.ingredientName ??
+      ingredientName: line.ingredientName ??
           ingredient?.name ??
           'Ingredient #${line.ingredientId}',
       quantity: line.quantity,
@@ -1827,9 +1821,9 @@ class _StockHeader extends StatelessWidget {
                 Text(
                   'Stock',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Wrap(
@@ -1939,9 +1933,9 @@ class _SoftChip extends StatelessWidget {
               label,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary,
-              ),
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textSecondary,
+                  ),
             ),
           ),
         ],
@@ -1967,9 +1961,8 @@ class _StockStatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pending = requests
-        ?.where((request) => request.status == 'pending')
-        .length;
+    final pending =
+        requests?.where((request) => request.status == 'pending').length;
     final ruptureCount = ingredients
         ?.where(
           (ingredient) => stockStatusOf(ingredient) == StockDerivedStatus.out,
@@ -1983,18 +1976,16 @@ class _StockStatsRow extends StatelessWidget {
           value: alerts?.length.toString() ?? '-',
           label: 'stocks faibles',
           icon: Icons.warning_amber_outlined,
-          color: (alerts?.isEmpty ?? true)
-              ? AppColors.success
-              : AppColors.warning,
+          color:
+              (alerts?.isEmpty ?? true) ? AppColors.success : AppColors.warning,
           onTap: () => onFilter(StockLevelFilter.low),
         ),
         _CompactMetric(
           value: ruptureCount?.toString() ?? '-',
           label: 'ruptures',
           icon: Icons.error_outline,
-          color: (ruptureCount ?? 0) == 0
-              ? AppColors.success
-              : AppColors.danger,
+          color:
+              (ruptureCount ?? 0) == 0 ? AppColors.success : AppColors.danger,
           onTap: () => onFilter(StockLevelFilter.out),
         ),
         _CompactMetric(
@@ -2065,18 +2056,18 @@ class _CompactMetric extends StatelessWidget {
                   Text(
                     value,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                        ),
                   ),
                   Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                 ],
               ),
@@ -2105,9 +2096,8 @@ class _StockToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final searchWidth = constraints.maxWidth < 460
-            ? constraints.maxWidth
-            : 340.0;
+        final searchWidth =
+            constraints.maxWidth < 460 ? constraints.maxWidth : 340.0;
         return DsCard(
           child: Wrap(
             spacing: AppSpacing.md,
@@ -2351,9 +2341,8 @@ class _IngredientsPanel extends StatelessWidget {
           }
           return LayoutBuilder(
             builder: (context, constraints) {
-              final width = constraints.maxWidth < 920
-                  ? 920.0
-                  : constraints.maxWidth;
+              final width =
+                  constraints.maxWidth < 920 ? 920.0 : constraints.maxWidth;
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
@@ -2458,8 +2447,8 @@ class _IngredientRow extends StatelessWidget {
                   stockStatusOf(ingredient) == StockDerivedStatus.out
                       ? Icons.error_outline
                       : stockStatusOf(ingredient) == StockDerivedStatus.low
-                      ? Icons.warning_amber_outlined
-                      : Icons.inventory_outlined,
+                          ? Icons.warning_amber_outlined
+                          : Icons.inventory_outlined,
                   color: _stockColor(ingredient),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -2541,9 +2530,9 @@ class _IngredientCard extends StatelessWidget {
           Text(
             '${formatStockQty(ingredient.currentQty)} ${ingredient.unit}',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-            ),
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                ),
           ),
           const SizedBox(height: AppSpacing.sm),
           _StockLevelIndicator(ingredient: ingredient),
@@ -2656,9 +2645,9 @@ class _StockLevelIndicator extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
-          ),
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
         ),
       ],
     );
@@ -2675,23 +2664,23 @@ class _StockStatusBadge extends StatelessWidget {
     final status = stockStatusOf(ingredient);
     return switch (status) {
       StockDerivedStatus.out => const StatusBadge(
-        label: 'Rupture',
-        tone: StatusTone.danger,
-        compact: true,
-        icon: Icons.error_outline,
-      ),
+          label: 'Rupture',
+          tone: StatusTone.danger,
+          compact: true,
+          icon: Icons.error_outline,
+        ),
       StockDerivedStatus.low => const StatusBadge(
-        label: 'Sous seuil',
-        tone: StatusTone.warning,
-        compact: true,
-        icon: Icons.warning_amber_outlined,
-      ),
+          label: 'Sous seuil',
+          tone: StatusTone.warning,
+          compact: true,
+          icon: Icons.warning_amber_outlined,
+        ),
       StockDerivedStatus.normal => const StatusBadge(
-        label: 'OK',
-        tone: StatusTone.success,
-        compact: true,
-        icon: Icons.check_circle_outline,
-      ),
+          label: 'OK',
+          tone: StatusTone.success,
+          compact: true,
+          icon: Icons.check_circle_outline,
+        ),
     };
   }
 }
@@ -2995,7 +2984,9 @@ class _AdjustmentRequestsPanel extends StatelessWidget {
                             if ((request.note ?? '').isNotEmpty)
                               Text(
                                 request.note!,
-                                style: Theme.of(context).textTheme.bodySmall
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
                                     ?.copyWith(color: AppColors.textSecondary),
                               ),
                             if (canReview && request.status == 'pending') ...[
@@ -3115,9 +3106,9 @@ class _StockTableLabel extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-        color: AppColors.textSecondary,
-        fontWeight: FontWeight.w800,
-      ),
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
     );
     if (width == null) {
       return text;
@@ -3145,9 +3136,8 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
   }
 
   void _reload() {
-    _future = ref
-        .read(stockRepositoryProvider)
-        .listBatches(widget.ingredient.id);
+    _future =
+        ref.read(stockRepositoryProvider).listBatches(widget.ingredient.id);
   }
 
   @override
@@ -3168,14 +3158,14 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
                       Text(
                         'Lots et DLC',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                              fontWeight: FontWeight.w900,
+                            ),
                       ),
                       Text(
                         widget.ingredient.name,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                              color: AppColors.textSecondary,
+                            ),
                       ),
                     ],
                   ),
@@ -3223,15 +3213,16 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
                               risk
                                   ? Icons.timer_outlined
                                   : Icons.inventory_2_outlined,
-                              color: risk
-                                  ? AppColors.warning
-                                  : AppColors.infoAlt,
+                              color:
+                                  risk ? AppColors.warning : AppColors.infoAlt,
                             ),
                             const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Text(
                                 '${formatStockQty(batch.quantity)} ${widget.ingredient.unit}',
-                                style: Theme.of(context).textTheme.titleMedium
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
                                     ?.copyWith(fontWeight: FontWeight.w900),
                               ),
                             ),
@@ -3253,7 +3244,9 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
                             children: [
                               Text(
                                 'DLC',
-                                style: Theme.of(context).textTheme.labelMedium
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
                                     ?.copyWith(
                                       color: AppColors.textSecondary,
                                       fontWeight: FontWeight.w900,
@@ -3266,7 +3259,9 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
                         if (batch.openedAt != null)
                           Text(
                             'Ouvert ${formatDateTime(batch.openedAt!)}',
-                            style: Theme.of(context).textTheme.bodySmall
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
                                 ?.copyWith(color: AppColors.textSecondary),
                           ),
                         const SizedBox(height: AppSpacing.sm),
@@ -3276,10 +3271,10 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
                               child: OutlinedButton.icon(
                                 onPressed: batch.status == 'sealed'
                                     ? () => _mutate(
-                                        () => ref
-                                            .read(stockRepositoryProvider)
-                                            .openBatch(batch.id),
-                                      )
+                                          () => ref
+                                              .read(stockRepositoryProvider)
+                                              .openBatch(batch.id),
+                                        )
                                     : null,
                                 icon: const Icon(Icons.lock_open_outlined),
                                 label: const Text('Ouvrir'),
@@ -3353,9 +3348,7 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
       return;
     }
     await _mutate(
-      () => ref
-          .read(stockRepositoryProvider)
-          .createBatch(
+      () => ref.read(stockRepositoryProvider).createBatch(
             ingredientId: widget.ingredient.id,
             quantity: quantity,
             useWithinHoursAfterOpening: int.tryParse(hoursController.text),

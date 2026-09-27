@@ -16,9 +16,7 @@ final stockLevelFilterProvider = StateProvider<StockLevelFilter>((ref) {
 final ingredientsProvider = FutureProvider.autoDispose<List<Ingredient>>((ref) {
   final search = ref.watch(stockSearchProvider).trim();
   final level = ref.watch(stockLevelFilterProvider);
-  return ref
-      .watch(stockRepositoryProvider)
-      .listIngredients(
+  return ref.watch(stockRepositoryProvider).listIngredients(
         pageSize: 100,
         search: search.length >= 2 ? search : null,
         belowThreshold: level == StockLevelFilter.low ? true : null,
@@ -37,15 +35,15 @@ final stockMovementsProvider = FutureProvider.autoDispose<List<StockMovement>>((
 
 final stockMissingRecipesProvider =
     FutureProvider.autoDispose<List<MissingStockRecipe>>((ref) {
-      return ref.watch(stockRepositoryProvider).listMissingRecipes();
-    });
+  return ref.watch(stockRepositoryProvider).listMissingRecipes();
+});
 
 final adjustmentRequestsProvider =
     FutureProvider.autoDispose<List<StockAdjustmentRequest>>((ref) {
-      return ref
-          .watch(stockRepositoryProvider)
-          .listAdjustmentRequests(pageSize: 50);
-    });
+  return ref
+      .watch(stockRepositoryProvider)
+      .listAdjustmentRequests(pageSize: 50);
+});
 
 enum StockLevelFilter { all, low, out }
 
@@ -532,9 +530,8 @@ class MissingStockRecipe {
       recipeType: json['recipe_type']?.toString() ?? 'product',
       targetId: readInt(json['target_id']),
       name: json['name']?.toString() ?? '',
-      productId: json['product_id'] == null
-          ? null
-          : readInt(json['product_id']),
+      productId:
+          json['product_id'] == null ? null : readInt(json['product_id']),
     );
   }
 }

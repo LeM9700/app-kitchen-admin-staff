@@ -445,9 +445,7 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
       return;
     }
     try {
-      await ref
-          .read(loyaltyRepositoryProvider)
-          .updateConfig(
+      await ref.read(loyaltyRepositoryProvider).updateConfig(
             baseRatio: _double(base.text, fallback: config.baseRatio),
             pointsExpiryDays: int.tryParse(expiry.text),
             pointsToEuroRate: _double(
@@ -542,9 +540,7 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
       return;
     }
     try {
-      await ref
-          .read(loyaltyRepositoryProvider)
-          .createRule(
+      await ref.read(loyaltyRepositoryProvider).createRule(
             name: name.text.trim(),
             ruleType: type,
             multiplier: _double(multiplier.text, fallback: 2),
@@ -616,9 +612,7 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
       return;
     }
     try {
-      await ref
-          .read(loyaltyRepositoryProvider)
-          .createReward(
+      await ref.read(loyaltyRepositoryProvider).createReward(
             name: name.text.trim(),
             rewardType: 'discount_euros',
             pointsRequired: int.tryParse(points.text) ?? 100,
@@ -922,8 +916,7 @@ class _AuditRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metadata = entry.metadata;
-    final actor =
-        entry.actorEmail ??
+    final actor = entry.actorEmail ??
         (entry.actorUserId == null ? 'Systeme' : 'Staff #${entry.actorUserId}');
     final method = metadata['loyalty_identification_method']?.toString();
     final oralConfirmed = metadata['loyalty_oral_confirmed'] == true;
@@ -1083,11 +1076,14 @@ String _rewardLabel(LoyaltyReward reward) {
 IconData _auditIcon(String action) {
   return switch (action) {
     'loyalty_staff_phone_search' ||
-    'loyalty_staff_search_too_short' => Icons.phone_in_talk_outlined,
+    'loyalty_staff_search_too_short' =>
+      Icons.phone_in_talk_outlined,
     'loyalty_staff_qr_identified' ||
-    'loyalty_qr_generated' => Icons.qr_code_2_outlined,
+    'loyalty_qr_generated' =>
+      Icons.qr_code_2_outlined,
     'loyalty_staff_customer_created' ||
-    'loyalty_staff_customer_reused' => Icons.person_add_alt_1_outlined,
+    'loyalty_staff_customer_reused' =>
+      Icons.person_add_alt_1_outlined,
     'loyalty_staff_signup_sms_sent' => Icons.sms_outlined,
     'loyalty_staff_reward_applied' => Icons.redeem_outlined,
     'loyalty_staff_wallet_viewed' => Icons.account_balance_wallet_outlined,

@@ -381,8 +381,7 @@ Future<void> _pumpUntilVisible(
   expect(
     finder.evaluate(),
     isNotEmpty,
-    reason:
-        'Timed out waiting for $description to become visible after '
+    reason: 'Timed out waiting for $description to become visible after '
         '${timeout.inMilliseconds}ms.',
   );
 }

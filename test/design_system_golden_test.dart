@@ -173,9 +173,9 @@ void main() {
       overrides: _adminOverrides(),
     );
     await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
-    await tester.pumpAndSettle();
+    await _pumpOverlay(tester);
     await tester.tap(find.text('Modifier').last);
-    await tester.pumpAndSettle();
+    await _pumpOverlay(tester);
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -318,6 +318,14 @@ Future<void> _pumpHrTab(
   );
   await tester.tap(find.text(tab));
   await tester.pumpAndSettle();
+}
+
+// Popup menus and text-input dialogs can keep transient animation/focus work
+// alive long enough for pumpAndSettle() to time out in CI. For golden capture
+// we only need the overlay transition to finish rendering.
+Future<void> _pumpOverlay(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 Future<void> _pumpShell(

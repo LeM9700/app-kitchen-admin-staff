@@ -381,6 +381,13 @@ Future<void> _pumpUntilVisible(
   Duration step = const Duration(milliseconds: 100),
   Duration postVisiblePump = Duration.zero,
 }) async {
+  if (finder.evaluate().isNotEmpty) {
+    if (postVisiblePump > Duration.zero) {
+      await tester.pump(postVisiblePump);
+    }
+    return;
+  }
+
   var elapsed = Duration.zero;
   while (elapsed < timeout) {
     final remaining = timeout - elapsed;

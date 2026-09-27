@@ -869,8 +869,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _showSuccessSheet({
@@ -898,15 +899,17 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               Text(
                 'Commande #${result.order.id} encaissee',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 formatMoney(result.order.total),
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.displaySmall
-                    ?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  context,
+                ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 16),
               _SuccessRow(
@@ -990,16 +993,19 @@ class _CheckoutHeader extends StatelessWidget {
       children: [
         Text(
           'Caisse',
-          style: Theme.of(context).textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w900, color: _posInk),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+            color: _posInk,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           establishmentName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: _posMuted),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: _posMuted),
         ),
       ],
     );
@@ -1197,8 +1203,10 @@ class _ProductTile extends StatelessWidget {
                 product.categoryName!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(color: _posMuted, fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: _posMuted,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             const SizedBox(height: 4),
             Expanded(
@@ -1206,8 +1214,10 @@ class _ProductTile extends StatelessWidget {
                 product.name,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w900, color: _posInk),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: _posInk,
+                ),
               ),
             ),
             Row(
@@ -1334,14 +1344,16 @@ class _CartPanel extends StatelessWidget {
           children: [
             Text(
               'Commande',
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const Spacer(),
             Text(
               '${lines.fold<int>(0, (sum, line) => sum + line.quantity)} article(s)',
-              style: Theme.of(context).textTheme.labelLarge
-                  ?.copyWith(color: _posMuted),
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: _posMuted),
             ),
           ],
         ),
@@ -1537,7 +1549,8 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
             child: _WarningBanner(
               icon: Icons.wifi_off_outlined,
               title: 'Fidelite hors ligne',
-              message: 'Recherche, QR et creation client sont indisponibles sans serveur.',
+              message:
+                  'Recherche, QR et creation client sont indisponibles sans serveur.',
             ),
           ),
         if (widget.customer == null) ...[
@@ -1663,8 +1676,9 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
                       const SizedBox(height: 2),
                       Text(
                         '${widget.customer!.maskedPhone ?? 'Telephone verifie'} - ${widget.customer!.availablePoints} pts disponibles',
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: _posMuted),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: _posMuted),
                       ),
                       if (widget.customer!.pendingProfileCompletion)
                         Text(
@@ -1690,8 +1704,9 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
           if (widget.rewards.isEmpty)
             Text(
               'Aucune recompense utilisable pour ce client.',
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: _posMuted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: _posMuted),
             )
           else ...[
             const _SectionLabel('Recompenses proposees'),
@@ -1718,8 +1733,9 @@ class _LoyaltyCheckoutPanelState extends State<_LoyaltyCheckoutPanel> {
                 ),
                 subtitle: Text(
                   'Le staff a relu nom, telephone masque, points et recompense avec le client.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: _posMuted),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: _posMuted),
                 ),
               ),
             ],
@@ -1762,8 +1778,9 @@ class _LoyaltyCustomerChoice extends StatelessWidget {
                   ),
                   Text(
                     '${customer.maskedPhone ?? 'Telephone verifie'} - ${customer.availablePoints} pts',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: _posMuted),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: _posMuted),
                   ),
                 ],
               ),
@@ -1911,8 +1928,9 @@ class _CreateLoyaltyCustomerDialogState
                 alignment: Alignment.centerLeft,
                 child: Text(
                   _error!,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.danger),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.danger),
                 ),
               ),
             ],
@@ -2174,8 +2192,9 @@ class _PaymentSection extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'Montant insuffisant',
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: AppColors.danger),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.danger,
+                        ),
                       ),
                     ),
                 ],
@@ -2219,14 +2238,18 @@ class _CheckoutFooter extends StatelessWidget {
             children: [
               Text(
                 'TOTAL ESTIME',
-                style: Theme.of(context).textTheme.labelLarge
-                    ?.copyWith(color: _posMuted, fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: _posMuted,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const Spacer(),
               Text(
                 formatMoney(total),
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w900, color: _posInk),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: _posInk,
+                ),
               ),
             ],
           ),
@@ -2234,8 +2257,9 @@ class _CheckoutFooter extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               validationMessage!,
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: AppColors.danger),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.danger),
             ),
           ],
           const SizedBox(height: 12),
@@ -2421,23 +2445,26 @@ class _CartLineTile extends StatelessWidget {
               children: [
                 Text(
                   '${line.quantity} x ${line.product.name}',
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 if (details.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       details.join('\n'),
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: _posMuted),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: _posMuted),
                     ),
                   ),
                 const SizedBox(height: 5),
                 Text(
                   formatMoney(line.total),
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ],
             ),
@@ -2845,8 +2872,10 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: Theme.of(context).textTheme.labelLarge
-          ?.copyWith(color: _posMuted, fontWeight: FontWeight.w900),
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: _posMuted,
+        fontWeight: FontWeight.w900,
+      ),
     );
   }
 }

@@ -34,6 +34,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _goldenSurfaceKey = ValueKey('golden-surface');
+const _overlayTransitionDuration = Duration(milliseconds: 300);
 final _fixedWeek = DateTime(2026, 8, 10);
 
 void main() {
@@ -325,7 +326,7 @@ Future<void> _pumpHrTab(
 // we only need the overlay transition to finish rendering.
 Future<void> _pumpOverlay(WidgetTester tester) async {
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(_overlayTransitionDuration);
 }
 
 Future<void> _pumpShell(

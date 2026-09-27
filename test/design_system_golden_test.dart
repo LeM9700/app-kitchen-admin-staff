@@ -172,14 +172,16 @@ void main() {
       child: const CatalogPage(),
       overrides: _adminOverrides(),
     );
-    await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
-    await tester.pumpAndSettle();
     final editMenuItem = find.widgetWithText(ListTile, 'Modifier');
+    final productEditorDialog = find.byType(AlertDialog);
+    await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
+    await _pumpUntilVisible(tester, editMenuItem);
     expect(editMenuItem, findsOneWidget);
     await tester.ensureVisible(editMenuItem);
     await tester.tap(editMenuItem);
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsOneWidget);
+    await _pumpUntilVisible(tester, productEditorDialog);
+    expect(productEditorDialog, findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 100));
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -322,6 +324,15 @@ Future<void> _pumpHrTab(
   );
   await tester.tap(find.text(tab));
   await tester.pumpAndSettle();
+}
+
+Future<void> _pumpUntilVisible(WidgetTester tester, Finder finder) async {
+  for (var i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+  }
 }
 
 Future<void> _pumpShell(

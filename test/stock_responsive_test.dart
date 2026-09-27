@@ -38,6 +38,7 @@ void main() {
             stockMissingRecipesProvider.overrideWith(
               (ref) async => _missingRecipes,
             ),
+            stockDlcOverviewProvider.overrideWith((ref) async => _dlcOverview),
             adjustmentRequestsProvider.overrideWith((ref) async => _requests),
             currentEstablishmentProvider.overrideWith(
               (ref) async => const Establishment(
@@ -150,3 +151,29 @@ const _missingRecipes = [
     name: 'Supplement mozzarella',
   ),
 ];
+
+const _dlcOverview = StockDlcOverview(
+  counters: StockDlcCounters(
+    totalBatches: 3,
+    regularizeBatchCount: 1,
+    primaryNearCount: 1,
+    secondaryNearCount: 0,
+    tertiaryNearCount: 0,
+    expiredBatchCount: 1,
+    missingOrNoncompliantCheckCount: 1,
+  ),
+  items: [
+    StockDlcItem(
+      batchId: 1,
+      ingredientId: 1,
+      ingredientName: 'Mozzarella',
+      quantity: 1,
+      status: 'expired',
+      severity: 'expired',
+      hasDlcCheck: false,
+      noncompliantCheckCount: 0,
+      dlcLevel: 'primary',
+      blockedReason: 'DLC expiree : Mozzarella',
+    ),
+  ],
+);

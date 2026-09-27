@@ -38,6 +38,11 @@ final stockMissingRecipesProvider =
   return ref.watch(stockRepositoryProvider).listMissingRecipes();
 });
 
+final stockDlcOverviewProvider =
+    FutureProvider.autoDispose<StockDlcOverview>((ref) {
+  return ref.watch(stockRepositoryProvider).getDlcOverview();
+});
+
 final adjustmentRequestsProvider =
     FutureProvider.autoDispose<List<StockAdjustmentRequest>>((ref) {
   return ref
@@ -150,10 +155,23 @@ class StockRepository {
   Future<Ingredient> supply({
     required int ingredientId,
     required double quantity,
+    required DateTime expiresAt,
+    DateTime? receivedAt,
+    int? useWithinHoursAfterOpening,
+    int? tertiaryUseWithinHours,
   }) async {
     final response = await _apiClient.post(
       ApiEndpoints.stockSupply,
-      data: {'ingredient_id': ingredientId, 'quantity': quantity},
+      data: {
+        'ingredient_id': ingredientId,
+        'quantity': quantity,
+        'expires_at': expiresAt.toIso8601String(),
+        if (receivedAt != null) 'received_at': receivedAt.toIso8601String(),
+        if (useWithinHoursAfterOpening != null)
+          'use_within_hours_after_opening': useWithinHoursAfterOpening,
+        if (tertiaryUseWithinHours != null)
+          'tertiary_use_within_hours': tertiaryUseWithinHours,
+      },
     );
     return Ingredient.fromJson(response.data as Map<String, dynamic>);
   }
@@ -173,16 +191,19 @@ class StockRepository {
   Future<IngredientBatch> createBatch({
     required int ingredientId,
     required double quantity,
-    DateTime? expiresAt,
+    required DateTime expiresAt,
     int? useWithinHoursAfterOpening,
+    int? tertiaryUseWithinHours,
   }) async {
     final response = await _apiClient.post(
       ApiEndpoints.stockIngredientBatches(ingredientId),
       data: {
         'quantity': quantity,
-        if (expiresAt != null) 'expires_at': expiresAt.toIso8601String(),
+        'expires_at': expiresAt.toIso8601String(),
         if (useWithinHoursAfterOpening != null)
           'use_within_hours_after_opening': useWithinHoursAfterOpening,
+        if (tertiaryUseWithinHours != null)
+          'tertiary_use_within_hours': tertiaryUseWithinHours,
       },
     );
     return IngredientBatch.fromJson(response.data as Map<String, dynamic>);
@@ -191,6 +212,20 @@ class StockRepository {
   Future<IngredientBatch> openBatch(int batchId) async {
     final response = await _apiClient.post(
       ApiEndpoints.stockBatchOpen(batchId),
+    );
+    return IngredientBatch.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<IngredientBatch> startBatchUse({
+    required int batchId,
+    int? tertiaryUseWithinHours,
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.stockBatchStartUse(batchId),
+      data: {
+        if (tertiaryUseWithinHours != null)
+          'tertiary_use_within_hours': tertiaryUseWithinHours,
+      },
     );
     return IngredientBatch.fromJson(response.data as Map<String, dynamic>);
   }
@@ -391,6 +426,26 @@ class StockRepository {
         )
         .toList();
   }
+
+  Future<StockDlcOverview> getDlcOverview({
+    int? ingredientId,
+    String? dlcLevel,
+    String? severity,
+    String? status,
+    int horizonHours = 72,
+  }) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.stockDlcOverview,
+      queryParameters: {
+        if (ingredientId != null) 'ingredient_id': ingredientId,
+        if (dlcLevel != null) 'dlc_level': dlcLevel,
+        if (severity != null) 'severity': severity,
+        if (status != null) 'status': status,
+        'horizon_hours': horizonHours,
+      },
+    );
+    return StockDlcOverview.fromJson(response.data as Map<String, dynamic>);
+  }
 }
 
 class Ingredient {
@@ -544,7 +599,15 @@ class IngredientBatch {
     required this.status,
     this.expiresAt,
     this.openedAt,
+    this.primaryExpiresAt,
+    this.secondaryStartedAt,
+    this.secondaryUseWithinHours,
+    this.secondaryExpiresAt,
+    this.tertiaryStartedAt,
+    this.tertiaryUseWithinHours,
+    this.tertiaryExpiresAt,
     this.effectiveExpiresAt,
+    this.effectiveDlcLevel,
     this.createdAt,
   });
 
@@ -554,7 +617,15 @@ class IngredientBatch {
   final String status;
   final DateTime? expiresAt;
   final DateTime? openedAt;
+  final DateTime? primaryExpiresAt;
+  final DateTime? secondaryStartedAt;
+  final int? secondaryUseWithinHours;
+  final DateTime? secondaryExpiresAt;
+  final DateTime? tertiaryStartedAt;
+  final int? tertiaryUseWithinHours;
+  final DateTime? tertiaryExpiresAt;
   final DateTime? effectiveExpiresAt;
+  final String? effectiveDlcLevel;
   final DateTime? createdAt;
 
   factory IngredientBatch.fromJson(Map<String, dynamic> json) {
@@ -565,8 +636,141 @@ class IngredientBatch {
       status: json['status']?.toString() ?? 'sealed',
       expiresAt: readDateTime(json['expires_at']),
       openedAt: readDateTime(json['opened_at']),
+      primaryExpiresAt: readDateTime(json['primary_expires_at']),
+      secondaryStartedAt: readDateTime(json['secondary_started_at']),
+      secondaryUseWithinHours: json['secondary_use_within_hours'] == null
+          ? null
+          : readInt(json['secondary_use_within_hours']),
+      secondaryExpiresAt: readDateTime(json['secondary_expires_at']),
+      tertiaryStartedAt: readDateTime(json['tertiary_started_at']),
+      tertiaryUseWithinHours: json['tertiary_use_within_hours'] == null
+          ? null
+          : readInt(json['tertiary_use_within_hours']),
+      tertiaryExpiresAt: readDateTime(json['tertiary_expires_at']),
       effectiveExpiresAt: readDateTime(json['effective_expires_at']),
+      effectiveDlcLevel: json['effective_dlc_level']?.toString(),
       createdAt: readDateTime(json['created_at']),
+    );
+  }
+}
+
+class StockDlcOverview {
+  const StockDlcOverview({
+    required this.counters,
+    required this.items,
+  });
+
+  final StockDlcCounters counters;
+  final List<StockDlcItem> items;
+
+  factory StockDlcOverview.fromJson(Map<String, dynamic> json) {
+    return StockDlcOverview(
+      counters: StockDlcCounters.fromJson(
+        Map<String, dynamic>.from(json['counters'] as Map? ?? const {}),
+      ),
+      items: (json['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((value) => StockDlcItem.fromJson(Map<String, dynamic>.from(value)))
+          .toList(),
+    );
+  }
+
+  int get criticalCount {
+    return items
+        .where(
+          (item) =>
+              item.severity == 'expired' ||
+              item.severity == 'regularize' ||
+              item.severity == 'critical',
+        )
+        .length;
+  }
+
+  bool get hasCriticalRisk => criticalCount > 0;
+}
+
+class StockDlcCounters {
+  const StockDlcCounters({
+    required this.totalBatches,
+    required this.regularizeBatchCount,
+    required this.primaryNearCount,
+    required this.secondaryNearCount,
+    required this.tertiaryNearCount,
+    required this.expiredBatchCount,
+    required this.missingOrNoncompliantCheckCount,
+  });
+
+  final int totalBatches;
+  final int regularizeBatchCount;
+  final int primaryNearCount;
+  final int secondaryNearCount;
+  final int tertiaryNearCount;
+  final int expiredBatchCount;
+  final int missingOrNoncompliantCheckCount;
+
+  factory StockDlcCounters.fromJson(Map<String, dynamic> json) {
+    return StockDlcCounters(
+      totalBatches: readInt(json['total_batches']),
+      regularizeBatchCount: readInt(json['regularize_batch_count']),
+      primaryNearCount: readInt(json['primary_near_count']),
+      secondaryNearCount: readInt(json['secondary_near_count']),
+      tertiaryNearCount: readInt(json['tertiary_near_count']),
+      expiredBatchCount: readInt(json['expired_batch_count']),
+      missingOrNoncompliantCheckCount:
+          readInt(json['missing_or_noncompliant_check_count']),
+    );
+  }
+}
+
+class StockDlcItem {
+  const StockDlcItem({
+    required this.batchId,
+    required this.ingredientId,
+    required this.ingredientName,
+    required this.quantity,
+    required this.status,
+    required this.severity,
+    required this.hasDlcCheck,
+    required this.noncompliantCheckCount,
+    this.dlcLevel,
+    this.primaryExpiresAt,
+    this.secondaryExpiresAt,
+    this.tertiaryExpiresAt,
+    this.effectiveExpiresAt,
+    this.blockedReason,
+  });
+
+  final int batchId;
+  final int ingredientId;
+  final String ingredientName;
+  final double quantity;
+  final String status;
+  final String severity;
+  final bool hasDlcCheck;
+  final int noncompliantCheckCount;
+  final String? dlcLevel;
+  final DateTime? primaryExpiresAt;
+  final DateTime? secondaryExpiresAt;
+  final DateTime? tertiaryExpiresAt;
+  final DateTime? effectiveExpiresAt;
+  final String? blockedReason;
+
+  factory StockDlcItem.fromJson(Map<String, dynamic> json) {
+    return StockDlcItem(
+      batchId: readInt(json['batch_id']),
+      ingredientId: readInt(json['ingredient_id']),
+      ingredientName: json['ingredient_name']?.toString() ?? '',
+      quantity: readDouble(json['quantity']),
+      status: json['status']?.toString() ?? 'sealed',
+      severity: json['severity']?.toString() ?? 'ok',
+      hasDlcCheck: readBool(json['has_dlc_check']),
+      noncompliantCheckCount: readInt(json['noncompliant_check_count']),
+      dlcLevel: json['dlc_level']?.toString(),
+      primaryExpiresAt: readDateTime(json['primary_expires_at']),
+      secondaryExpiresAt: readDateTime(json['secondary_expires_at']),
+      tertiaryExpiresAt: readDateTime(json['tertiary_expires_at']),
+      effectiveExpiresAt: readDateTime(json['effective_expires_at']),
+      blockedReason: json['blocked_reason']?.toString(),
     );
   }
 }

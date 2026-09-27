@@ -38,6 +38,7 @@ class _StockPageState extends ConsumerState<StockPage> {
   Widget build(BuildContext context) {
     final ingredients = ref.watch(ingredientsProvider);
     final alerts = ref.watch(stockAlertsProvider);
+    final dlcOverview = ref.watch(stockDlcOverviewProvider);
     final movements = ref.watch(stockMovementsProvider);
     final missingRecipes = ref.watch(stockMissingRecipesProvider);
     final levelFilter = ref.watch(stockLevelFilterProvider);
@@ -75,9 +76,11 @@ class _StockPageState extends ConsumerState<StockPage> {
               alerts: alerts.valueOrNull,
               requests: requests.valueOrNull,
               movements: movements.valueOrNull,
+              dlcOverview: dlcOverview.valueOrNull,
               onFilter: (filter) {
                 ref.read(stockLevelFilterProvider.notifier).state = filter;
               },
+              onDlcTap: () => context.push('/stock/dlc'),
             ),
             const SizedBox(height: AppSpacing.md),
             _StockToolbar(
@@ -115,6 +118,11 @@ class _StockPageState extends ConsumerState<StockPage> {
                     _StockHealthPanel(
                       alerts: alerts,
                       ingredients: ingredients.valueOrNull,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _DlcOverviewPanel(
+                      overview: dlcOverview,
+                      onAudit: () => context.push('/stock/dlc'),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     _MissingRecipesPanel(
@@ -178,24 +186,26 @@ class _StockPageState extends ConsumerState<StockPage> {
     WidgetRef ref,
     Ingredient ingredient,
   ) async {
-    final controller = TextEditingController();
-    final quantity = await showModalBottomSheet<double>(
+    final draft = await showModalBottomSheet<_SupplyDraft>(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (context) =>
-          _SupplySheet(ingredient: ingredient, controller: controller),
+      builder: (context) => _SupplySheet(ingredient: ingredient),
     );
-    controller.dispose();
-    if (quantity == null) {
+    if (draft == null) {
       return;
     }
     try {
-      await ref
-          .read(stockRepositoryProvider)
-          .supply(ingredientId: ingredient.id, quantity: quantity);
+      await ref.read(stockRepositoryProvider).supply(
+            ingredientId: ingredient.id,
+            quantity: draft.quantity,
+            expiresAt: draft.expiresAt,
+            useWithinHoursAfterOpening: draft.useWithinHoursAfterOpening,
+            tertiaryUseWithinHours: draft.tertiaryUseWithinHours,
+          );
       ref.invalidate(ingredientsProvider);
       ref.invalidate(stockAlertsProvider);
+      ref.invalidate(stockDlcOverviewProvider);
       ref.invalidate(stockMovementsProvider);
     } catch (error) {
       if (context.mounted) {
@@ -207,12 +217,14 @@ class _StockPageState extends ConsumerState<StockPage> {
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(ingredientsProvider);
     ref.invalidate(stockAlertsProvider);
+    ref.invalidate(stockDlcOverviewProvider);
     ref.invalidate(stockMovementsProvider);
     ref.invalidate(stockMissingRecipesProvider);
     ref.invalidate(adjustmentRequestsProvider);
     await Future.wait([
       ref.read(ingredientsProvider.future),
       ref.read(stockAlertsProvider.future),
+      ref.read(stockDlcOverviewProvider.future),
       ref.read(stockMovementsProvider.future),
       ref.read(stockMissingRecipesProvider.future),
       ref.read(adjustmentRequestsProvider.future),
@@ -398,6 +410,7 @@ class _StockPageState extends ConsumerState<StockPage> {
     );
     ref.invalidate(ingredientsProvider);
     ref.invalidate(stockAlertsProvider);
+    ref.invalidate(stockDlcOverviewProvider);
     ref.invalidate(stockMovementsProvider);
   }
 
@@ -1581,18 +1594,43 @@ class _RecipeDraftLine {
   }
 }
 
+class _SupplyDraft {
+  const _SupplyDraft({
+    required this.quantity,
+    required this.expiresAt,
+    this.useWithinHoursAfterOpening,
+    this.tertiaryUseWithinHours,
+  });
+
+  final double quantity;
+  final DateTime expiresAt;
+  final int? useWithinHoursAfterOpening;
+  final int? tertiaryUseWithinHours;
+}
+
 class _SupplySheet extends StatefulWidget {
-  const _SupplySheet({required this.ingredient, required this.controller});
+  const _SupplySheet({required this.ingredient});
 
   final Ingredient ingredient;
-  final TextEditingController controller;
 
   @override
   State<_SupplySheet> createState() => _SupplySheetState();
 }
 
 class _SupplySheetState extends State<_SupplySheet> {
+  final _quantityController = TextEditingController();
+  final _secondaryHoursController = TextEditingController();
+  final _tertiaryHoursController = TextEditingController();
+  DateTime? _primaryDlc;
   String? _error;
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    _secondaryHoursController.dispose();
+    _tertiaryHoursController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1618,7 +1656,7 @@ class _SupplySheetState extends State<_SupplySheet> {
           ),
           const SizedBox(height: AppSpacing.md),
           TextField(
-            controller: widget.controller,
+            controller: _quantityController,
             autofocus: true,
             decoration: InputDecoration(
               labelText: 'Quantite ajoutee (${widget.ingredient.unit})',
@@ -1628,6 +1666,44 @@ class _SupplySheetState extends State<_SupplySheet> {
             keyboardType: TextInputType.number,
             onSubmitted: (_) => _submit(),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: _pickPrimaryDlc,
+            icon: const Icon(Icons.event_outlined),
+            label: Text(
+              _primaryDlc == null
+                  ? 'DLC primaire obligatoire'
+                  : 'DLC primaire ${formatDateTime(_primaryDlc!)}',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            controller: _secondaryHoursController,
+            decoration: const InputDecoration(
+              labelText: 'DLC secondaire apres ouverture (heures)',
+              prefixIcon: Icon(Icons.lock_open_outlined),
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            controller: _tertiaryHoursController,
+            decoration: const InputDecoration(
+              labelText: 'DLC tertiaire en utilisation (heures)',
+              prefixIcon: Icon(Icons.countertops_outlined),
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              _error!,
+              style: const TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
@@ -1635,7 +1711,7 @@ class _SupplySheetState extends State<_SupplySheet> {
             child: FilledButton.icon(
               onPressed: _submit,
               icon: const Icon(Icons.add),
-              label: const Text('Ajouter au stock'),
+              label: const Text('Creer le lot'),
             ),
           ),
         ],
@@ -1643,9 +1719,26 @@ class _SupplySheetState extends State<_SupplySheet> {
     );
   }
 
+  Future<void> _pickPrimaryDlc() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: now.add(const Duration(days: 730)),
+      initialDate: _primaryDlc ?? now.add(const Duration(days: 1)),
+    );
+    if (picked == null) {
+      return;
+    }
+    setState(() {
+      _primaryDlc = DateTime(picked.year, picked.month, picked.day, 23, 59);
+      _error = null;
+    });
+  }
+
   void _submit() {
     final value = double.tryParse(
-      widget.controller.text.trim().replaceAll(',', '.'),
+      _quantityController.text.trim().replaceAll(',', '.'),
     );
     if (value == null || value <= 0) {
       setState(() {
@@ -1653,7 +1746,45 @@ class _SupplySheetState extends State<_SupplySheet> {
       });
       return;
     }
-    Navigator.pop(context, value);
+    final primaryDlc = _primaryDlc;
+    if (primaryDlc == null) {
+      setState(() {
+        _error = 'La DLC primaire est obligatoire.';
+      });
+      return;
+    }
+    final secondary = _parsePositiveInt(_secondaryHoursController.text);
+    final tertiary = _parsePositiveInt(_tertiaryHoursController.text);
+    if (_secondaryHoursController.text.trim().isNotEmpty && secondary == null) {
+      setState(() {
+        _error = 'La DLC secondaire doit etre un nombre d heures positif.';
+      });
+      return;
+    }
+    if (_tertiaryHoursController.text.trim().isNotEmpty && tertiary == null) {
+      setState(() {
+        _error = 'La DLC tertiaire doit etre un nombre d heures positif.';
+      });
+      return;
+    }
+    Navigator.pop(
+      context,
+      _SupplyDraft(
+        quantity: value,
+        expiresAt: primaryDlc,
+        useWithinHoursAfterOpening: secondary,
+        tertiaryUseWithinHours: tertiary,
+      ),
+    );
+  }
+
+  int? _parsePositiveInt(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final parsed = int.tryParse(trimmed);
+    return parsed == null || parsed <= 0 ? null : parsed;
   }
 }
 
@@ -1950,14 +2081,18 @@ class _StockStatsRow extends StatelessWidget {
     required this.alerts,
     required this.requests,
     required this.movements,
+    required this.dlcOverview,
     required this.onFilter,
+    required this.onDlcTap,
   });
 
   final List<Ingredient>? ingredients;
   final List<Ingredient>? alerts;
   final List<StockAdjustmentRequest>? requests;
   final List<StockMovement>? movements;
+  final StockDlcOverview? dlcOverview;
   final ValueChanged<StockLevelFilter> onFilter;
+  final VoidCallback onDlcTap;
 
   @override
   Widget build(BuildContext context) {
@@ -2000,6 +2135,15 @@ class _StockStatsRow extends StatelessWidget {
           label: 'ajustements',
           icon: Icons.tune_outlined,
           color: (pending ?? 0) == 0 ? AppColors.success : AppColors.warning,
+        ),
+        _CompactMetric(
+          value: dlcCriticalCount(dlcOverview).toString(),
+          label: 'DLC critiques',
+          icon: Icons.health_and_safety_outlined,
+          color: dlcCriticalCount(dlcOverview) == 0
+              ? AppColors.success
+              : AppColors.danger,
+          onTap: onDlcTap,
         ),
         _CompactMetric(
           value: movements?.length.toString() ?? '-',
@@ -2693,6 +2837,52 @@ Color _stockColor(Ingredient ingredient) {
   };
 }
 
+Color _dlcSeverityColor(String severity) {
+  return switch (severity) {
+    'expired' || 'regularize' || 'critical' => AppColors.danger,
+    'warning' => AppColors.warning,
+    _ => AppColors.success,
+  };
+}
+
+IconData _dlcSeverityIcon(String severity) {
+  return switch (severity) {
+    'expired' => Icons.event_busy_outlined,
+    'regularize' => Icons.assignment_late_outlined,
+    'critical' => Icons.error_outline,
+    'warning' => Icons.timer_outlined,
+    _ => Icons.check_circle_outline,
+  };
+}
+
+StatusTone _dlcSeverityTone(String severity) {
+  return switch (severity) {
+    'expired' || 'regularize' || 'critical' => StatusTone.danger,
+    'warning' => StatusTone.warning,
+    _ => StatusTone.success,
+  };
+}
+
+int _dlcDueToday(List<StockDlcItem> items) {
+  final now = DateTime.now();
+  return items.where((item) {
+    final due = item.effectiveExpiresAt?.toLocal();
+    return due != null &&
+        due.year == now.year &&
+        due.month == now.month &&
+        due.day == now.day;
+  }).length;
+}
+
+int _dlcDueWithin(List<StockDlcItem> items, int hours) {
+  final now = DateTime.now();
+  final limit = now.add(Duration(hours: hours));
+  return items.where((item) {
+    final due = item.effectiveExpiresAt?.toLocal();
+    return due != null && due.isAfter(now) && !due.isAfter(limit);
+  }).length;
+}
+
 class _StockHealthPanel extends StatelessWidget {
   const _StockHealthPanel({required this.alerts, required this.ingredients});
 
@@ -2770,6 +2960,182 @@ class _StockHealthPanel extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _DlcOverviewPanel extends StatelessWidget {
+  const _DlcOverviewPanel({
+    required this.overview,
+    required this.onAudit,
+  });
+
+  final AsyncValue<StockDlcOverview> overview;
+  final VoidCallback onAudit;
+
+  @override
+  Widget build(BuildContext context) {
+    return DsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Securite alimentaire / DLC',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onAudit,
+                icon: const Icon(Icons.fact_check_outlined, size: 17),
+                label: const Text('Audit'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          overview.when(
+            data: (value) {
+              final counters = value.counters;
+              final critical = value.criticalCount;
+              final near = counters.primaryNearCount +
+                  counters.secondaryNearCount +
+                  counters.tertiaryNearCount;
+              final today = _dlcDueToday(value.items);
+              final next24h = _dlcDueWithin(value.items, 24);
+              final next48h = _dlcDueWithin(value.items, 48);
+              final next72h = _dlcDueWithin(value.items, 72);
+              if (critical == 0 && near == 0) {
+                return const StatusBadge(
+                  label: 'Aucune DLC critique',
+                  tone: StatusTone.success,
+                  icon: Icons.check_circle_outline,
+                );
+              }
+              final withoutCheck = counters.missingOrNoncompliantCheckCount;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  StatusBadge(
+                    label: critical > 0
+                        ? '$critical action(s) DLC'
+                        : '$near DLC proche(s)',
+                    tone: critical > 0 ? StatusTone.danger : StatusTone.warning,
+                    icon: Icons.health_and_safety_outlined,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      _DlcCountChip(
+                        label: 'Expires',
+                        value: counters.expiredBatchCount,
+                        color: AppColors.danger,
+                      ),
+                      _DlcCountChip(
+                        label: 'A regulariser',
+                        value: counters.regularizeBatchCount,
+                        color: AppColors.danger,
+                      ),
+                      _DlcCountChip(
+                        label: '24-72h',
+                        value: near,
+                        color: AppColors.warning,
+                      ),
+                      _DlcCountChip(
+                        label: 'Aujourd hui',
+                        value: today,
+                        color: today == 0 ? AppColors.success : AppColors.danger,
+                      ),
+                      _DlcCountChip(
+                        label: '24h',
+                        value: next24h,
+                        color:
+                            next24h == 0 ? AppColors.success : AppColors.warning,
+                      ),
+                      _DlcCountChip(
+                        label: '48h',
+                        value: next48h,
+                        color:
+                            next48h == 0 ? AppColors.success : AppColors.warning,
+                      ),
+                      _DlcCountChip(
+                        label: '72h',
+                        value: next72h,
+                        color:
+                            next72h == 0 ? AppColors.success : AppColors.warning,
+                      ),
+                      _DlcCountChip(
+                        label: 'Sans controle',
+                        value: withoutCheck,
+                        color: withoutCheck == 0
+                            ? AppColors.success
+                            : AppColors.warning,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  for (final item in value.items.take(5))
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        _dlcSeverityIcon(item.severity),
+                        color: _dlcSeverityColor(item.severity),
+                      ),
+                      title: Text(
+                        item.ingredientName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        [
+                          dlcLevelLabel(item.dlcLevel),
+                          if (item.blockedReason != null) item.blockedReason!,
+                          if (!item.hasDlcCheck) 'controle manquant',
+                        ].join(' - '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: StatusBadge(
+                        label: dlcSeverityLabel(item.severity),
+                        tone: _dlcSeverityTone(item.severity),
+                        compact: true,
+                      ),
+                    ),
+                ],
+              );
+            },
+            loading: () => const LinearProgressIndicator(),
+            error: (error, stackTrace) =>
+                const Text('Synthese DLC indisponible pour le moment.'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DlcCountChip extends StatelessWidget {
+  const _DlcCountChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      avatar: Icon(Icons.circle, size: 10, color: color),
+      label: Text('$label $value'),
+      visualDensity: VisualDensity.compact,
+      side: BorderSide(color: color.withValues(alpha: .24)),
     );
   }
 }
@@ -3117,6 +3483,37 @@ class _StockTableLabel extends StatelessWidget {
   }
 }
 
+class _BatchDlcChip extends StatelessWidget {
+  const _BatchDlcChip({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final DateTime? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasValue = value != null;
+    return Chip(
+      avatar: Icon(
+        hasValue ? Icons.event_available_outlined : Icons.event_busy_outlined,
+        size: 16,
+        color: hasValue ? AppColors.infoAlt : AppColors.textMuted,
+      ),
+      label: Text(
+        hasValue ? '$label ${formatDateTime(value!)}' : '$label -',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      visualDensity: VisualDensity.compact,
+      side: BorderSide(
+        color: hasValue ? AppColors.infoAlt.withValues(alpha: .24) : AppColors.adminBorder,
+      ),
+    );
+  }
+}
+
 class _BatchesSheet extends ConsumerStatefulWidget {
   const _BatchesSheet({required this.ingredient});
 
@@ -3256,6 +3653,31 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
                             ],
                           ),
                         ],
+                        const SizedBox(height: AppSpacing.xs),
+                        Wrap(
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xs,
+                          children: [
+                            _BatchDlcChip(
+                              label: 'Primaire',
+                              value: batch.primaryExpiresAt ?? batch.expiresAt,
+                            ),
+                            _BatchDlcChip(
+                              label: 'Secondaire',
+                              value: batch.secondaryExpiresAt,
+                            ),
+                            _BatchDlcChip(
+                              label: 'Tertiaire',
+                              value: batch.tertiaryExpiresAt,
+                            ),
+                            StatusBadge(
+                              label: dlcLevelLabel(batch.effectiveDlcLevel),
+                              tone: risk ? StatusTone.warning : StatusTone.neutral,
+                              compact: true,
+                              icon: Icons.flag_outlined,
+                            ),
+                          ],
+                        ),
                         if (batch.openedAt != null)
                           Text(
                             'Ouvert ${formatDateTime(batch.openedAt!)}',
@@ -3265,9 +3687,12 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
                                 ?.copyWith(color: AppColors.textSecondary),
                           ),
                         const SizedBox(height: AppSpacing.sm),
-                        Row(
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
                           children: [
-                            Expanded(
+                            SizedBox(
+                              width: 132,
                               child: OutlinedButton.icon(
                                 onPressed: batch.status == 'sealed'
                                     ? () => _mutate(
@@ -3280,8 +3705,19 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
                                 label: const Text('Ouvrir'),
                               ),
                             ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
+                            SizedBox(
+                              width: 132,
+                              child: OutlinedButton.icon(
+                                onPressed: batch.openedAt != null &&
+                                        batch.status == 'opened'
+                                    ? () => _startUse(batch)
+                                    : null,
+                                icon: const Icon(Icons.countertops_outlined),
+                                label: const Text('Utiliser'),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 132,
                               child: OutlinedButton.icon(
                                 onPressed: () => _discard(batch.id),
                                 icon: const Icon(Icons.delete_outline),
@@ -3303,39 +3739,120 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
 
   Future<void> _createBatch() async {
     final quantityController = TextEditingController();
-    final hoursController = TextEditingController();
+    final secondaryHoursController = TextEditingController();
+    final tertiaryHoursController = TextEditingController();
+    DateTime? primaryDlc;
+    String? error;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nouveau lot'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: quantityController,
-              decoration: const InputDecoration(labelText: 'Quantite'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: hoursController,
-              decoration: const InputDecoration(
-                labelText: 'DLC apres ouverture (heures)',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Nouveau lot'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: quantityController,
+                decoration: InputDecoration(
+                  labelText: 'Quantite (${widget.ingredient.unit})',
+                ),
+                keyboardType: TextInputType.number,
               ),
-              keyboardType: TextInputType.number,
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final now = DateTime.now();
+                  final picked = await showDatePicker(
+                    context: context,
+                    firstDate: DateTime(now.year, now.month, now.day),
+                    lastDate: now.add(const Duration(days: 730)),
+                    initialDate: primaryDlc ?? now.add(const Duration(days: 1)),
+                  );
+                  if (picked == null) {
+                    return;
+                  }
+                  setDialogState(() {
+                    primaryDlc =
+                        DateTime(picked.year, picked.month, picked.day, 23, 59);
+                    error = null;
+                  });
+                },
+                icon: const Icon(Icons.event_outlined),
+                label: Text(
+                  primaryDlc == null
+                      ? 'DLC primaire obligatoire'
+                      : 'DLC primaire ${formatDateTime(primaryDlc!)}',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: secondaryHoursController,
+                decoration: const InputDecoration(
+                  labelText: 'DLC secondaire apres ouverture (heures)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: tertiaryHoursController,
+                decoration: const InputDecoration(
+                  labelText: 'DLC tertiaire en utilisation (heures)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  error!,
+                  style: const TextStyle(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final quantity = double.tryParse(
+                  quantityController.text.replaceAll(',', '.'),
+                );
+                final secondary =
+                    _parsePositiveInt(secondaryHoursController.text);
+                final tertiary = _parsePositiveInt(tertiaryHoursController.text);
+                if (quantity == null || quantity <= 0) {
+                  setDialogState(() => error = 'Saisir une quantite positive.');
+                  return;
+                }
+                if (primaryDlc == null) {
+                  setDialogState(() => error = 'La DLC primaire est obligatoire.');
+                  return;
+                }
+                if (secondaryHoursController.text.trim().isNotEmpty &&
+                    secondary == null) {
+                  setDialogState(
+                    () => error = 'La DLC secondaire doit etre positive.',
+                  );
+                  return;
+                }
+                if (tertiaryHoursController.text.trim().isNotEmpty &&
+                    tertiary == null) {
+                  setDialogState(
+                    () => error = 'La DLC tertiaire doit etre positive.',
+                  );
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              child: const Text('Creer'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Creer'),
-          ),
-        ],
       ),
     );
     if (confirmed != true) {
@@ -3344,14 +3861,19 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
     final quantity = double.tryParse(
       quantityController.text.replaceAll(',', '.'),
     );
-    if (quantity == null) {
+    final expiresAt = primaryDlc;
+    if (quantity == null || expiresAt == null) {
       return;
     }
     await _mutate(
       () => ref.read(stockRepositoryProvider).createBatch(
             ingredientId: widget.ingredient.id,
             quantity: quantity,
-            useWithinHoursAfterOpening: int.tryParse(hoursController.text),
+            expiresAt: expiresAt,
+            useWithinHoursAfterOpening:
+                _parsePositiveInt(secondaryHoursController.text),
+            tertiaryUseWithinHours:
+                _parsePositiveInt(tertiaryHoursController.text),
           ),
     );
   }
@@ -3388,8 +3910,89 @@ class _BatchesSheetState extends ConsumerState<_BatchesSheet> {
     );
   }
 
+  Future<void> _startUse(IngredientBatch batch) async {
+    final hoursController = TextEditingController(
+      text: batch.tertiaryUseWithinHours?.toString() ?? '',
+    );
+    String? error;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Mettre en utilisation'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'La DLC tertiaire demarre maintenant pour ${widget.ingredient.name}.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: hoursController,
+                decoration: const InputDecoration(
+                  labelText: 'DLC tertiaire (heures)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  error!,
+                  style: const TextStyle(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (_parsePositiveInt(hoursController.text) == null) {
+                  setDialogState(
+                    () => error = 'Saisir une duree tertiaire positive.',
+                  );
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              child: const Text('Demarrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    final tertiary = _parsePositiveInt(hoursController.text);
+    if (tertiary == null) {
+      return;
+    }
+    await _mutate(
+      () => ref.read(stockRepositoryProvider).startBatchUse(
+            batchId: batch.id,
+            tertiaryUseWithinHours: tertiary,
+          ),
+    );
+  }
+
   Future<void> _mutate(Future<Object?> Function() call) async {
     await call();
     setState(_reload);
+  }
+
+  int? _parsePositiveInt(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final parsed = int.tryParse(trimmed);
+    return parsed == null || parsed <= 0 ? null : parsed;
   }
 }

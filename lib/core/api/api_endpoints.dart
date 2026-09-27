@@ -122,6 +122,7 @@ class ApiEndpoints {
   static const stockSupply = '/stock/supply';
   static const stockAdjustmentRequests = '/stock/adjustment-requests';
   static const stockAlerts = '/stock/alerts';
+  static const stockDlcOverview = '/stock/dlc/overview';
   static const stockMovements = '/stock/movements';
   static const stockRecipeProduct = '/stock/recipes';
   static const stockRecipeVariant = '/stock/recipes/variant';
@@ -148,6 +149,10 @@ class ApiEndpoints {
   }
 
   static String stockBatchOpen(int batchId) => '/stock/batches/$batchId/open';
+  static String stockBatchStartUse(int batchId) {
+    return '/stock/batches/$batchId/start-use';
+  }
+
   static String stockBatchDiscard(int batchId) {
     return '/stock/batches/$batchId/discard';
   }

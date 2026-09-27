@@ -96,6 +96,49 @@ void main() {
     expect(alerts, isEmpty);
   });
 
+  test('home alerts include critical DLC risks', () {
+    final alerts = buildHomeAlerts(
+      orders: const [],
+      stockAlerts: const [],
+      dlcOverview: const StockDlcOverview(
+        counters: StockDlcCounters(
+          totalBatches: 1,
+          regularizeBatchCount: 0,
+          primaryNearCount: 0,
+          secondaryNearCount: 0,
+          tertiaryNearCount: 0,
+          expiredBatchCount: 1,
+          missingOrNoncompliantCheckCount: 1,
+        ),
+        items: [
+          StockDlcItem(
+            batchId: 1,
+            ingredientId: 1,
+            ingredientName: 'Mozzarella',
+            quantity: 1,
+            status: 'expired',
+            severity: 'expired',
+            hasDlcCheck: false,
+            noncompliantCheckCount: 0,
+            dlcLevel: 'primary',
+          ),
+        ],
+      ),
+      payments: null,
+      tenant: const TenantStatus(
+        isOpen: true,
+        estimatedPrepTimeMinutes: 12,
+        activeOrdersCount: 0,
+      ),
+      online: true,
+      queuedActions: 0,
+      establishmentLabel: 'Restaurant Montpellier',
+    );
+
+    expect(alerts.single.type, 'Securite alimentaire');
+    expect(alerts.single.severity, HomeAlertSeverity.critical);
+  });
+
   test('group overview parses establishment health payload', () {
     final overview = GroupOverview.fromJson({
       'establishment_count': 2,

@@ -89,6 +89,7 @@ List<Override> _overrides() {
         ),
       ],
     ),
+    stockDlcOverviewProvider.overrideWith((ref) async => _dlcOverview),
     paymentsSummaryProvider.overrideWith(
       (ref) async => const PaymentSummary(
         collectedAmountCents: 12000,
@@ -195,6 +196,32 @@ List<Override> _overrides() {
     myTimeClockEntriesProvider.overrideWith((ref, query) async => const []),
   ];
 }
+
+const _dlcOverview = StockDlcOverview(
+  counters: StockDlcCounters(
+    totalBatches: 2,
+    regularizeBatchCount: 1,
+    primaryNearCount: 0,
+    secondaryNearCount: 0,
+    tertiaryNearCount: 0,
+    expiredBatchCount: 1,
+    missingOrNoncompliantCheckCount: 1,
+  ),
+  items: [
+    StockDlcItem(
+      batchId: 1,
+      ingredientId: 1,
+      ingredientName: 'Mozzarella',
+      quantity: 1,
+      status: 'expired',
+      severity: 'expired',
+      hasDlcCheck: false,
+      noncompliantCheckCount: 0,
+      dlcLevel: 'primary',
+      blockedReason: 'DLC expiree : Mozzarella',
+    ),
+  ],
+);
 
 class _AdminSessionController extends SessionController {
   @override

@@ -31,6 +31,7 @@ class HomeAlert {
 List<HomeAlert> buildHomeAlerts({
   required List<OrderSummary> orders,
   required List<Ingredient> stockAlerts,
+  StockDlcOverview? dlcOverview,
   required PaymentSummary? payments,
   required TenantStatus? tenant,
   required bool online,
@@ -120,6 +121,29 @@ List<HomeAlert> buildHomeAlerts({
         establishmentLabel: establishmentLabel,
       ),
     );
+  }
+
+  if (dlcOverview != null) {
+    final critical = dlcOverview.criticalCount;
+    final near = dlcOverview.counters.primaryNearCount +
+        dlcOverview.counters.secondaryNearCount +
+        dlcOverview.counters.tertiaryNearCount;
+    if (critical > 0 || near > 0) {
+      alerts.add(
+        HomeAlert(
+          type: 'Securite alimentaire',
+          title: critical > 0 ? '$critical DLC critique(s)' : '$near DLC proche(s)',
+          body: critical > 0
+              ? 'Lots expires, a regulariser ou controles non conformes.'
+              : 'Dates limites a surveiller avant le service.',
+          route: '/stock',
+          icon: Icons.health_and_safety_outlined,
+          severity:
+              critical > 0 ? HomeAlertSeverity.critical : HomeAlertSeverity.watch,
+          establishmentLabel: establishmentLabel,
+        ),
+      );
+    }
   }
 
   final failedPayments = payments?.countsByStatus['failed'] ?? 0;

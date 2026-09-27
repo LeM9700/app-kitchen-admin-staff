@@ -46,7 +46,33 @@ double stockThresholdRatio(Ingredient ingredient) {
 bool hasDlcRisk(IngredientBatch batch, DateTime now) {
   final target = batch.effectiveExpiresAt ?? batch.expiresAt;
   if (target == null) {
-    return false;
+    return batch.status == 'sealed' || batch.status == 'opened';
+  }
+  if (batch.status == 'expired') {
+    return true;
   }
   return target.difference(now).inHours <= 24;
+}
+
+String dlcLevelLabel(String? level) {
+  return switch (level) {
+    'primary' => 'DLC primaire',
+    'secondary' => 'DLC secondaire',
+    'tertiary' => 'DLC tertiaire',
+    _ => 'DLC',
+  };
+}
+
+String dlcSeverityLabel(String severity) {
+  return switch (severity) {
+    'expired' => 'Expire',
+    'regularize' => 'A regulariser',
+    'critical' => 'Critique',
+    'warning' => 'A surveiller',
+    _ => 'OK',
+  };
+}
+
+int dlcCriticalCount(StockDlcOverview? overview) {
+  return overview?.criticalCount ?? 0;
 }

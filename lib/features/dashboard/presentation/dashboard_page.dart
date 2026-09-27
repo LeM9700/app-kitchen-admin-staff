@@ -32,6 +32,10 @@ class DashboardPage extends ConsumerWidget {
     final stockAlerts = permissions.can(AppPermission.stockRead)
         ? ref.watch(stockAlertsProvider)
         : const AsyncData(<Ingredient>[]);
+    final AsyncValue<StockDlcOverview?> stockDlcOverview =
+        permissions.can(AppPermission.stockRead)
+            ? ref.watch(stockDlcOverviewProvider).whenData((value) => value)
+            : const AsyncData(null);
     final AsyncValue<PaymentSummary?> payments =
         permissions.can(AppPermission.paymentsRead)
             ? ref.watch(paymentsSummaryProvider).whenData((value) => value)
@@ -83,6 +87,7 @@ class DashboardPage extends ConsumerWidget {
     final alertItems = buildHomeAlerts(
       orders: orders.valueOrNull ?? const [],
       stockAlerts: stockAlerts.valueOrNull ?? const [],
+      dlcOverview: stockDlcOverview.valueOrNull,
       payments: payments.valueOrNull,
       tenant: tenant.valueOrNull,
       online: online,
@@ -97,6 +102,7 @@ class DashboardPage extends ConsumerWidget {
           ref
             ..invalidate(activeOrdersProvider)
             ..invalidate(stockAlertsProvider)
+            ..invalidate(stockDlcOverviewProvider)
             ..invalidate(paymentsSummaryProvider)
             ..invalidate(tenantPrintConfigProvider)
             ..invalidate(terminalReadersProvider)
@@ -146,11 +152,14 @@ class DashboardPage extends ConsumerWidget {
                   _RestaurantHealthSection(
                     tenant: tenant,
                     stockAlerts: stockAlerts,
+                    stockDlcOverview: stockDlcOverview,
                     payments: payments,
                     online: online,
                     queuedActions: queuedActions,
                     permissions: permissions,
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  _FoodSafetyDlcSection(overview: stockDlcOverview),
                   const SizedBox(height: AppSpacing.md),
                   _DeviceHealthSection(
                     printConfig: printConfig,
@@ -177,11 +186,14 @@ class DashboardPage extends ConsumerWidget {
                             _RestaurantHealthSection(
                               tenant: tenant,
                               stockAlerts: stockAlerts,
+                              stockDlcOverview: stockDlcOverview,
                               payments: payments,
                               online: online,
                               queuedActions: queuedActions,
                               permissions: permissions,
                             ),
+                            const SizedBox(height: AppSpacing.md),
+                            _FoodSafetyDlcSection(overview: stockDlcOverview),
                             const SizedBox(height: AppSpacing.md),
                             _DeviceHealthSection(
                               printConfig: printConfig,
@@ -1079,10 +1091,124 @@ class _ShiftLine extends StatelessWidget {
   }
 }
 
+class _FoodSafetyDlcSection extends StatelessWidget {
+  const _FoodSafetyDlcSection({required this.overview});
+
+  final AsyncValue<StockDlcOverview?> overview;
+
+  @override
+  Widget build(BuildContext context) {
+    return _HomePanel(
+      title: 'Securite alimentaire / DLC',
+      trailing: TextButton.icon(
+        onPressed: () => context.go('/stock'),
+        icon: const Icon(Icons.open_in_new, size: 16),
+        label: const Text('Stock'),
+      ),
+      child: overview.when(
+        data: (value) {
+          if (value == null) {
+            return const _PanelMessage(
+              icon: Icons.lock_outline,
+              title: 'Synthese non autorisee',
+              body: 'La lecture stock est requise.',
+            );
+          }
+          final counters = value.counters;
+          final critical = value.criticalCount;
+          final near = counters.primaryNearCount +
+              counters.secondaryNearCount +
+              counters.tertiaryNearCount;
+          final tone = critical > 0
+              ? AppColors.danger
+              : near > 0
+                  ? AppColors.warning
+                  : AppColors.success;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  _MetricChip(
+                    label: 'critiques',
+                    value: critical.toString(),
+                    icon: Icons.health_and_safety_outlined,
+                  ),
+                  _MetricChip(
+                    label: 'a regulariser',
+                    value: counters.regularizeBatchCount.toString(),
+                    icon: Icons.assignment_late_outlined,
+                  ),
+                  _MetricChip(
+                    label: 'proches',
+                    value: near.toString(),
+                    icon: Icons.timer_outlined,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _StatusPill(
+                label: critical > 0
+                    ? 'Action requise'
+                    : near > 0
+                        ? 'Surveillance DLC'
+                        : 'DLC conformes',
+                color: tone,
+              ),
+              if (value.items.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                for (final item in value.items.take(3))
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _dlcIcon(item.severity),
+                          color: _dlcColor(item.severity),
+                          size: 18,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            item.ingredientName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        Text(
+                          _dlcShortLabel(item.severity),
+                          style: TextStyle(
+                            color: _dlcColor(item.severity),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ],
+          );
+        },
+        loading: () => const _SkeletonRows(rows: 3),
+        error: (error, stackTrace) => _PanelMessage(
+          icon: Icons.error_outline,
+          title: 'Synthese DLC indisponible',
+          body: error.toString(),
+        ),
+      ),
+    );
+  }
+}
+
 class _RestaurantHealthSection extends StatelessWidget {
   const _RestaurantHealthSection({
     required this.tenant,
     required this.stockAlerts,
+    required this.stockDlcOverview,
     required this.payments,
     required this.online,
     required this.queuedActions,
@@ -1091,6 +1217,7 @@ class _RestaurantHealthSection extends StatelessWidget {
 
   final AsyncValue<TenantStatus> tenant;
   final AsyncValue<List<Ingredient>> stockAlerts;
+  final AsyncValue<StockDlcOverview?> stockDlcOverview;
   final AsyncValue<PaymentSummary?> payments;
   final bool online;
   final int queuedActions;
@@ -1124,6 +1251,25 @@ class _RestaurantHealthSection extends StatelessWidget {
           label: 'HACCP',
           value: 'A controler',
           route: '/haccp',
+        ),
+      if (permissions.can(AppPermission.stockRead))
+        _HealthRow(
+          icon: Icons.health_and_safety_outlined,
+          label: 'DLC',
+          value: stockDlcOverview.maybeWhen(
+            data: (value) {
+              final critical = value?.criticalCount ?? 0;
+              if (critical > 0) {
+                return '$critical critique(s)';
+              }
+              final near = (value?.counters.primaryNearCount ?? 0) +
+                  (value?.counters.secondaryNearCount ?? 0) +
+                  (value?.counters.tertiaryNearCount ?? 0);
+              return near == 0 ? 'OK' : '$near proche(s)';
+            },
+            orElse: () => '-',
+          ),
+          route: '/stock',
         ),
       if (permissions.can(AppPermission.paymentsRead))
         _HealthRow(
@@ -1697,4 +1843,32 @@ String _displayName(String? fullName, String? email) {
     return rawEmail.split('@').first;
   }
   return 'Kitchen';
+}
+
+IconData _dlcIcon(String severity) {
+  return switch (severity) {
+    'expired' => Icons.event_busy_outlined,
+    'regularize' => Icons.assignment_late_outlined,
+    'critical' => Icons.error_outline,
+    'warning' => Icons.timer_outlined,
+    _ => Icons.check_circle_outline,
+  };
+}
+
+Color _dlcColor(String severity) {
+  return switch (severity) {
+    'expired' || 'regularize' || 'critical' => AppColors.danger,
+    'warning' => AppColors.warning,
+    _ => AppColors.success,
+  };
+}
+
+String _dlcShortLabel(String severity) {
+  return switch (severity) {
+    'expired' => 'Expire',
+    'regularize' => 'A regulariser',
+    'critical' => 'Critique',
+    'warning' => 'Proche',
+    _ => 'OK',
+  };
 }

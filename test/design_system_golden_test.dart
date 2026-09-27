@@ -172,14 +172,24 @@ void main() {
       child: const CatalogPage(),
       overrides: _adminOverrides(),
     );
-    await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
-    await tester.pumpAndSettle();
     final editMenuItem = find.widgetWithText(ListTile, 'Modifier');
+    final productEditorDialog = find.byType(AlertDialog);
+    await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
+    await _pumpUntilVisible(
+      tester,
+      editMenuItem,
+      description: 'the product edit menu item',
+    );
     expect(editMenuItem, findsOneWidget);
     await tester.ensureVisible(editMenuItem);
     await tester.tap(editMenuItem);
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsOneWidget);
+    await _pumpUntilVisible(
+      tester,
+      productEditorDialog,
+      description: 'the product editor dialog',
+      postVisiblePump: const Duration(milliseconds: 100),
+    );
+    expect(productEditorDialog, findsOneWidget);
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -306,6 +316,45 @@ void main() {
       matchesGoldenFile('goldens/settings.png'),
     );
   });
+
+  testWidgets('_pumpUntilVisible fails with a descriptive timeout', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const SizedBox());
+
+    await expectLater(
+      _pumpUntilVisible(
+        tester,
+        find.text('missing'),
+        description: 'missing widget',
+        timeout: const Duration(milliseconds: 250),
+        step: const Duration(milliseconds: 100),
+      ),
+      throwsA(
+        isA<TestFailure>().having(
+          (failure) => failure.toString(),
+          'message',
+          allOf(contains('missing widget'), contains('250ms')),
+        ),
+      ),
+    );
+  });
+
+  testWidgets('_pumpUntilVisible can pump after visibility', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: _PostVisibilityPumpProbe())),
+    );
+
+    await _pumpUntilVisible(
+      tester,
+      find.text('ready'),
+      description: 'ready probe',
+      step: const Duration(milliseconds: 10),
+      postVisiblePump: const Duration(milliseconds: 100),
+    );
+
+    expect(find.text('settled'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpHrTab(
@@ -322,6 +371,70 @@ Future<void> _pumpHrTab(
   );
   await tester.tap(find.text(tab));
   await tester.pumpAndSettle();
+}
+
+Future<void> _pumpUntilVisible(
+  WidgetTester tester,
+  Finder finder, {
+  required String description,
+  Duration timeout = const Duration(seconds: 1),
+  Duration step = const Duration(milliseconds: 100),
+  Duration postVisiblePump = Duration.zero,
+}) async {
+  var elapsed = Duration.zero;
+  while (elapsed < timeout) {
+    final remaining = timeout - elapsed;
+    final pumpStep = remaining < step ? remaining : step;
+    await tester.pump(pumpStep);
+    elapsed += pumpStep;
+    if (finder.evaluate().isNotEmpty) {
+      if (postVisiblePump > Duration.zero) {
+        await tester.pump(postVisiblePump);
+      }
+      return;
+    }
+  }
+  expect(
+    finder.evaluate(),
+    isNotEmpty,
+    reason:
+        'Timed out waiting for $description to become visible after '
+        '${timeout.inMilliseconds}ms.',
+  );
+}
+
+class _PostVisibilityPumpProbe extends StatefulWidget {
+  const _PostVisibilityPumpProbe();
+
+  @override
+  State<_PostVisibilityPumpProbe> createState() =>
+      _PostVisibilityPumpProbeState();
+}
+
+class _PostVisibilityPumpProbeState extends State<_PostVisibilityPumpProbe> {
+  var _settled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(const Duration(milliseconds: 50), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _settled = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('ready'),
+        if (_settled) const Text('settled'),
+      ],
+    );
+  }
 }
 
 Future<void> _pumpShell(

@@ -175,13 +175,21 @@ void main() {
     final editMenuItem = find.widgetWithText(ListTile, 'Modifier');
     final productEditorDialog = find.byType(AlertDialog);
     await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
-    await _pumpUntilVisible(tester, editMenuItem);
+    await _pumpUntilVisible(
+      tester,
+      editMenuItem,
+      description: 'the product edit menu item',
+    );
     expect(editMenuItem, findsOneWidget);
     await tester.ensureVisible(editMenuItem);
     await tester.tap(editMenuItem);
-    await _pumpUntilVisible(tester, productEditorDialog);
+    await _pumpUntilVisible(
+      tester,
+      productEditorDialog,
+      description: 'the product editor dialog',
+      postVisiblePump: const Duration(milliseconds: 100),
+    );
     expect(productEditorDialog, findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 100));
 
     await expectLater(
       find.byKey(_goldenSurfaceKey),
@@ -329,16 +337,27 @@ Future<void> _pumpHrTab(
 Future<void> _pumpUntilVisible(
   WidgetTester tester,
   Finder finder, {
+  required String description,
   int maxAttempts = 10,
   Duration step = const Duration(milliseconds: 100),
+  Duration postVisiblePump = Duration.zero,
 }) async {
   for (var i = 0; i < maxAttempts; i++) {
     await tester.pump(step);
     if (finder.evaluate().isNotEmpty) {
+      if (postVisiblePump > Duration.zero) {
+        await tester.pump(postVisiblePump);
+      }
       return;
     }
   }
-  expect(finder.evaluate(), isNotEmpty);
+  expect(
+    finder.evaluate(),
+    isNotEmpty,
+    reason:
+        'Timed out waiting for $description to become visible after '
+        '${maxAttempts * step.inMilliseconds}ms.',
+  );
 }
 
 Future<void> _pumpShell(

@@ -173,10 +173,12 @@ void main() {
       overrides: _adminOverrides(),
     );
     await tester.tap(find.byKey(const ValueKey('catalog-product-actions-11')));
-    await tester.pump();
-    expect(find.text('Modifier').last, findsOneWidget);
-    await tester.tap(find.text('Modifier').last);
-    await tester.pump();
+    await tester.pumpAndSettle();
+    final editMenuItem = find.widgetWithText(ListTile, 'Modifier');
+    expect(editMenuItem, findsOneWidget);
+    await tester.ensureVisible(editMenuItem);
+    await tester.tap(editMenuItem);
+    await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);
 
     await expectLater(

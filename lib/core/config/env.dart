@@ -11,6 +11,11 @@ class Env {
     defaultValue: 'http://127.0.0.1:8000/api/v1',
   );
 
+  static const appPublicUrl = String.fromEnvironment(
+    'APP_PUBLIC_URL',
+    defaultValue: '',
+  );
+
   static const defaultTenantSlug = String.fromEnvironment(
     'DEFAULT_TENANT_SLUG',
     defaultValue: 'pizza_test',

@@ -36,6 +36,7 @@ void main() {
     expect(screens.single.screenKey, 'kitchen-main');
     expect(screens.single.station, 'hot');
     expect(screens.single.ticketsPerPage, 6);
+    expect(screens.single.remoteEnabled, true);
   });
 
   test('pair envoie le code string avec zeros initiaux et parse le token',
@@ -206,6 +207,7 @@ void main() {
         'screen_id': 12,
         'code': '004281',
         'expires_at': '2026-08-18T18:00:00Z',
+        'pairing_payload': 'encrypted-pairing-payload',
       });
     });
 
@@ -216,6 +218,34 @@ void main() {
     expect(result.screenId, 12);
     expect(result.code, '004281'); // string, zéros initiaux conservés
     expect(result.code.runtimeType, String);
+    expect(result.pairingPayload, 'encrypted-pairing-payload');
+  });
+
+  test('resolvePairingPayload POST le payload protege et parse le code',
+      () async {
+    late RequestOptions seenOptions;
+    late Map<String, dynamic> body;
+    final repository = _repository((options) {
+      seenOptions = options;
+      body = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'screen_id': 12,
+        'code': '004281',
+        'expires_at': '2026-08-18T18:00:00Z',
+        'screen': _screenJson(id: 12, name: 'Cuisine principale'),
+      });
+    });
+
+    final result = await repository.resolvePairingPayload(
+      pairingPayload: ' encrypted-pairing-payload ',
+    );
+
+    expect(seenOptions.method, 'POST');
+    expect(seenOptions.path, ApiEndpoints.kdsPairingPayloadResolve);
+    expect(body['pairing_payload'], 'encrypted-pairing-payload');
+    expect(result.screenId, 12);
+    expect(result.code, '004281');
+    expect(result.screen.name, 'Cuisine principale');
   });
 
   test(
@@ -286,6 +316,7 @@ Map<String, dynamic> _screenJson({
   String interactionMode = 'wall',
   int ticketsPerPage = 4,
   bool isActive = true,
+  bool remoteEnabled = true,
 }) {
   return {
     'id': id,
@@ -296,6 +327,7 @@ Map<String, dynamic> _screenJson({
     'interaction_mode': interactionMode,
     'tickets_per_page': ticketsPerPage,
     'is_active': isActive,
+    'remote_enabled': remoteEnabled,
   };
 }
 

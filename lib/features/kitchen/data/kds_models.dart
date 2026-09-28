@@ -8,6 +8,7 @@ class KdsScreen {
     required this.interactionMode,
     required this.ticketsPerPage,
     required this.isActive,
+    this.remoteEnabled = true,
   });
 
   final int id;
@@ -18,6 +19,7 @@ class KdsScreen {
   final String interactionMode;
   final int ticketsPerPage;
   final bool isActive;
+  final bool remoteEnabled;
 
   factory KdsScreen.fromJson(Map<String, dynamic> json) {
     return KdsScreen(
@@ -29,6 +31,7 @@ class KdsScreen {
       interactionMode: _readRequiredString(json, 'interaction_mode'),
       ticketsPerPage: _readRequiredInt(json, 'tickets_per_page'),
       isActive: _readRequiredBool(json, 'is_active'),
+      remoteEnabled: _readOptionalBool(json, 'remote_enabled') ?? true,
     );
   }
 }
@@ -58,17 +61,43 @@ class KdsPairingCode {
     required this.screenId,
     required this.code,
     required this.expiresAt,
+    this.pairingPayload = '',
   });
 
   final int screenId;
   final String code;
   final DateTime expiresAt;
+  final String pairingPayload;
 
   factory KdsPairingCode.fromJson(Map<String, dynamic> json) {
     return KdsPairingCode(
       screenId: _readRequiredInt(json, 'screen_id'),
       code: _readRequiredString(json, 'code'),
       expiresAt: _readRequiredDateTime(json, 'expires_at'),
+      pairingPayload: _readOptionalString(json, 'pairing_payload') ?? '',
+    );
+  }
+}
+
+class KdsPairingPayloadResolution {
+  const KdsPairingPayloadResolution({
+    required this.screenId,
+    required this.code,
+    required this.expiresAt,
+    required this.screen,
+  });
+
+  final int screenId;
+  final String code;
+  final DateTime expiresAt;
+  final KdsScreen screen;
+
+  factory KdsPairingPayloadResolution.fromJson(Map<String, dynamic> json) {
+    return KdsPairingPayloadResolution(
+      screenId: _readRequiredInt(json, 'screen_id'),
+      code: _readRequiredString(json, 'code'),
+      expiresAt: _readRequiredDateTime(json, 'expires_at'),
+      screen: KdsScreen.fromJson(_readRequiredMap(json, 'screen')),
     );
   }
 }
@@ -168,6 +197,17 @@ int? _readOptionalInt(Map<String, dynamic> json, String field) {
 
 bool _readRequiredBool(Map<String, dynamic> json, String field) {
   final value = json[field];
+  if (value is bool) {
+    return value;
+  }
+  throw FormatException('KDS field "$field" must be a boolean');
+}
+
+bool? _readOptionalBool(Map<String, dynamic> json, String field) {
+  final value = json[field];
+  if (value == null) {
+    return null;
+  }
   if (value is bool) {
     return value;
   }

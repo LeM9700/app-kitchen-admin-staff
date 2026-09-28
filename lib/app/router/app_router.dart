@@ -12,6 +12,7 @@ import 'package:app_admin_staff/features/customers/presentation/customers_page.d
 import 'package:app_admin_staff/features/dashboard/presentation/dashboard_page.dart';
 import 'package:app_admin_staff/features/delivery/presentation/delivery_page.dart';
 import 'package:app_admin_staff/features/hr/presentation/hr_page.dart';
+import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_page.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_remote_page.dart';
 import 'package:app_admin_staff/features/loyalty/presentation/loyalty_page.dart';
@@ -78,7 +79,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/kitchen/remote',
-        builder: (context, state) => const KitchenRemotePage(),
+        builder: (context, state) {
+          return KitchenRemotePage(
+            initialPairingCode: state.uri.queryParameters['code'],
+          );
+        },
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -103,6 +108,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/kitchen',
             builder: (context, state) => const KitchenPage(),
+          ),
+          GoRoute(
+            path: '/counter',
+            builder: (context, state) => const KitchenPage(
+              screenMode: KitchenScreenMode.counter,
+            ),
           ),
           GoRoute(
             path: '/checkout',
@@ -298,6 +309,7 @@ const _adminDefaultRoutes = [
   '/home',
   '/orders',
   '/kitchen',
+  '/counter',
   '/checkout',
   '/catalog',
   '/stock',

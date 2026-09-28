@@ -49,6 +49,7 @@ Future<void> pumpKitchenPage(
   WidgetTester tester,
   ProviderContainer container, {
   Size size = const Size(1920, 1080),
+  KitchenScreenMode screenMode = KitchenScreenMode.kitchen,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -59,7 +60,7 @@ Future<void> pumpKitchenPage(
       child: MaterialApp(
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
-        home: const Scaffold(body: KitchenPage()),
+        home: Scaffold(body: KitchenPage(screenMode: screenMode)),
       ),
     ),
   );

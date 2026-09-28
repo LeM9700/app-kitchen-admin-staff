@@ -71,6 +71,13 @@ const navigationCapabilities = [
     mobilePriority: 2,
   ),
   NavigationCapability(
+    path: '/counter',
+    label: 'Comptoir',
+    icon: Icons.local_bar_outlined,
+    permission: AppPermission.ordersPreparation,
+    mobilePriority: 3,
+  ),
+  NavigationCapability(
     path: '/kitchen/remote',
     label: 'Remote KDS',
     icon: Icons.screenshot_monitor_outlined,
@@ -82,7 +89,7 @@ const navigationCapabilities = [
     label: 'Caisse',
     icon: Icons.point_of_sale_outlined,
     permission: AppPermission.ordersManual,
-    mobilePriority: 3,
+    mobilePriority: 4,
   ),
   NavigationCapability(
     path: '/catalog',

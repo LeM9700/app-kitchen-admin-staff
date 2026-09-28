@@ -1,4 +1,6 @@
+import 'package:app_admin_staff/app/permissions/permissions.dart';
 import 'package:app_admin_staff/app/responsive/breakpoints.dart';
+import 'package:app_admin_staff/app/widgets/operational_fullscreen_button.dart';
 import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
@@ -15,6 +17,12 @@ import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_elevation.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
+import 'package:app_admin_staff/features/kitchen/application/kds_active_screens_provider.dart';
+import 'package:app_admin_staff/features/kitchen/application/kds_screen_management_controller.dart';
+import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
+import 'package:app_admin_staff/features/kitchen/data/kds_repository.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/kds_remote_scan_flow.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kds_pairing_dialog.dart';
 import 'package:app_admin_staff/features/orders/application/service_board_state.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +35,7 @@ final _serviceMobileTabProvider =
     StateProvider<_ServiceMobileTab>((ref) => _ServiceMobileTab.ready);
 final _orderActionBusyProvider =
     StateProvider<Set<String>>((ref) => const <String>{});
+final _serviceRemotePairingBusyProvider = StateProvider<bool>((ref) => false);
 
 enum _ServiceMobileTab { ready, outForDelivery }
 
@@ -38,9 +47,12 @@ class OrdersBoardPage extends ConsumerWidget {
     final orders = ref.watch(activeOrdersProvider);
     final currentEstablishment = ref.watch(currentEstablishmentProvider);
     final user = ref.watch(sessionControllerProvider).valueOrNull?.user;
+    final permissions = ref.watch(currentPermissionSetProvider);
     final isAdmin = user?.role == 'admin' || user?.role == 'super-admin';
+    final canGenerateRemoteQr = permissions.can(AppPermission.ordersPreparation);
     final filter = ref.watch(_serviceFilterProvider);
     final query = ref.watch(_serviceSearchProvider);
+    final remotePairingBusy = ref.watch(_serviceRemotePairingBusyProvider);
 
     return NeumorphicIntensityScope(
       intensity: NeumorphicIntensity.subtle,
@@ -68,6 +80,13 @@ class OrdersBoardPage extends ConsumerWidget {
               },
               onRefresh: () => _refresh(context, ref),
               onExportCsv: isAdmin ? () => _exportCsv(context, ref) : null,
+              onRemotePairingRequested: canGenerateRemoteQr
+                  ? () => _showServiceRemotePairing(context, ref)
+                  : null,
+              onRemoteScanRequested: canGenerateRemoteQr
+                  ? () => scanAndOpenKdsRemote(context, ref)
+                  : null,
+              remotePairingBusy: remotePairingBusy,
             );
           },
           loading: () => const _ServiceBoardSkeleton(),
@@ -131,6 +150,110 @@ class OrdersBoardPage extends ConsumerWidget {
       }
     }
   }
+
+  Future<void> _showServiceRemotePairing(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    if (ref.read(_serviceRemotePairingBusyProvider)) {
+      return;
+    }
+
+    ref.read(_serviceRemotePairingBusyProvider.notifier).state = true;
+    try {
+      final screen = await _resolveServiceRemoteScreen(context, ref);
+      if (screen == null) {
+        return;
+      }
+      final code = await ref
+          .read(kdsRepositoryProvider)
+          .generatePairingCode(screenId: screen.id);
+      if (!context.mounted) {
+        return;
+      }
+      ref.read(_serviceRemotePairingBusyProvider.notifier).state = false;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => KdsPairingDialog(
+          screen: screen,
+          initialCode: code,
+          onRegenerate: () => ref
+              .read(kdsRepositoryProvider)
+              .generatePairingCode(screenId: screen.id),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mapKdsError(error))),
+      );
+    } finally {
+      ref.read(_serviceRemotePairingBusyProvider.notifier).state = false;
+    }
+  }
+
+  Future<KdsScreen?> _resolveServiceRemoteScreen(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final screens = await ref.read(kdsActiveScreensProvider.future);
+    final candidates = screens
+        .where(
+          (screen) =>
+              screen.isActive &&
+              screen.remoteEnabled &&
+              screen.mode == 'service',
+        )
+        .toList();
+    if (candidates.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('AUCUN ÉCRAN SERVICE REMOTE DISPONIBLE'),
+          ),
+        );
+      }
+      return null;
+    }
+    if (candidates.length == 1) {
+      return candidates.first;
+    }
+    if (!context.mounted) {
+      return null;
+    }
+    return showModalBottomSheet<KdsScreen>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ÉCRAN SERVICE REMOTE',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              for (final screen in candidates)
+                ListTile(
+                  key: Key('service-remote-screen-option-${screen.id}'),
+                  leading: const Icon(Icons.desktop_windows_outlined),
+                  title: Text(screen.name),
+                  subtitle: Text('${screen.ticketsPerPage} commandes/page'),
+                  onTap: () => Navigator.of(context).pop(screen),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ServiceScaffold extends StatelessWidget {
@@ -142,6 +265,9 @@ class _ServiceScaffold extends StatelessWidget {
     required this.onSearchChanged,
     required this.onRefresh,
     required this.onExportCsv,
+    required this.onRemotePairingRequested,
+    required this.onRemoteScanRequested,
+    required this.remotePairingBusy,
   });
 
   final ServiceBoardState state;
@@ -151,6 +277,9 @@ class _ServiceScaffold extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onRefresh;
   final VoidCallback? onExportCsv;
+  final VoidCallback? onRemotePairingRequested;
+  final VoidCallback? onRemoteScanRequested;
+  final bool remotePairingBusy;
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +291,9 @@ class _ServiceScaffold extends StatelessWidget {
           isAdmin: isAdmin,
           onRefresh: onRefresh,
           onExportCsv: onExportCsv,
+          onRemotePairingRequested: onRemotePairingRequested,
+          onRemoteScanRequested: onRemoteScanRequested,
+          remotePairingBusy: remotePairingBusy,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -190,12 +322,18 @@ class _ServiceHeader extends StatelessWidget {
     required this.isAdmin,
     required this.onRefresh,
     required this.onExportCsv,
+    required this.onRemotePairingRequested,
+    required this.onRemoteScanRequested,
+    required this.remotePairingBusy,
   });
 
   final ServiceBoardState state;
   final bool isAdmin;
   final VoidCallback onRefresh;
   final VoidCallback? onExportCsv;
+  final VoidCallback? onRemotePairingRequested;
+  final VoidCallback? onRemoteScanRequested;
+  final bool remotePairingBusy;
 
   @override
   Widget build(BuildContext context) {
@@ -259,6 +397,30 @@ class _ServiceHeader extends StatelessWidget {
               onPressed: onExportCsv,
               icon: const Icon(Icons.download_outlined),
             ),
+          if (onRemotePairingRequested != null)
+            IconButton.filledTonal(
+              key: const Key('service-remote-pairing-action'),
+              tooltip: 'QR remote',
+              onPressed:
+                  remotePairingBusy ? null : onRemotePairingRequested,
+              icon: remotePairingBusy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.qr_code_2_outlined),
+            ),
+          if (Breakpoints.isMobile(context) && onRemoteScanRequested != null)
+            IconButton.filledTonal(
+              key: const Key('service-remote-scan-action'),
+              tooltip: 'Scanner remote',
+              onPressed: onRemoteScanRequested,
+              icon: const Icon(Icons.qr_code_scanner_outlined),
+            ),
+          const OperationalFullscreenButton(
+            key: Key('service-fullscreen-action'),
+          ),
           IconButton.filledTonal(
             tooltip: 'Rafraichir',
             onPressed: onRefresh,

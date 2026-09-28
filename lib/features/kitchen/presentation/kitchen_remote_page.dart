@@ -23,7 +23,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 
 class KitchenRemotePage extends ConsumerWidget {
-  const KitchenRemotePage({super.key});
+  const KitchenRemotePage({this.initialPairingCode, super.key});
+
+  final String? initialPairingCode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,7 +52,10 @@ class KitchenRemotePage extends ConsumerWidget {
             }
             return _KitchenRemoteRestoreUnavailableView(message: state.message);
           }
-          return _KitchenRemoteAssociationView(state: state);
+          return _KitchenRemoteAssociationView(
+            state: state,
+            initialPairingCode: initialPairingCode,
+          );
         },
       ),
     );
@@ -58,9 +63,13 @@ class KitchenRemotePage extends ConsumerWidget {
 }
 
 class _KitchenRemoteAssociationView extends ConsumerStatefulWidget {
-  const _KitchenRemoteAssociationView({required this.state});
+  const _KitchenRemoteAssociationView({
+    required this.state,
+    this.initialPairingCode,
+  });
 
   final KitchenRemoteState state;
+  final String? initialPairingCode;
 
   @override
   ConsumerState<_KitchenRemoteAssociationView> createState() {
@@ -71,6 +80,15 @@ class _KitchenRemoteAssociationView extends ConsumerStatefulWidget {
 class _KitchenRemoteAssociationViewState
     extends ConsumerState<_KitchenRemoteAssociationView> {
   final _codeController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final initialCode = widget.initialPairingCode?.trim();
+    if (initialCode != null && RegExp(r'^\d{6}$').hasMatch(initialCode)) {
+      _codeController.text = initialCode;
+    }
+  }
 
   @override
   void dispose() {
@@ -181,10 +199,10 @@ class _KitchenRemoteSessionView extends StatelessWidget {
     return ProviderScope(
       key: ValueKey(session.providerScopeKey),
       overrides: [
-        kitchenScreenProfileProvider.overrideWith(
+        kitchenScreenProfileProviderFor.overrideWith(
           () => _LockedKitchenScreenProfileController(session.profile),
         ),
-        kitchenQueueProvider.overrideWith(KitchenQueueController.new),
+        kitchenQueueProviderFor.overrideWith(KitchenQueueController.new),
         kitchenActionsProvider.overrideWith(KitchenActionsController.new),
       ],
       child: _KitchenRemoteConnectedView(session: session),
@@ -341,7 +359,7 @@ class _LockedKitchenScreenProfileController
   final KitchenScreenProfile _profile;
 
   @override
-  KitchenScreenProfile build() {
+  KitchenScreenProfile build(KitchenScreenMode arg) {
     return _profile;
   }
 

@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/app/permissions/permissions.dart';
+import 'package:app_admin_staff/app/operational_fullscreen.dart';
 import 'package:app_admin_staff/app/router/app_router.dart';
 import 'package:app_admin_staff/app/theme/app_theme.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
@@ -94,6 +95,7 @@ void main() {
 
   test('remote KDS conserve la permission preparation par prefixe kitchen', () {
     expect(routePermission('/kitchen'), AppPermission.ordersPreparation);
+    expect(routePermission('/counter'), AppPermission.ordersPreparation);
     expect(routePermission('/kitchen/remote'), AppPermission.ordersPreparation);
   });
 
@@ -139,6 +141,40 @@ void main() {
     expect(find.byType(AdminShell), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('AUCUNE COMMANDE EN COURS'), findsOneWidget);
+  });
+
+  testWidgets('comptoir reste dans AdminShell avec le board counter',
+      (tester) async {
+    await _pumpRouterAt(tester, '/counter');
+
+    expect(find.byType(AdminShell), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('COMPTOIR'), findsOneWidget);
+    expect(find.text('AUCUNE COMMANDE EN COURS'), findsOneWidget);
+  });
+
+  testWidgets('plein ecran operationnel masque la navigation du shell', (
+    tester,
+  ) async {
+    final container = await _pumpRouterAt(tester, '/kitchen');
+
+    expect(find.byType(AdminShell), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byKey(const Key('kitchen-fullscreen-action')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('kitchen-fullscreen-action')));
+    await tester.pumpAndSettle();
+
+    expect(container.read(operationalFullscreenProvider), isTrue);
+    expect(find.byType(AdminShell), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byKey(const Key('kitchen-fullscreen-action')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('kitchen-fullscreen-action')));
+    await tester.pumpAndSettle();
+
+    expect(container.read(operationalFullscreenProvider), isFalse);
+    expect(find.byType(NavigationBar), findsOneWidget);
   });
 
   test('authenticated users land on role-appropriate first route', () {
@@ -282,7 +318,7 @@ StaffUser _user({
   );
 }
 
-Future<void> _pumpRouterAt(
+Future<ProviderContainer> _pumpRouterAt(
   WidgetTester tester,
   String location,
 ) async {
@@ -324,6 +360,7 @@ Future<void> _pumpRouterAt(
   await tester.pump();
   router.go(location);
   await tester.pumpAndSettle();
+  return container;
 }
 
 class _EmptyKitchenRemoteSessionStore extends KitchenRemoteSessionStore {

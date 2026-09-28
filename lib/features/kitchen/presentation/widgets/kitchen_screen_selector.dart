@@ -28,11 +28,13 @@ class KitchenScreenSelector extends StatelessWidget {
   const KitchenScreenSelector({
     required this.profile,
     required this.onProfileSelected,
+    this.screenMode = KitchenScreenMode.kitchen,
     super.key,
   });
 
   final KitchenScreenProfile profile;
   final ValueChanged<KitchenScreenProfile> onProfileSelected;
+  final KitchenScreenMode screenMode;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +62,7 @@ class KitchenScreenSelector extends StatelessWidget {
         return SafeArea(
           child: _KitchenScreenSelectorSheet(
             onProfileSelected: onProfileSelected,
+            screenMode: screenMode,
           ),
         );
       },
@@ -70,14 +73,18 @@ class KitchenScreenSelector extends StatelessWidget {
 class _KitchenScreenSelectorSheet extends ConsumerWidget {
   const _KitchenScreenSelectorSheet({
     required this.onProfileSelected,
+    required this.screenMode,
   });
 
   final ValueChanged<KitchenScreenProfile> onProfileSelected;
+  final KitchenScreenMode screenMode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final screensAsync = ref.watch(kdsActiveScreensProvider);
-    final selectedScreen = ref.watch(kitchenSelectedScreenProvider);
+    final selectedScreen = ref.watch(
+      kitchenSelectedScreenProviderFor(screenMode),
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -94,7 +101,7 @@ class _KitchenScreenSelectorSheet extends ConsumerWidget {
           const SizedBox(height: 12),
           screensAsync.when(
             data: (screens) => _ScreenOptions(
-              screens: screens,
+              screens: _screensForMode(screens, screenMode),
               selectedScreen: selectedScreen,
               onSelected: (screen) => _select(context, ref, screen),
             ),
@@ -124,10 +131,26 @@ class _KitchenScreenSelectorSheet extends ConsumerWidget {
   }
 
   void _select(BuildContext context, WidgetRef ref, KdsScreen screen) {
-    ref.read(kitchenSelectedScreenProvider.notifier).state = screen;
+    ref.read(kitchenSelectedScreenProviderFor(screenMode).notifier).state =
+        screen;
     onProfileSelected(profileFromKdsScreen(screen));
     Navigator.of(context).pop();
   }
+}
+
+List<KdsScreen> _screensForMode(
+  List<KdsScreen> screens,
+  KitchenScreenMode mode,
+) {
+  final rawMode = switch (mode) {
+    KitchenScreenMode.kitchen => 'kitchen',
+    KitchenScreenMode.counter => 'counter',
+    KitchenScreenMode.service => 'service',
+  };
+  return [
+    for (final screen in screens)
+      if (screen.mode == rawMode) screen,
+  ];
 }
 
 class _ScreenOptions extends StatelessWidget {

@@ -25,6 +25,7 @@ class ApiEndpoints {
   static const kdsScreens = '/kds/screens';
   static String kdsScreen(int screenId) => '/kds/screens/$screenId';
   static const kdsPair = '/kds/pair';
+  static const kdsPairingPayloadResolve = '/kds/pairing-payload/resolve';
   static const kdsRemoteSession = '/kds/remote/session';
   static const kdsRemoteSessionRevoke = '/kds/remote/session/revoke';
   static String kdsScreenPairingCode(int screenId) {

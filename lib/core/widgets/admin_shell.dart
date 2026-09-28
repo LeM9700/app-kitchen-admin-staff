@@ -1,5 +1,6 @@
 import 'package:app_admin_staff/app/permissions/permissions.dart';
 import 'package:app_admin_staff/app/navigation/navigation_capabilities.dart';
+import 'package:app_admin_staff/app/operational_fullscreen.dart';
 import 'package:app_admin_staff/app/responsive/breakpoints.dart';
 import 'package:app_admin_staff/app/service_mode.dart';
 import 'package:app_admin_staff/app/theme/app_theme_mode.dart';
@@ -40,6 +41,15 @@ class AdminShell extends ConsumerWidget {
         .map(_ShellDestination.fromCapability)
         .toList();
     final selectedIndex = _selectedIndex(destinations, location);
+    final fullscreen = ref.watch(operationalFullscreenProvider);
+    final fullscreenAllowed = isOperationalFullscreenRoute(location);
+    final operationalFullscreen = fullscreen && fullscreenAllowed;
+
+    if (fullscreen && !fullscreenAllowed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(operationalFullscreenProvider.notifier).state = false;
+      });
+    }
 
     // ── Auto-flush : déclenche la synchronisation au retour réseau ────────────
     // [⚡ PERF] Le flush ne se déclenche que lors d'une transition offline→online,
@@ -57,17 +67,30 @@ class AdminShell extends ConsumerWidget {
 
     if (Breakpoints.isMobile(context)) {
       if (!isAdmin) {
+        if (operationalFullscreen) {
+          return _OperationalFullscreenShell(
+            useStaffTheme: true,
+            child: child,
+          );
+        }
         return _StaffMobileShell(
           destinations: _staffMobileDestinations(destinations),
           location: location,
           child: child,
         );
       }
+      if (operationalFullscreen) {
+        return _OperationalFullscreenShell(child: child);
+      }
       return _AdminMobileShell(
         destinations: destinations,
         selectedIndex: selectedIndex,
         child: child,
       );
+    }
+
+    if (operationalFullscreen) {
+      return _OperationalFullscreenShell(child: child);
     }
 
     return _KitchenDesktopShell(
@@ -83,6 +106,32 @@ class AdminShell extends ConsumerWidget {
     }
     final index = destinations.indexWhere((item) => path.startsWith(item.path));
     return index < 0 ? 0 : index;
+  }
+}
+
+class _OperationalFullscreenShell extends StatelessWidget {
+  const _OperationalFullscreenShell({
+    required this.child,
+    this.useStaffTheme = false,
+  });
+
+  final Widget child;
+  final bool useStaffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final shell = Scaffold(
+      backgroundColor:
+          useStaffTheme ? AppColors.staffBackground : AppColors.adminBackground,
+      body: child,
+    );
+    if (!useStaffTheme) {
+      return shell;
+    }
+    return Theme(
+      data: ApiKitchenTheme.staffDark(),
+      child: shell,
+    );
   }
 }
 
@@ -1170,7 +1219,7 @@ String _initialsFor(String value) {
 List<_ShellDestination> _staffMobileDestinations(
   List<_ShellDestination> destinations,
 ) {
-  const preferred = ['/home', '/orders', '/kitchen', '/stock', '/hr'];
+  const preferred = ['/home', '/orders', '/kitchen', '/counter', '/stock', '/hr'];
   final selected = <_ShellDestination>[];
   for (final path in preferred) {
     for (final item in destinations) {
@@ -1190,6 +1239,7 @@ String _staffMobileLabel(_ShellDestination item) {
     '/home' => 'Accueil',
     '/orders' => 'Service',
     '/kitchen' => 'Commandes',
+    '/counter' => 'Comptoir',
     '/stock' => 'Stock',
     '/hr' => 'Activite',
     _ => item.label,

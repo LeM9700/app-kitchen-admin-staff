@@ -1,3 +1,4 @@
+import 'package:app_admin_staff/app/widgets/operational_fullscreen_button.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/features/kitchen/application/kitchen_connection.dart';
@@ -18,6 +19,10 @@ class KitchenStatusHeader extends StatelessWidget {
     this.connection,
     this.onProfileSelected,
     this.selectedScreen,
+    this.onRemotePairingRequested,
+    this.onRemoteScanRequested,
+    this.remotePairingBusy = false,
+    this.screenMode = KitchenScreenMode.kitchen,
     super.key,
   });
 
@@ -27,6 +32,10 @@ class KitchenStatusHeader extends StatelessWidget {
   final int totalNew;
   final KitchenConnectionState? connection;
   final ValueChanged<KitchenScreenProfile>? onProfileSelected;
+  final VoidCallback? onRemotePairingRequested;
+  final VoidCallback? onRemoteScanRequested;
+  final bool remotePairingBusy;
+  final KitchenScreenMode screenMode;
 
   /// The backend KDS screen selected via the new `KitchenScreenSelector`
   /// flow (LOT 11 Task 6), if any. When set, its `name` (uppercased) is
@@ -47,7 +56,18 @@ class KitchenStatusHeader extends StatelessWidget {
         : KitchenScreenSelector(
             profile: profile,
             onProfileSelected: onProfileSelected!,
+            screenMode: screenMode,
           );
+    final remotePairingAction = onRemotePairingRequested == null
+        ? null
+        : _RemotePairingButton(
+            busy: remotePairingBusy,
+            onPressed: onRemotePairingRequested!,
+          );
+    final remoteScanAction = onRemoteScanRequested == null
+        ? null
+        : _RemoteScanButton(onPressed: onRemoteScanRequested!);
+    final fullscreenAction = _KitchenFullscreenButton();
 
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -93,6 +113,16 @@ class KitchenStatusHeader extends StatelessWidget {
                                 .copyWith(color: KitchenVisuals.graphite),
                           ),
                         ),
+                        if (remotePairingAction != null) ...[
+                          remotePairingAction,
+                          const SizedBox(width: 8),
+                        ],
+                        if (remoteScanAction != null) ...[
+                          remoteScanAction,
+                          const SizedBox(width: 8),
+                        ],
+                        fullscreenAction,
+                        const SizedBox(width: 8),
                         if (selector != null) selector,
                       ],
                     ),
@@ -136,6 +166,12 @@ class KitchenStatusHeader extends StatelessWidget {
                     const SizedBox(width: 8),
                     selector,
                   ],
+                  if (remotePairingAction != null) ...[
+                    const SizedBox(width: 8),
+                    remotePairingAction,
+                  ],
+                  const SizedBox(width: 8),
+                  fullscreenAction,
                 ],
               );
             },
@@ -144,6 +180,71 @@ class KitchenStatusHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+class _KitchenFullscreenButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return OperationalFullscreenButton(
+      key: const Key('kitchen-fullscreen-action'),
+      style: _kitchenActionButtonStyle(),
+    );
+  }
+}
+
+class _RemoteScanButton extends StatelessWidget {
+  const _RemoteScanButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton.filledTonal(
+      key: const Key('kitchen-remote-scan-action'),
+      tooltip: 'Scanner remote',
+      style: _kitchenActionButtonStyle(),
+      onPressed: onPressed,
+      icon: const Icon(Icons.qr_code_scanner_outlined),
+    );
+  }
+}
+
+class _RemotePairingButton extends StatelessWidget {
+  const _RemotePairingButton({
+    required this.busy,
+    required this.onPressed,
+  });
+
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton.filledTonal(
+      key: const Key('kitchen-remote-pairing-action'),
+      tooltip: 'QR remote',
+      style: _kitchenActionButtonStyle(),
+      onPressed: busy ? null : onPressed,
+      icon: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.qr_code_2_outlined),
+    );
+  }
+}
+
+ButtonStyle _kitchenActionButtonStyle() {
+  return IconButton.styleFrom(
+    backgroundColor: KitchenVisuals.ticketSurface,
+    foregroundColor: KitchenVisuals.graphite,
+    side: const BorderSide(color: KitchenVisuals.warmBorder),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+    ),
+  );
 }
 
 class _KitchenConnectionChip extends StatelessWidget {

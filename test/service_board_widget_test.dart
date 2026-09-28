@@ -1,12 +1,19 @@
+import 'package:app_admin_staff/app/operational_fullscreen.dart';
+import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/auth/session_models.dart';
+import 'package:app_admin_staff/core/auth/token_store.dart';
 import 'package:app_admin_staff/core/offline/sync_queue.dart';
 import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
+import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
+import 'package:app_admin_staff/features/kitchen/data/kds_repository.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/orders/presentation/orders_board_page.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -100,6 +107,139 @@ void main() {
       );
     }
   });
+
+  testWidgets('service masque le QR remote sans permission preparation', (
+    tester,
+  ) async {
+    await _pumpService(
+      tester,
+      repository: _FakeOrdersRepository(),
+      orders: [_summary()],
+    );
+
+    expect(find.byKey(const Key('service-remote-pairing-action')), findsNothing);
+  });
+
+  testWidgets('service genere un QR remote pour un ecran service', (
+    tester,
+  ) async {
+    final kdsRepository = _FakeKdsRepository()
+      ..screens = [
+        _kdsScreen(id: 1, name: 'Cuisine principale'),
+        _kdsScreen(
+          id: 4,
+          name: 'Service salle',
+          mode: 'service',
+          station: 'service',
+        ),
+      ]
+      ..pairingCode = KdsPairingCode(
+        screenId: 4,
+        code: '618204',
+        pairingPayload: 'encrypted-service-payload',
+        expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      );
+
+    await _pumpService(
+      tester,
+      repository: _FakeOrdersRepository(),
+      orders: [_summary()],
+      canPrepare: true,
+      overrides: [kdsRepositoryProvider.overrideWithValue(kdsRepository)],
+    );
+
+    await tester.tap(find.byKey(const Key('service-remote-pairing-action')));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(kdsRepository.generatedScreenId, 4);
+    expect(find.byKey(const Key('kds-pairing-qr')), findsOneWidget);
+    expect(find.text('618 204'), findsOneWidget);
+  });
+
+  testWidgets('service affiche un message si aucun ecran service remote', (
+    tester,
+  ) async {
+    final kdsRepository = _FakeKdsRepository()
+      ..screens = [
+        _kdsScreen(id: 1, name: 'Cuisine principale'),
+        _kdsScreen(
+          id: 2,
+          name: 'Comptoir terrasse',
+          mode: 'counter',
+          station: 'counter',
+        ),
+      ];
+
+    await _pumpService(
+      tester,
+      repository: _FakeOrdersRepository(),
+      orders: [_summary()],
+      canPrepare: true,
+      overrides: [kdsRepositoryProvider.overrideWithValue(kdsRepository)],
+    );
+
+    await tester.tap(find.byKey(const Key('service-remote-pairing-action')));
+    await tester.pump();
+
+    expect(kdsRepository.generateCalls, 0);
+    expect(
+      find.text('AUCUN ÉCRAN SERVICE REMOTE DISPONIBLE'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('service affiche le scanner remote seulement sur mobile', (
+    tester,
+  ) async {
+    await _pumpService(
+      tester,
+      repository: _FakeOrdersRepository(),
+      orders: [_summary()],
+      canPrepare: true,
+      size: const Size(390, 844),
+    );
+
+    expect(find.byKey(const Key('service-remote-scan-action')), findsOneWidget);
+
+    await _pumpService(
+      tester,
+      repository: _FakeOrdersRepository(),
+      orders: [_summary()],
+      canPrepare: true,
+      size: const Size(1024, 768),
+    );
+
+    expect(find.byKey(const Key('service-remote-scan-action')), findsNothing);
+  });
+
+  testWidgets('service expose un bouton plein ecran reversible', (
+    tester,
+  ) async {
+    await _pumpService(
+      tester,
+      repository: _FakeOrdersRepository(),
+      orders: [_summary()],
+      canPrepare: true,
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(OrdersBoardPage)),
+      listen: false,
+    );
+
+    expect(find.byKey(const Key('service-fullscreen-action')), findsOneWidget);
+    expect(container.read(operationalFullscreenProvider), isFalse);
+
+    await tester.tap(find.byKey(const Key('service-fullscreen-action')));
+    await tester.pump();
+
+    expect(container.read(operationalFullscreenProvider), isTrue);
+    expect(find.byIcon(Icons.fullscreen_exit_outlined), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('service-fullscreen-action')));
+    await tester.pump();
+
+    expect(container.read(operationalFullscreenProvider), isFalse);
+  });
 }
 
 Future<void> _pumpService(
@@ -107,15 +247,19 @@ Future<void> _pumpService(
   required _FakeOrdersRepository repository,
   required List<OrderSummary> orders,
   List<Override> overrides = const [],
+  bool canPrepare = false,
+  Size size = const Size(1024, 768),
 }) async {
   addTearDown(tester.view.reset);
-  tester.view.physicalSize = const Size(1024, 768);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
 
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        sessionControllerProvider.overrideWith(_TestSessionController.new),
+        sessionControllerProvider.overrideWith(
+          () => _TestSessionController(canPrepare: canPrepare),
+        ),
         availableEstablishmentsProvider.overrideWith(
           (ref) async => const [
             Establishment(
@@ -313,19 +457,112 @@ class _TestSyncQueue extends SyncQueue {
 }
 
 class _TestSessionController extends SessionController {
+  _TestSessionController({required this.canPrepare});
+
+  final bool canPrepare;
+
   @override
   Future<SessionState> build() async {
-    return const SessionState.authenticated(
+    return SessionState.authenticated(
       user: StaffUser(
         id: 1,
         email: 'staff@test.local',
         role: 'staff',
         tenantSlug: 'pizza',
-        permissions: {'orders:read'},
+        permissions: {
+          'orders:read',
+          if (canPrepare) 'orders:preparation',
+        },
         mustChangePassword: false,
       ),
       tenantSlug: 'pizza',
       sessionId: 1,
     );
   }
+}
+
+KdsScreen _kdsScreen({
+  required int id,
+  required String name,
+  String mode = 'kitchen',
+  String station = 'kitchen',
+  String interactionMode = 'wall',
+  int ticketsPerPage = 4,
+  bool isActive = true,
+  bool remoteEnabled = true,
+}) {
+  return KdsScreen(
+    id: id,
+    name: name,
+    screenKey: 'screen-$id',
+    mode: mode,
+    station: station,
+    interactionMode: interactionMode,
+    ticketsPerPage: ticketsPerPage,
+    isActive: isActive,
+    remoteEnabled: remoteEnabled,
+  );
+}
+
+class _FakeKdsRepository extends KdsRepository {
+  _FakeKdsRepository() : super(_unusedClient());
+
+  List<KdsScreen> screens = const [];
+  KdsPairingCode? pairingCode;
+  KdsPairingPayloadResolution? resolveResult;
+  int generateCalls = 0;
+  int? generatedScreenId;
+  final resolvedPayloads = <String>[];
+
+  @override
+  Future<List<KdsScreen>> listScreens({bool includeInactive = false}) async {
+    if (includeInactive) {
+      return screens;
+    }
+    return [
+      for (final screen in screens)
+        if (screen.isActive) screen,
+    ];
+  }
+
+  @override
+  Future<KdsPairingCode> generatePairingCode({required int screenId}) async {
+    generateCalls += 1;
+    generatedScreenId = screenId;
+    final code = pairingCode;
+    if (code == null) {
+      throw StateError('missing pairing code');
+    }
+    return code;
+  }
+
+  @override
+  Future<KdsPairingPayloadResolution> resolvePairingPayload({
+    required String pairingPayload,
+  }) async {
+    resolvedPayloads.add(pairingPayload);
+    return resolveResult ??
+        KdsPairingPayloadResolution(
+          screenId: 4,
+          code: '618204',
+          expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+          screen: _kdsScreen(
+            id: 4,
+            name: 'Service salle',
+            mode: 'service',
+            station: 'service',
+          ),
+        );
+  }
+}
+
+ApiClient _unusedClient() {
+  return ApiClient(
+    Dio(BaseOptions(baseUrl: 'http://api.test')),
+    _MemoryTokenStore(),
+  );
+}
+
+class _MemoryTokenStore extends TokenStore {
+  _MemoryTokenStore() : super(const FlutterSecureStorage());
 }

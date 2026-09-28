@@ -8,21 +8,31 @@ import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.d
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final initialKitchenScreenProfile = kitchenScreenPresetFor(
-  mode: KitchenScreenMode.kitchen,
-  ticketsPerPage: 4,
-  interactionMode: _initialKitchenInteractionMode(),
+final initialKitchenScreenProfile = initialKitchenScreenProfileFor(
+  KitchenScreenMode.kitchen,
 );
+
+KitchenScreenProfile initialKitchenScreenProfileFor(KitchenScreenMode mode) {
+  return kitchenScreenPresetFor(
+    mode: mode,
+    ticketsPerPage: 4,
+    interactionMode: _initialKitchenInteractionMode(),
+  );
+}
 
 final kitchenScreenProfileProvider =
-    NotifierProvider<KitchenScreenProfileController, KitchenScreenProfile>(
-  KitchenScreenProfileController.new,
-);
+    kitchenScreenProfileProviderFor(KitchenScreenMode.kitchen);
 
-class KitchenScreenProfileController extends Notifier<KitchenScreenProfile> {
+final kitchenScreenProfileProviderFor = NotifierProvider.family<
+    KitchenScreenProfileController,
+    KitchenScreenProfile,
+    KitchenScreenMode>(KitchenScreenProfileController.new);
+
+class KitchenScreenProfileController
+    extends FamilyNotifier<KitchenScreenProfile, KitchenScreenMode> {
   @override
-  KitchenScreenProfile build() {
-    return initialKitchenScreenProfile;
+  KitchenScreenProfile build(KitchenScreenMode arg) {
+    return initialKitchenScreenProfileFor(arg);
   }
 
   void setProfile(KitchenScreenProfile profile) {
@@ -36,23 +46,33 @@ class KitchenScreenProfileController extends Notifier<KitchenScreenProfile> {
 /// mode-label title (`kitchenScreenModeLabel`) in that case. Runtime-only:
 /// no persistence for this lot, resets to `null` on app restart, which is
 /// the default `StateProvider` behavior (nothing extra to do).
-final kitchenSelectedScreenProvider = StateProvider<KdsScreen?>((ref) => null);
+final kitchenSelectedScreenProvider =
+    kitchenSelectedScreenProviderFor(KitchenScreenMode.kitchen);
+
+final kitchenSelectedScreenProviderFor =
+    StateProvider.family<KdsScreen?, KitchenScreenMode>((ref, arg) => null);
 
 final kitchenQueueProvider =
-    AsyncNotifierProvider<KitchenQueueController, KitchenQueueState>(
-  KitchenQueueController.new,
-);
+    kitchenQueueProviderFor(KitchenScreenMode.kitchen);
 
-class KitchenQueueController extends AsyncNotifier<KitchenQueueState> {
+final kitchenQueueProviderFor = AsyncNotifierProvider.family<
+    KitchenQueueController,
+    KitchenQueueState,
+    KitchenScreenMode>(KitchenQueueController.new);
+
+class KitchenQueueController
+    extends FamilyAsyncNotifier<KitchenQueueState, KitchenScreenMode> {
   int _currentPage = 0;
   int? _focusedOrderId;
   int? _snapshotPage;
   List<KitchenTicketViewModel>? _secondaryPageSnapshot;
   KitchenScreenProfile? _lastProfile;
+  late KitchenScreenMode _screenMode;
 
   @override
-  Future<KitchenQueueState> build() async {
-    final profile = ref.watch(kitchenScreenProfileProvider);
+  Future<KitchenQueueState> build(KitchenScreenMode arg) async {
+    _screenMode = arg;
+    final profile = ref.watch(kitchenScreenProfileProviderFor(arg));
     final repository = ref.watch(ordersRepositoryProvider);
     _resetForProfileChange(profile);
 
@@ -210,7 +230,9 @@ class KitchenQueueController extends AsyncNotifier<KitchenQueueState> {
 
   void setProfile(KitchenScreenProfile profile) {
     _clearBrowsingState();
-    ref.read(kitchenScreenProfileProvider.notifier).setProfile(profile);
+    ref.read(kitchenScreenProfileProviderFor(_screenMode).notifier).setProfile(
+          profile,
+        );
   }
 
   void _resetForProfileChange(KitchenScreenProfile profile) {

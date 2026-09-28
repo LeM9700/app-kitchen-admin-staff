@@ -100,6 +100,37 @@ void main() {
     expect(button.onPressed, isNotNull);
   });
 
+  testWidgets('code initial pre-remplit le formulaire sans associer', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    final kdsRepository = TestKdsRepository();
+    final container = createKitchenContainer(
+      TestKitchenRepository(),
+      overrides: remoteKdsOverrides(
+        TestRemoteSessionStore(),
+        kdsRepository,
+      ),
+    );
+    addTearDown(container.dispose);
+
+    await pumpKitchenRemotePage(
+      tester,
+      container,
+      initialPairingCode: '482731',
+    );
+
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('kitchen-remote-pairing-code')),
+    );
+    expect(field.controller?.text, '482731');
+    expect(kdsRepository.pairCodes, isEmpty);
+    final button = tester.widget<FilledButton>(
+      find.byKey(const Key('kitchen-remote-pair-submit')),
+    );
+    expect(button.onPressed, isNotNull);
+  });
+
   testWidgets('pairing affiche un spinner et desactive le bouton', (
     tester,
   ) async {
@@ -498,6 +529,7 @@ Future<void> pumpKitchenRemotePage(
   WidgetTester tester,
   ProviderContainer container, {
   Size size = const Size(390, 844),
+  String? initialPairingCode,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -508,7 +540,9 @@ Future<void> pumpKitchenRemotePage(
       child: MaterialApp(
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
-        home: const Scaffold(body: KitchenRemotePage()),
+        home: Scaffold(
+          body: KitchenRemotePage(initialPairingCode: initialPairingCode),
+        ),
       ),
     ),
   );
@@ -721,11 +755,14 @@ class TestKdsRepository extends KdsRepository {
   KdsPairResult? pairResult;
   Object? pairError;
   Completer<KdsPairResult>? pairGate;
+  KdsPairingPayloadResolution? resolveResult;
+  Object? resolveError;
   KdsRemoteSessionStatus? statusResult;
   Object? statusError;
   Object? revokeError;
 
   final List<String> pairCodes = [];
+  final List<String> resolvedPayloads = [];
   final List<String?> deviceLabels = [];
   final List<String> sessionTokens = [];
   final List<String> revokedTokens = [];
@@ -751,6 +788,24 @@ class TestKdsRepository extends KdsRepository {
     }
     return pairResult ??
         _pairResult(screen: _kdsScreen(name: 'Cuisine principale'));
+  }
+
+  @override
+  Future<KdsPairingPayloadResolution> resolvePairingPayload({
+    required String pairingPayload,
+  }) async {
+    resolvedPayloads.add(pairingPayload);
+    final error = resolveError;
+    if (error != null) {
+      throw error;
+    }
+    return resolveResult ??
+        KdsPairingPayloadResolution(
+          screenId: 12,
+          code: '482731',
+          expiresAt: DateTime.utc(2026, 8, 18, 22),
+          screen: _kdsScreen(name: 'Cuisine principale'),
+        );
   }
 
   @override

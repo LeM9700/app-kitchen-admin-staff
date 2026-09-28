@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:app_admin_staff/core/widgets/empty_state.dart';
 import 'package:app_admin_staff/design_system/components/badges/status_badge.dart';
 import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
@@ -10,8 +8,8 @@ import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kds_screen_key.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_screen_presets.dart';
+import 'package:app_admin_staff/features/kitchen/presentation/widgets/kds_pairing_dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Écrans & postes KDS — section de `SettingsPage`.
@@ -175,7 +173,7 @@ class KdsSettingsSection extends ConsumerWidget {
     }
     await showDialog<void>(
       context: context,
-      builder: (context) => _PairingCodeDialog(
+      builder: (context) => KdsPairingDialog(
         screen: screen,
         initialCode: code,
         onRegenerate: () => ref
@@ -658,229 +656,6 @@ class _ActionButton extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Dialog "ASSOCIER UN TÉLÉPHONE" ouvert par "CODE D'ASSOCIATION".
-///
-/// Détient localement le code de pairing courant (`_code`) et l'état
-/// d'expiration (`_expired`) : régénérer un code remplace entièrement
-/// `_code`, donc l'ancien code n'est jamais réaffiché après une
-/// régénération réussie. Le décompte lui-même vit dans [_PairingCountdown]
-/// (voir sa doc) pour ne pas reconstruire ce dialog à chaque seconde.
-class _PairingCodeDialog extends StatefulWidget {
-  const _PairingCodeDialog({
-    required this.screen,
-    required this.initialCode,
-    required this.onRegenerate,
-  });
-
-  final KdsScreen screen;
-  final KdsPairingCode initialCode;
-  final Future<KdsPairingCode?> Function() onRegenerate;
-
-  @override
-  State<_PairingCodeDialog> createState() => _PairingCodeDialogState();
-}
-
-class _PairingCodeDialogState extends State<_PairingCodeDialog> {
-  late KdsPairingCode _code;
-  bool _expired = false;
-  bool _regenerating = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _code = widget.initialCode;
-  }
-
-  void _handleExpired() {
-    if (!mounted) {
-      return;
-    }
-    setState(() => _expired = true);
-  }
-
-  Future<void> _regenerate() async {
-    setState(() => _regenerating = true);
-    // L'échec (result == null) est déjà remonté par le ref.listen
-    // d'actionError de la section parente (Task 4) : rien à afficher ici,
-    // on reste simplement sur l'état "CODE EXPIRÉ" pour laisser l'admin
-    // réessayer.
-    final result = await widget.onRegenerate();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _regenerating = false;
-      if (result != null) {
-        _code = result;
-        _expired = false;
-      }
-    });
-  }
-
-  Future<void> _copyCode() async {
-    await Clipboard.setData(ClipboardData(text: _code.code));
-    if (!mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('CODE COPIÉ')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('ASSOCIER UN TÉLÉPHONE'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            widget.screen.name,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            _formatPairingCodeDisplay(_code.code),
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (_expired) ...[
-            Text(
-              'CODE EXPIRÉ',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppColors.danger,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            FilledButton.icon(
-              onPressed: _regenerating ? null : _regenerate,
-              icon: _regenerating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.refresh),
-              label: const Text('GÉNÉRER UN NOUVEAU CODE'),
-            ),
-          ] else ...[
-            _PairingCountdown(
-              expiresAt: _code.expiresAt,
-              onExpired: _handleExpired,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextButton.icon(
-              onPressed: _copyCode,
-              icon: const Icon(Icons.copy_outlined, size: 18),
-              label: const Text('COPIER'),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('FERMER'),
-        ),
-      ],
-    );
-  }
-}
-
-/// Décompte "Expire dans MM:SS" isolé de son parent : un `Timer.periodic`
-/// interne se reconstruit lui-même chaque seconde (même pattern que
-/// `lib/core/widgets/live_countdown.dart`), annulé dans `dispose()`. Le
-/// parent ([_PairingCodeDialog]) n'est notifié qu'une seule fois, via
-/// [onExpired], au moment où le compte à rebours atteint zéro — pas à
-/// chaque tick — pour ne provoquer qu'une seule reconstruction du dialog
-/// (bascule vers "CODE EXPIRÉ") au lieu d'une par seconde.
-class _PairingCountdown extends StatefulWidget {
-  const _PairingCountdown({
-    required this.expiresAt,
-    required this.onExpired,
-  });
-
-  final DateTime expiresAt;
-  final VoidCallback onExpired;
-
-  @override
-  State<_PairingCountdown> createState() => _PairingCountdownState();
-}
-
-class _PairingCountdownState extends State<_PairingCountdown> {
-  Timer? _timer;
-  bool _notified = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Vérifie l'expiration dès la première frame (cas limite : le code est
-    // déjà expiré au moment où le dialog s'ouvre) sans appeler setState
-    // pendant la phase de build.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _tick());
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _tick() {
-    if (!mounted || _notified) {
-      return;
-    }
-    final remaining = widget.expiresAt.toLocal().difference(DateTime.now());
-    if (remaining <= Duration.zero) {
-      _notified = true;
-      _timer?.cancel();
-      widget.onExpired();
-      return;
-    }
-    setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final remaining = widget.expiresAt.toLocal().difference(DateTime.now());
-    final display = remaining.isNegative ? Duration.zero : remaining;
-    return Text(
-      'Expire dans ${_formatPairingCountdown(display)}',
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-          ),
-    );
-  }
-}
-
-/// Formate un code de pairing 6 chiffres avec un espace médian purement
-/// visuel ("482731" -> "482 731"). Ne modifie jamais la valeur réelle du
-/// code (utilisée telle quelle pour la copie et les appels API) et ne
-/// convertit jamais le code en nombre (le zéro initial doit rester
-/// visible, ex. "004281" -> "004 281").
-String _formatPairingCodeDisplay(String code) {
-  if (code.length != 6) {
-    return code;
-  }
-  return '${code.substring(0, 3)} ${code.substring(3)}';
-}
-
-/// Formate une durée restante en `MM:SS` (jamais `DD:HH:MM:SS` — un code de
-/// pairing expire toujours en quelques minutes, jamais en jours/heures),
-/// distinct de `formatCountdown` de `live_countdown.dart` qui cible un
-/// tout autre usage (DLC produits).
-String _formatPairingCountdown(Duration remaining) {
-  String two(int value) => value.toString().padLeft(2, '0');
-  return '${two(remaining.inMinutes)}:${two(remaining.inSeconds % 60)}';
 }
 
 String _interactionModeLabel(String value) {

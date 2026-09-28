@@ -289,6 +289,7 @@ String mapKdsError(Object error) {
       'UN ÉCRAN AVEC CET IDENTIFIANT EXISTE DÉJÀ',
     'KDS_SCREEN_NOT_FOUND' => 'ÉCRAN INTROUVABLE',
     'KDS_SCREEN_INACTIVE' => 'ÉCRAN INACTIF',
+    'KDS_SCREEN_REMOTE_DISABLED' => 'REMOTE DÉSACTIVÉ POUR CET ÉCRAN',
     _ => null,
   };
   if (businessMessage != null) {

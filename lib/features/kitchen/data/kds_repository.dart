@@ -125,6 +125,18 @@ class KdsRepository {
     );
   }
 
+  Future<KdsPairingPayloadResolution> resolvePairingPayload({
+    required String pairingPayload,
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.kdsPairingPayloadResolve,
+      data: {'pairing_payload': pairingPayload.trim()},
+    );
+    return KdsPairingPayloadResolution.fromJson(
+      _responseMap(response.data, 'KDS pairing payload resolve'),
+    );
+  }
+
   Future<int> revokeScreenSessions({required int screenId}) async {
     final response = await _apiClient.post(
       ApiEndpoints.kdsScreenRevokeSessions(screenId),

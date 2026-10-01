@@ -14,6 +14,8 @@ class CheckoutValidationInput {
     required this.isRestaurantOpen,
     this.cartEstablishmentId,
     this.currentEstablishmentId,
+    this.customerPhone = '',
+    this.deliveryZoneId,
   });
 
   final bool hasItems;
@@ -30,6 +32,18 @@ class CheckoutValidationInput {
   final bool isRestaurantOpen;
   final int? cartEstablishmentId;
   final int? currentEstablishmentId;
+  final String customerPhone;
+  final int? deliveryZoneId;
+}
+
+/// Meme regle que l'API (`orders/schemas.py::_PHONE_RE`) : chiffres, espaces,
+/// `+ ( ) . -`, 6 a 32 caracteres, avec au moins 6 chiffres.
+bool isValidCustomerPhone(String value) {
+  final phone = value.trim();
+  if (!RegExp(r'^\+?[0-9 ().-]{6,32}$').hasMatch(phone)) {
+    return false;
+  }
+  return phone.replaceAll(RegExp(r'[^0-9]'), '').length >= 6;
 }
 
 class CheckoutValidationResult {
@@ -66,6 +80,20 @@ CheckoutValidationResult validateCheckout(CheckoutValidationInput input) {
   if (input.orderType == 'delivery' && input.deliveryAddress.trim().isEmpty) {
     return const CheckoutValidationResult.invalid(
       'Adresse requise pour une livraison',
+    );
+  }
+  if (input.orderType == 'delivery' && input.customerPhone.trim().isEmpty) {
+    return const CheckoutValidationResult.invalid(
+      'Telephone requis pour une livraison',
+    );
+  }
+  if (input.customerPhone.trim().isNotEmpty &&
+      !isValidCustomerPhone(input.customerPhone)) {
+    return const CheckoutValidationResult.invalid('Telephone invalide');
+  }
+  if (input.orderType == 'delivery' && input.deliveryZoneId == null) {
+    return const CheckoutValidationResult.invalid(
+      'Zone de livraison requise : elle determine les frais',
     );
   }
   if ({'external_terminal', 'cash_register'}.contains(input.paymentMethod) &&

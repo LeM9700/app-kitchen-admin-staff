@@ -158,6 +158,7 @@ class OrderSummary {
     this.customerPhone,
     this.establishmentId,
     this.deliveryAddress,
+    this.deliveryInstructions,
     this.tableNumber,
     this.createdAt,
   });
@@ -174,6 +175,7 @@ class OrderSummary {
   final double total;
   final double deliveryFee;
   final String? deliveryAddress;
+  final String? deliveryInstructions;
   final String? tableNumber;
   final DateTime? createdAt;
 
@@ -191,6 +193,7 @@ class OrderSummary {
       total: readDouble(json['total']),
       deliveryFee: readDouble(json['delivery_fee']),
       deliveryAddress: json['delivery_address']?.toString(),
+      deliveryInstructions: json['delivery_instructions']?.toString(),
       tableNumber: json['table_number']?.toString(),
       createdAt: readDateTime(json['created_at']),
     );
@@ -214,6 +217,7 @@ class OrderDetail extends OrderSummary {
     super.customerPhone,
     super.establishmentId,
     super.deliveryAddress,
+    super.deliveryInstructions,
     super.tableNumber,
     super.createdAt,
   });
@@ -237,6 +241,7 @@ class OrderDetail extends OrderSummary {
       total: summary.total,
       deliveryFee: summary.deliveryFee,
       deliveryAddress: summary.deliveryAddress,
+      deliveryInstructions: summary.deliveryInstructions,
       tableNumber: summary.tableNumber,
       createdAt: summary.createdAt,
       items: (json['items'] as List? ?? const [])
@@ -460,6 +465,7 @@ class ManualOrderDraft {
     this.tableNumber,
     this.deliveryAddress,
     this.deliveryZoneId,
+    this.deliveryInstructions,
     this.customerEmail,
     this.customerName,
     this.customerPhone,
@@ -481,6 +487,7 @@ class ManualOrderDraft {
   final String? tableNumber;
   final String? deliveryAddress;
   final int? deliveryZoneId;
+  final String? deliveryInstructions;
   final String? customerEmail;
   final String? customerName;
   final String? customerPhone;
@@ -505,6 +512,10 @@ class ManualOrderDraft {
         'delivery_address': deliveryAddress,
       if (isDelivery && deliveryZoneId != null)
         'delivery_zone_id': deliveryZoneId,
+      if (isDelivery &&
+          deliveryInstructions != null &&
+          deliveryInstructions!.trim().isNotEmpty)
+        'delivery_instructions': deliveryInstructions!.trim(),
       if (!isDelivery) 'delivery_zone_id': null,
       if (orderType == 'dine_in' && tableNumber != null)
         'table_number': tableNumber,

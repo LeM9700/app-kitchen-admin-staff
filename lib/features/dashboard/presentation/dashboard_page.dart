@@ -1822,7 +1822,8 @@ class _SkeletonRows extends StatelessWidget {
 bool _isLate(OrderSummary order) {
   final createdAt = order.createdAt;
   if (createdAt == null ||
-      {'ready', 'delivered', 'cancelled'}.contains(order.status)) {
+      {'ready', 'delivered', 'cancelled', 'delivery_failed', 'rejected'}
+          .contains(order.status)) {
     return false;
   }
   return DateTime.now().difference(createdAt.toLocal()).inMinutes >= 30;

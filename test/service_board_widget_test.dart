@@ -240,6 +240,121 @@ void main() {
 
     expect(container.read(operationalFullscreenProvider), isFalse);
   });
+
+  testWidgets('menu: echec de livraison propose seulement en livraison', (
+    tester,
+  ) async {
+    await _pumpService(
+      tester,
+      repository: _FakeOrdersRepository(),
+      orders: [
+        _summary(id: 1, orderType: 'delivery', status: 'ready'),
+        _summary(id: 2, orderType: 'delivery', status: 'out_for_delivery'),
+      ],
+    );
+
+    await tester.tap(find.byTooltip('Actions secondaires').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Echec de livraison'), findsNothing);
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Actions secondaires').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Echec de livraison'), findsOneWidget);
+  });
+
+  testWidgets('echec de livraison envoie le motif et rafraichit', (
+    tester,
+  ) async {
+    final repository = _FakeOrdersRepository();
+    await _pumpService(
+      tester,
+      repository: repository,
+      orders: [_summary(orderType: 'delivery', status: 'out_for_delivery')],
+    );
+
+    await tester.tap(find.byTooltip('Actions secondaires'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Echec de livraison'));
+    await tester.pumpAndSettle();
+
+    // Sans motif, la confirmation reste desactivee : l'API exige un motif.
+    final confirm = find.byKey(const ValueKey('delivery-failure-confirm'));
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+
+    await tester.tap(
+      find.byKey(const ValueKey('delivery-failure-reason-Client absent')),
+    );
+    await tester.pump();
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+
+    expect(repository.statusUpdates, ['delivery_failed']);
+    expect(repository.statusNotes['delivery_failed'], 'Client absent');
+  });
+
+  testWidgets('echec de livraison hors ligne garde le motif en file', (
+    tester,
+  ) async {
+    final repository = _FakeOrdersRepository(
+      updateError: const NetworkException(message: 'offline'),
+    );
+    await _pumpService(
+      tester,
+      repository: repository,
+      orders: [_summary(orderType: 'delivery', status: 'out_for_delivery')],
+      overrides: [syncQueueProvider.overrideWith(_TestSyncQueue.new)],
+    );
+
+    await tester.tap(find.byTooltip('Actions secondaires'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Echec de livraison'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('delivery-failure-reason-Client injoignable')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('delivery-failure-confirm')));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(OrdersBoardPage)),
+      listen: false,
+    );
+    final queued = container.read(syncQueueProvider).single;
+    expect(queued.payload['status'], 'delivery_failed');
+    expect(queued.payload['note'], 'Client injoignable');
+  });
+
+  testWidgets('la carte livraison affiche les instructions du client', (
+    tester,
+  ) async {
+    await _pumpService(
+      tester,
+      repository: _FakeOrdersRepository(),
+      orders: [
+        OrderSummary(
+          id: 3,
+          orderType: 'delivery',
+          status: 'ready',
+          paymentStatus: 'paid',
+          source: 'customer',
+          total: 24,
+          deliveryFee: 4,
+          deliveryAddress: '1 rue de la Paix',
+          deliveryInstructions: '3e etage, code 4521',
+          customerName: 'Malik B.',
+          establishmentId: 1,
+          createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+        ),
+      ],
+    );
+
+    expect(find.text('1 rue de la Paix'), findsOneWidget);
+    expect(find.text('3e etage, code 4521'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpService(
@@ -286,9 +401,11 @@ OrderSummary _summary({
   String orderType = 'dine_in',
   String status = 'ready',
   DateTime? createdAt,
+  String? deliveryInstructions,
 }) {
   return OrderSummary(
     id: id,
+    deliveryInstructions: deliveryInstructions,
     orderType: orderType,
     status: status,
     paymentStatus: 'paid',
@@ -351,6 +468,7 @@ class _FakeOrdersRepository implements OrdersRepository {
   final OrderDetail detail;
   final Object? updateError;
   final statusUpdates = <String>[];
+  final statusNotes = <String, String?>{};
 
   @override
   Future<List<OrderSummary>> listActiveOrders({int? establishmentId}) async {
@@ -381,6 +499,7 @@ class _FakeOrdersRepository implements OrdersRepository {
       throw error;
     }
     statusUpdates.add(status);
+    statusNotes[status] = note;
     return _summary(id: orderId, status: status);
   }
 

@@ -25,6 +25,7 @@ import 'package:app_admin_staff/features/kitchen/presentation/kds_remote_scan_fl
 import 'package:app_admin_staff/features/kitchen/presentation/widgets/kds_pairing_dialog.dart';
 import 'package:app_admin_staff/features/orders/application/service_board_state.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
+import 'package:app_admin_staff/features/orders/presentation/delivery_failure_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -929,6 +930,9 @@ class _ServiceOrderCard extends ConsumerWidget {
                       _ServiceCardMenu(
                         onPrint: () => _printOrder(context, ref),
                         onDetail: () => _showDetail(context, order.id),
+                        onDeliveryFailed: order.status == serviceDeliveryStatus
+                            ? () => _declareDeliveryFailure(context, ref)
+                            : null,
                       ),
                     ],
                   ),
@@ -960,6 +964,18 @@ class _ServiceOrderCard extends ConsumerWidget {
                             fontWeight: FontWeight.w600,
                           ),
                     ),
+                    if (order.deliveryInstructions != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        order.deliveryInstructions!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 12),
                   Row(
@@ -1024,13 +1040,31 @@ class _ServiceOrderCard extends ConsumerWidget {
     }
   }
 
+  Future<void> _declareDeliveryFailure(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final reason = await showDeliveryFailureDialog(context, order.id);
+    if (reason == null || !context.mounted) {
+      return;
+    }
+    await _runAction(
+      ref,
+      'delivery_failed',
+      () => _updateStatus(context, ref, 'delivery_failed', note: reason),
+    );
+  }
+
   Future<void> _updateStatus(
     BuildContext context,
     WidgetRef ref,
-    String status,
-  ) async {
+    String status, {
+    String? note,
+  }) async {
     try {
-      await ref.read(ordersRepositoryProvider).updateStatus(order.id, status);
+      await ref
+          .read(ordersRepositoryProvider)
+          .updateStatus(order.id, status, note: note);
       ref
         ..invalidate(orderDetailProvider(order.id))
         ..invalidate(activeOrdersProvider);
@@ -1055,7 +1089,10 @@ class _ServiceOrderCard extends ConsumerWidget {
             label: 'Commande #${order.id} -> ${humanStatus(status)}',
             endpoint: ApiEndpoints.orderStatus(order.id),
             method: 'PATCH',
-            payload: {'status': status},
+            payload: {
+              'status': status,
+              if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+            },
             lastError: error.toString(),
           );
       if (context.mounted) {
@@ -1188,10 +1225,14 @@ class _ServiceCardMenu extends StatelessWidget {
   const _ServiceCardMenu({
     required this.onPrint,
     required this.onDetail,
+    this.onDeliveryFailed,
   });
 
   final VoidCallback onPrint;
   final VoidCallback onDetail;
+
+  /// Renseigne uniquement pour une commande en cours de livraison.
+  final VoidCallback? onDeliveryFailed;
 
   @override
   Widget build(BuildContext context) {
@@ -1205,22 +1246,33 @@ class _ServiceCardMenu extends StatelessWidget {
         if (value == 'detail') {
           onDetail();
         }
+        if (value == 'delivery_failed') {
+          onDeliveryFailed?.call();
+        }
       },
-      itemBuilder: (context) => const [
-        PopupMenuItem(
+      itemBuilder: (context) => [
+        const PopupMenuItem(
           value: 'detail',
           child: ListTile(
             leading: Icon(Icons.open_in_new_outlined),
             title: Text('Ouvrir detail'),
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'print',
           child: ListTile(
             leading: Icon(Icons.print_outlined),
             title: Text('Imprimer'),
           ),
         ),
+        if (onDeliveryFailed != null)
+          const PopupMenuItem(
+            value: 'delivery_failed',
+            child: ListTile(
+              leading: Icon(Icons.report_problem_outlined),
+              title: Text('Echec de livraison'),
+            ),
+          ),
       ],
     );
   }
@@ -1385,6 +1437,8 @@ class _DetailGrid extends StatelessWidget {
       ('Paiement', humanStatus(order.paymentStatus)),
       ('Total', formatMoney(order.total)),
       if (order.deliveryAddress != null) ('Adresse', order.deliveryAddress!),
+      if (order.deliveryInstructions != null)
+        ('Instructions', order.deliveryInstructions!),
     ];
 
     return DsCard(

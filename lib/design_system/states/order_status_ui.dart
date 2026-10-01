@@ -85,6 +85,22 @@ class OrderStatusUi {
           tone: StatusTone.danger,
           emphasis: true,
         ),
+      'delivery_failed' => const OrderStatusUi(
+          label: 'Livraison echouee',
+          foreground: AppColors.dangerAlt,
+          background: AppColors.dangerBg,
+          icon: Icons.report_problem_outlined,
+          tone: StatusTone.danger,
+          emphasis: true,
+        ),
+      'rejected' => const OrderStatusUi(
+          label: 'Refusee',
+          foreground: AppColors.dangerAlt,
+          background: AppColors.dangerBg,
+          icon: Icons.block_outlined,
+          tone: StatusTone.danger,
+          emphasis: false,
+        ),
       'paid' => const OrderStatusUi(
           label: 'Payee',
           foreground: AppColors.success,

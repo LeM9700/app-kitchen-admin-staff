@@ -18,6 +18,7 @@ import 'package:app_admin_staff/features/loyalty/data/loyalty_repository.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/payments/data/payments_repository.dart';
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
+import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,6 +43,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   final _searchController = TextEditingController();
   final _tableController = TextEditingController();
   final _deliveryAddressController = TextEditingController();
+  final _deliveryInstructionsController = TextEditingController();
   final _customerEmailController = TextEditingController();
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController();
@@ -65,9 +67,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   String _category = _allCategories;
   String? _validationMessage;
   int? _cartEstablishmentId;
+  int? _deliveryZoneId;
 
   @override
   void dispose() {
+    _deliveryInstructionsController.dispose();
     _searchController.dispose();
     _tableController.dispose();
     _deliveryAddressController.dispose();
@@ -226,6 +230,14 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       paymentMethod: _paymentMethod,
       tableController: _tableController,
       deliveryAddressController: _deliveryAddressController,
+      deliveryInstructionsController: _deliveryInstructionsController,
+      deliveryZoneId: _deliveryZoneId,
+      onDeliveryZoneChanged: (zoneId) {
+        setState(() {
+          _deliveryZoneId = zoneId;
+          _validationMessage = null;
+        });
+      },
       customerEmailController: _customerEmailController,
       customerNameController: _customerNameController,
       customerPhoneController: _customerPhoneController,
@@ -359,6 +371,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         establishmentId: currentEstablishmentId,
         tableNumber: _emptyToNull(_tableController.text),
         deliveryAddress: _emptyToNull(_deliveryAddressController.text),
+        deliveryZoneId: _deliveryZoneId,
+        deliveryInstructions: _emptyToNull(_deliveryInstructionsController.text),
         customerEmail: _emptyToNull(_customerEmailController.text),
         customerName: _emptyToNull(_customerNameController.text),
         customerPhone: _emptyToNull(_customerPhoneController.text),
@@ -427,6 +441,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         orderType: _orderType,
         paymentMethod: _paymentMethod,
         deliveryAddress: _deliveryAddressController.text,
+        customerPhone: _customerPhoneController.text,
+        deliveryZoneId: _deliveryZoneId,
         externalReference: _externalReferenceController.text,
         loyaltyCustomerId: _loyaltyCustomer?.id,
         loyaltyRewardId: _selectedLoyaltyRewardId,
@@ -444,6 +460,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   void _resetAfterSale() {
     _cart.clear();
     _noteController.clear();
+    _deliveryInstructionsController.clear();
+    _deliveryZoneId = null;
     _externalReferenceController.clear();
     _amountReceivedController.clear();
     _promoCodeController.clear();
@@ -1244,6 +1262,9 @@ class _CartPanel extends StatelessWidget {
     required this.paymentMethod,
     required this.tableController,
     required this.deliveryAddressController,
+    required this.deliveryInstructionsController,
+    required this.deliveryZoneId,
+    required this.onDeliveryZoneChanged,
     required this.customerEmailController,
     required this.customerNameController,
     required this.customerPhoneController,
@@ -1285,6 +1306,9 @@ class _CartPanel extends StatelessWidget {
   final String paymentMethod;
   final TextEditingController tableController;
   final TextEditingController deliveryAddressController;
+  final TextEditingController deliveryInstructionsController;
+  final int? deliveryZoneId;
+  final ValueChanged<int?> onDeliveryZoneChanged;
   final TextEditingController customerEmailController;
   final TextEditingController customerNameController;
   final TextEditingController customerPhoneController;
@@ -1363,6 +1387,9 @@ class _CartPanel extends StatelessWidget {
           orderType: orderType,
           tableController: tableController,
           deliveryAddressController: deliveryAddressController,
+          deliveryInstructionsController: deliveryInstructionsController,
+          deliveryZoneId: deliveryZoneId,
+          onDeliveryZoneChanged: onDeliveryZoneChanged,
           customerEmailController: customerEmailController,
           customerNameController: customerNameController,
           customerPhoneController: customerPhoneController,
@@ -1964,6 +1991,9 @@ class _ContextSection extends StatelessWidget {
     required this.orderType,
     required this.tableController,
     required this.deliveryAddressController,
+    required this.deliveryInstructionsController,
+    required this.deliveryZoneId,
+    required this.onDeliveryZoneChanged,
     required this.customerEmailController,
     required this.customerNameController,
     required this.customerPhoneController,
@@ -1973,6 +2003,9 @@ class _ContextSection extends StatelessWidget {
   final String orderType;
   final TextEditingController tableController;
   final TextEditingController deliveryAddressController;
+  final TextEditingController deliveryInstructionsController;
+  final int? deliveryZoneId;
+  final ValueChanged<int?> onDeliveryZoneChanged;
   final TextEditingController customerEmailController;
   final TextEditingController customerNameController;
   final TextEditingController customerPhoneController;
@@ -2026,6 +2059,21 @@ class _ContextSection extends StatelessWidget {
                 prefixIcon: Icon(Icons.location_on_outlined),
               ),
             ),
+            const SizedBox(height: 8),
+            _DeliveryZonePicker(
+              zoneId: deliveryZoneId,
+              onChanged: onDeliveryZoneChanged,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: deliveryInstructionsController,
+              onChanged: (_) => onChanged(),
+              maxLength: 500,
+              decoration: const InputDecoration(
+                labelText: 'Instructions (etage, digicode...)',
+                prefixIcon: Icon(Icons.notes_outlined),
+              ),
+            ),
           ],
           if (orderType != 'dine_in') ...[
             const SizedBox(height: 8),
@@ -2040,6 +2088,59 @@ class _ContextSection extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Choix de la zone de livraison pour une commande saisie au comptoir. L'API refuse
+/// une livraison sans zone ; les frais et le delai viennent de la zone choisie.
+class _DeliveryZonePicker extends ConsumerWidget {
+  const _DeliveryZonePicker({required this.zoneId, required this.onChanged});
+
+  final int? zoneId;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final zones = ref.watch(deliveryZonesProvider);
+    return zones.when(
+      data: (items) {
+        final active = items.where((zone) => zone.isActive).toList();
+        if (active.isEmpty) {
+          return const Text(
+            'Aucune zone de livraison active. Creez une zone dans Livraison.',
+          );
+        }
+        final selected =
+            active.any((zone) => zone.id == zoneId) ? zoneId : null;
+        return DropdownButtonFormField<int>(
+          key: const ValueKey('checkout-delivery-zone'),
+          initialValue: selected,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Zone de livraison',
+            prefixIcon: Icon(Icons.map_outlined),
+          ),
+          items: [
+            for (final zone in active)
+              DropdownMenuItem(
+                value: zone.id,
+                child: Text(
+                  '${zone.name} - ${formatMoney(zone.fee)} - '
+                  '${zone.estimatedMinutes} min',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: onChanged,
+        );
+      },
+      loading: () => const LinearProgressIndicator(),
+      error: (error, stackTrace) => TextButton.icon(
+        onPressed: () => ref.invalidate(deliveryZonesProvider),
+        icon: const Icon(Icons.refresh),
+        label: const Text('Zones indisponibles - reessayer'),
       ),
     );
   }

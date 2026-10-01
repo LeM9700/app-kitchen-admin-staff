@@ -190,7 +190,8 @@ List<HomeAlert> buildHomeAlerts({
 int _lateMinutes(OrderSummary order, DateTime now) {
   final createdAt = order.createdAt;
   if (createdAt == null ||
-      {'ready', 'delivered', 'cancelled'}.contains(order.status)) {
+      {'ready', 'delivered', 'cancelled', 'delivery_failed', 'rejected'}
+          .contains(order.status)) {
     return 0;
   }
   return now.difference(createdAt.toLocal()).inMinutes;

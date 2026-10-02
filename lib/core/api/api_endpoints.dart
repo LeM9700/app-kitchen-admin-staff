@@ -212,6 +212,17 @@ class ApiEndpoints {
   static const deliveryGeocode = '/delivery/geocode';
   static const deliveryReverseGeocode = '/delivery/reverse-geocode';
   static const deliverySettings = '/delivery/settings';
+  static const deliveryDrivers = '/delivery/drivers';
+  static String deliveryDriver(int id) => '/delivery/drivers/$id';
+  static const dispatchBoard = '/delivery/dispatch/board';
+  static const dispatchAssign = '/delivery/dispatch/assign';
+  static const dispatchUnassign = '/delivery/dispatch/unassign';
+  static const driverDeliveries = '/delivery/driver/deliveries';
+  static const driverDepart = '/delivery/driver/depart';
+  static const driverRecap = '/delivery/driver/recap';
+  static String driverArrived(int id) => '/delivery/driver/deliveries/$id/arrived';
+  static String driverDelivered(int id) =>
+      '/delivery/driver/deliveries/$id/delivered';
   static String deliveryZone(int zoneId) => '/delivery/zones/$zoneId';
   static String deliveryEstablishmentLocation(int establishmentId) =>
       '/delivery/establishments/$establishmentId/location';

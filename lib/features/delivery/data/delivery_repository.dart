@@ -139,6 +139,24 @@ class DeliveryRepository {
     return DeliverySettings.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// Active ou coupe le dispatch par livreurs. L'API exige `internal_enabled` avec chaque
+  /// ecriture : on renvoie sa valeur courante pour ne pas la modifier.
+  Future<DeliverySettings> setDriverDispatch({
+    required bool enabled,
+    required bool internalEnabled,
+    required int expectedVersion,
+  }) async {
+    final response = await _apiClient.put(
+      ApiEndpoints.deliverySettings,
+      data: {
+        'internal_enabled': internalEnabled,
+        'driver_dispatch_enabled': enabled,
+        'expected_version': expectedVersion,
+      },
+    );
+    return DeliverySettings.fromJson(response.data as Map<String, dynamic>);
+  }
+
   /// Position de l'etablissement : centre des cartes et point de depart des zones.
   Future<void> setEstablishmentLocation(
     int establishmentId,
@@ -161,7 +179,14 @@ class DeliveryRepository {
 // --------------------------------------------------------------------------- reglages
 
 class DeliverySettings {
-  const DeliverySettings({required this.internalEnabled, required this.version});
+  const DeliverySettings({
+    required this.internalEnabled,
+    required this.version,
+    this.driverDispatchEnabled = false,
+  });
+
+  /// Dispatch par livreurs : `ready -> out_for_delivery` exige un livreur assigne.
+  final bool driverDispatchEnabled;
 
   /// Interrupteur general de la livraison (coupe aussi la proposition cote client).
   final bool internalEnabled;
@@ -172,6 +197,7 @@ class DeliverySettings {
   factory DeliverySettings.fromJson(Map<String, dynamic> json) {
     return DeliverySettings(
       internalEnabled: readBool(json['internal_enabled'], fallback: true),
+      driverDispatchEnabled: readBool(json['driver_dispatch_enabled']),
       version: readInt(json['version']),
     );
   }

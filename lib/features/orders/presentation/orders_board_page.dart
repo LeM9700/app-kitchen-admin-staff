@@ -29,6 +29,7 @@ import 'package:app_admin_staff/features/orders/presentation/delivery_failure_di
 import 'package:app_admin_staff/features/payments/presentation/guarantee_settlement_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 final _serviceFilterProvider =
     StateProvider<ServiceFilter>((ref) => ServiceFilter.all);
@@ -1095,7 +1096,16 @@ class _ServiceOrderCard extends ConsumerWidget {
       if (error is ApiError && error.statusCode != null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.message)),
+            SnackBar(
+              content: Text(error.message),
+              // Dispatch actif : pas de depart sans livreur, on propose d'en assigner un.
+              action: error.code == 'DRIVER_REQUIRED'
+                  ? SnackBarAction(
+                      label: 'Dispatch',
+                      onPressed: () => GoRouter.of(context).go('/dispatch'),
+                    )
+                  : null,
+            ),
           );
         }
         return;

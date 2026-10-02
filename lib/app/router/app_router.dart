@@ -11,6 +11,10 @@ import 'package:app_admin_staff/features/checkout/presentation/checkout_page.dar
 import 'package:app_admin_staff/features/customers/presentation/customers_page.dart';
 import 'package:app_admin_staff/features/dashboard/presentation/dashboard_page.dart';
 import 'package:app_admin_staff/features/delivery/presentation/delivery_page.dart';
+import 'package:app_admin_staff/features/delivery/presentation/dispatch_page.dart';
+import 'package:app_admin_staff/features/driver/presentation/driver_deliveries_page.dart';
+import 'package:app_admin_staff/features/driver/presentation/driver_recap_page.dart';
+import 'package:app_admin_staff/features/driver/presentation/driver_shell.dart';
 import 'package:app_admin_staff/features/hr/presentation/hr_page.dart';
 import 'package:app_admin_staff/features/kitchen/domain/kitchen_models.dart';
 import 'package:app_admin_staff/features/kitchen/presentation/kitchen_page.dart';
@@ -84,6 +88,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             initialPairingCode: state.uri.queryParameters['code'],
           );
         },
+      ),
+      // Ecrans du livreur : coque dediee, aucun menu du restaurant.
+      ShellRoute(
+        builder: (context, state, child) {
+          return DriverShell(location: state.uri.path, child: child);
+        },
+        routes: [
+          GoRoute(
+            path: '/driver',
+            builder: (context, state) => const DriverDeliveriesPage(),
+          ),
+          GoRoute(
+            path: '/driver/recap',
+            builder: (context, state) => const DriverRecapPage(),
+          ),
+          GoRoute(
+            path: '/driver/clock',
+            builder: (context, state) => const StaffHrPage(),
+          ),
+        ],
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -168,6 +192,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const DeliveryPage(),
           ),
           GoRoute(
+            path: '/dispatch',
+            builder: (context, state) => const DispatchPage(),
+          ),
+          GoRoute(
             path: '/loyalty',
             builder: (context, state) => const LoyaltyPage(),
           ),
@@ -245,17 +273,27 @@ String? redirectForSession(
     case SessionStatus.sessionExpired:
       return location == '/session-expired' ? null : '/session-expired';
     case SessionStatus.authenticated:
+      final role = session.valueOrNull?.user?.role;
+      if (role == driverRole) {
+        // Un livreur n'a que ses trois ecrans : tout le reste (y compris un lien profond
+        // vers une page du restaurant) le ramene a ses livraisons.
+        if (isAuthPath || isBootstrap) return driverHomePath;
+        return isDriverPath(location) ? null : driverHomePath;
+      }
+      if (isDriverPath(location)) {
+        return '/forbidden';
+      }
       if (isAuthPath || isBootstrap) {
         return _landingFor(session.valueOrNull?.user);
       }
       final permission = routePermission(location);
-      final role = routeRequiredRole(location);
+      final requiredRole = routeRequiredRole(location);
       final user = session.valueOrNull?.user;
       final permissions = PermissionSet(
         role: user?.role ?? 'staff',
         permissions: user?.permissions,
       );
-      if (role != null && !permissions.hasRole(role)) {
+      if (requiredRole != null && !permissions.hasRole(requiredRole)) {
         return '/forbidden';
       }
       if (permission != null) {
@@ -295,6 +333,13 @@ String _landingFor(StaffUser? user) {
   }
   return '/settings';
 }
+
+/// Role des livreurs salaries (compte limite au pointage et aux livraisons).
+const driverRole = 'driver';
+const driverHomePath = '/driver';
+
+bool isDriverPath(String location) =>
+    location == driverHomePath || location.startsWith('$driverHomePath/');
 
 const _authPaths = {
   '/login',

@@ -155,6 +155,13 @@ const navigationCapabilities = [
     group: NavigationGroup.more,
   ),
   NavigationCapability(
+    path: '/dispatch',
+    label: 'Dispatch',
+    icon: Icons.two_wheeler_outlined,
+    permission: AppPermission.ordersRead,
+    group: NavigationGroup.more,
+  ),
+  NavigationCapability(
     path: '/loyalty',
     label: 'Fidelite',
     icon: Icons.loyalty_outlined,

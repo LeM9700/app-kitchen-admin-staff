@@ -561,9 +561,11 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
     final name = TextEditingController();
     final points = TextEditingController(text: '100');
     final amount = TextEditingController(text: '5');
+    var rewardType = 'discount_euros';
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
         title: const Text('Nouvelle recompense'),
         content: SizedBox(
           width: 420,
@@ -575,17 +577,37 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
                 decoration: const InputDecoration(labelText: 'Nom'),
               ),
               const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<String>(
+                key: const ValueKey('reward-type'),
+                initialValue: rewardType,
+                decoration: const InputDecoration(labelText: 'Type'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'discount_euros',
+                    child: Text('Remise en euros'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'free_delivery',
+                    child: Text('Livraison offerte'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setState(() => rewardType = value ?? rewardType),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: points,
                 decoration: const InputDecoration(labelText: 'Points'),
                 keyboardType: TextInputType.number,
               ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: amount,
-                decoration: const InputDecoration(labelText: 'Reduction EUR'),
-                keyboardType: TextInputType.number,
-              ),
+              if (rewardType == 'discount_euros') ...[
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: amount,
+                  decoration: const InputDecoration(labelText: 'Reduction EUR'),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
             ],
           ),
         ),
@@ -599,6 +621,7 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
             child: const Text('Creer'),
           ),
         ],
+        ),
       ),
     );
     if (confirmed != true) {
@@ -614,9 +637,11 @@ class _LoyaltyPageState extends ConsumerState<LoyaltyPage> {
     try {
       await ref.read(loyaltyRepositoryProvider).createReward(
             name: name.text.trim(),
-            rewardType: 'discount_euros',
+            rewardType: rewardType,
             pointsRequired: int.tryParse(points.text) ?? 100,
-            discountAmount: _double(amount.text, fallback: 5),
+            discountAmount: rewardType == 'discount_euros'
+                ? _double(amount.text, fallback: 5)
+                : null,
           );
       ref.invalidate(loyaltyRewardsProvider);
       if (!context.mounted) {
@@ -1064,6 +1089,9 @@ String _ruleTypeLabel(String value) {
 }
 
 String _rewardLabel(LoyaltyReward reward) {
+  if (reward.rewardType == 'free_delivery') {
+    return '${reward.pointsRequired} points - livraison offerte';
+  }
   if (reward.rewardType == 'discount_euros') {
     return '${reward.pointsRequired} points - ${formatMoney(reward.discountAmount ?? 0)}';
   }

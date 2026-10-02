@@ -17,6 +17,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 
 void main() {
   test('promotions list uses real admin filters and parses product fields',
@@ -221,7 +222,7 @@ void main() {
     expect(rewards.single.pointsRequired, 250);
   });
 
-  test('delivery create and update require GeoJSON and do not send is_active',
+  test('delivery create and update send a server-built shape and the active flag',
       () async {
     final seen = <RequestOptions>[];
     final repository = DeliveryRepository(
@@ -236,34 +237,26 @@ void main() {
           'is_active': true,
         });
       }),
-      _MemoryTokenStore(),
     );
     const draft = DeliveryZoneDraft(
       name: 'Centre',
       fee: 3.5,
       minOrderAmount: 18,
       estimatedMinutes: 25,
-      polygon: {
-        'type': 'Polygon',
-        'coordinates': [
-          [
-            [2.0, 48.0],
-            [2.1, 48.0],
-            [2.1, 48.1],
-            [2.0, 48.0],
-          ],
-        ],
-      },
+      shape: CircleZoneShape(LatLng(48.0, 2.0), 3000),
     );
 
     await repository.createZone(draft);
     await repository.updateZone(1, draft);
 
     expect(seen[0].path, ApiEndpoints.deliveryZones);
-    expect((seen[0].data as Map).containsKey('polygon'), isTrue);
-    expect((seen[0].data as Map).containsKey('is_active'), isFalse);
+    final created = seen[0].data as Map;
+    // Plus de GeoJSON saisi a la main : le serveur construit et valide le contour.
+    expect(created.containsKey('polygon'), isFalse);
+    expect((created['shape'] as Map)['kind'], 'circle');
+    expect(created['is_active'], isTrue);
     expect(seen[1].path, ApiEndpoints.deliveryZone(1));
-    expect((seen[1].data as Map).containsKey('is_active'), isFalse);
+    expect((seen[1].data as Map)['shape'], isNotNull);
   });
 
   test('delivery zone parses optional GeoJSON presence', () {

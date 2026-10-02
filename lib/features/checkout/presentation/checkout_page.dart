@@ -18,9 +18,11 @@ import 'package:app_admin_staff/features/loyalty/data/loyalty_repository.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/payments/data/payments_repository.dart';
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
+import 'package:app_admin_staff/features/checkout/presentation/delivery_address_picker.dart';
 import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
 const _posBackground = Color(0xFFE8E2D8);
 const _posSurface = Color(0xFFF8F4EC);
@@ -68,6 +70,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   String? _validationMessage;
   int? _cartEstablishmentId;
   int? _deliveryZoneId;
+  LatLng? _deliveryPoint;
 
   @override
   void dispose() {
@@ -165,6 +168,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                         setState(() {
                           _orderType = value;
                           _validationMessage = null;
+                          // « Livraison offerte » n'a de sens qu'en livraison : le serveur la
+                          // refuserait pour un retrait ou une commande sur place.
+                          if (value != 'delivery' && _selectedRewardIsFreeDelivery) {
+                            _selectedLoyaltyRewardId = null;
+                          }
                         });
                       },
                     ),
@@ -238,6 +246,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           _validationMessage = null;
         });
       },
+      onDeliveryPointChanged: (point) => _deliveryPoint = point,
+      cartSubtotal: checkoutCartTotal(_cart.values),
+      establishmentId: ref.watch(currentEstablishmentProvider).valueOrNull?.id,
+      establishmentPoint: _establishmentPoint(),
       customerEmailController: _customerEmailController,
       customerNameController: _customerNameController,
       customerPhoneController: _customerPhoneController,
@@ -248,7 +260,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       loyaltyQrController: _loyaltyQrController,
       loyaltyCustomer: _loyaltyCustomer,
       loyaltyMatches: _loyaltyMatches,
-      loyaltyRewards: _loyaltyRewards,
+      loyaltyRewards: _applicableLoyaltyRewards,
       selectedLoyaltyRewardId: _selectedLoyaltyRewardId,
       loyaltyOralConfirmed: _loyaltyOralConfirmed,
       loyaltyLoading: _loyaltyLoading,
@@ -372,6 +384,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         tableNumber: _emptyToNull(_tableController.text),
         deliveryAddress: _emptyToNull(_deliveryAddressController.text),
         deliveryZoneId: _deliveryZoneId,
+        deliveryLat: _deliveryPoint?.latitude,
+        deliveryLng: _deliveryPoint?.longitude,
         deliveryInstructions: _emptyToNull(_deliveryInstructionsController.text),
         customerEmail: _emptyToNull(_customerEmailController.text),
         customerName: _emptyToNull(_customerNameController.text),
@@ -457,11 +471,33 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     );
   }
 
+  bool get _selectedRewardIsFreeDelivery => _loyaltyRewards.any(
+        (reward) =>
+            reward.id == _selectedLoyaltyRewardId &&
+            reward.rewardType == 'free_delivery',
+      );
+
+  /// Recompenses proposables pour le type de commande courant.
+  List<LoyaltyReward> get _applicableLoyaltyRewards => _orderType == 'delivery'
+      ? _loyaltyRewards
+      : _loyaltyRewards
+          .where((reward) => reward.rewardType != 'free_delivery')
+          .toList();
+
+  LatLng? _establishmentPoint() {
+    final establishment = ref.read(currentEstablishmentProvider).valueOrNull;
+    if (establishment?.latitude == null || establishment?.longitude == null) {
+      return null;
+    }
+    return LatLng(establishment!.latitude!, establishment.longitude!);
+  }
+
   void _resetAfterSale() {
     _cart.clear();
     _noteController.clear();
     _deliveryInstructionsController.clear();
     _deliveryZoneId = null;
+    _deliveryPoint = null;
     _externalReferenceController.clear();
     _amountReceivedController.clear();
     _promoCodeController.clear();
@@ -1265,6 +1301,10 @@ class _CartPanel extends StatelessWidget {
     required this.deliveryInstructionsController,
     required this.deliveryZoneId,
     required this.onDeliveryZoneChanged,
+    required this.onDeliveryPointChanged,
+    required this.cartSubtotal,
+    required this.establishmentId,
+    required this.establishmentPoint,
     required this.customerEmailController,
     required this.customerNameController,
     required this.customerPhoneController,
@@ -1309,6 +1349,10 @@ class _CartPanel extends StatelessWidget {
   final TextEditingController deliveryInstructionsController;
   final int? deliveryZoneId;
   final ValueChanged<int?> onDeliveryZoneChanged;
+  final ValueChanged<LatLng?> onDeliveryPointChanged;
+  final double cartSubtotal;
+  final int? establishmentId;
+  final LatLng? establishmentPoint;
   final TextEditingController customerEmailController;
   final TextEditingController customerNameController;
   final TextEditingController customerPhoneController;
@@ -1390,6 +1434,10 @@ class _CartPanel extends StatelessWidget {
           deliveryInstructionsController: deliveryInstructionsController,
           deliveryZoneId: deliveryZoneId,
           onDeliveryZoneChanged: onDeliveryZoneChanged,
+          onDeliveryPointChanged: onDeliveryPointChanged,
+          cartSubtotal: cartSubtotal,
+          establishmentId: establishmentId,
+          establishmentPoint: establishmentPoint,
           customerEmailController: customerEmailController,
           customerNameController: customerNameController,
           customerPhoneController: customerPhoneController,
@@ -1820,9 +1868,11 @@ class _LoyaltyRewardChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final detail = reward.rewardType == 'discount_euros'
-        ? 'Remise ${formatMoney(reward.discountAmount ?? 0)}'
-        : 'Produit offert #${reward.productId ?? '-'}';
+    final detail = switch (reward.rewardType) {
+      'discount_euros' => 'Remise ${formatMoney(reward.discountAmount ?? 0)}',
+      'free_delivery' => 'Livraison offerte',
+      _ => 'Produit offert #${reward.productId ?? '-'}',
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: DsCard(
@@ -1994,6 +2044,10 @@ class _ContextSection extends StatelessWidget {
     required this.deliveryInstructionsController,
     required this.deliveryZoneId,
     required this.onDeliveryZoneChanged,
+    required this.onDeliveryPointChanged,
+    required this.cartSubtotal,
+    required this.establishmentId,
+    required this.establishmentPoint,
     required this.customerEmailController,
     required this.customerNameController,
     required this.customerPhoneController,
@@ -2006,6 +2060,10 @@ class _ContextSection extends StatelessWidget {
   final TextEditingController deliveryInstructionsController;
   final int? deliveryZoneId;
   final ValueChanged<int?> onDeliveryZoneChanged;
+  final ValueChanged<LatLng?> onDeliveryPointChanged;
+  final double cartSubtotal;
+  final int? establishmentId;
+  final LatLng? establishmentPoint;
   final TextEditingController customerEmailController;
   final TextEditingController customerNameController;
   final TextEditingController customerPhoneController;
@@ -2051,18 +2109,24 @@ class _ContextSection extends StatelessWidget {
           ],
           if (orderType == 'delivery') ...[
             const SizedBox(height: 8),
-            TextField(
+            DeliveryAddressPicker(
               controller: deliveryAddressController,
-              onChanged: (_) => onChanged(),
-              decoration: const InputDecoration(
-                labelText: 'Adresse de livraison',
-                prefixIcon: Icon(Icons.location_on_outlined),
-              ),
+              zoneId: deliveryZoneId,
+              onZoneChanged: onDeliveryZoneChanged,
+              onPointChanged: onDeliveryPointChanged,
+              subtotal: cartSubtotal,
+              establishmentId: establishmentId,
+              near: establishmentPoint,
+              onChanged: onChanged,
             ),
             const SizedBox(height: 8),
             _DeliveryZonePicker(
               zoneId: deliveryZoneId,
-              onChanged: onDeliveryZoneChanged,
+              onChanged: (zoneId) {
+                // Zone choisie a la main : le point de l'adresse ne fait plus foi.
+                onDeliveryPointChanged(null);
+                onDeliveryZoneChanged(zoneId);
+              },
             ),
             const SizedBox(height: 8),
             TextField(
@@ -2119,7 +2183,7 @@ class _DeliveryZonePicker extends ConsumerWidget {
           initialValue: selected,
           isExpanded: true,
           decoration: const InputDecoration(
-            labelText: 'Zone de livraison',
+            labelText: 'Zone de livraison (choix manuel)',
             prefixIcon: Icon(Icons.map_outlined),
           ),
           items: [

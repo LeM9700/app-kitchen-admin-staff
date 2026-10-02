@@ -175,6 +175,7 @@ class PromotionsPage extends ConsumerWidget {
     var discountType = promo?.discountType ?? 'percent';
     var isPublic = promo?.isPublic ?? true;
     var isStackable = promo?.isStackable ?? false;
+    var freeDelivery = promo?.freeDelivery ?? false;
     var firstOrderOnly = promo?.firstOrderOnly ?? false;
     var emailVerifiedRequired = promo?.emailVerifiedRequired ?? false;
 
@@ -311,6 +312,16 @@ class PromotionsPage extends ConsumerWidget {
                     onChanged: (value) => setState(() => isStackable = value),
                   ),
                   SwitchListTile(
+                    key: const ValueKey('promo-free-delivery'),
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Livraison offerte'),
+                    subtitle: const Text(
+                      'Offre aussi les frais de livraison (valeur 0 = livraison offerte seule).',
+                    ),
+                    value: freeDelivery,
+                    onChanged: (value) => setState(() => freeDelivery = value),
+                  ),
+                  SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Email verifie requis'),
                     value: emailVerifiedRequired,
@@ -354,6 +365,7 @@ class PromotionsPage extends ConsumerWidget {
       endsAt: endsAt.text,
       isPublic: isPublic,
       isStackable: isStackable,
+      freeDelivery: freeDelivery,
       firstOrderOnly: firstOrderOnly,
       emailVerifiedRequired: emailVerifiedRequired,
     );
@@ -372,6 +384,7 @@ class PromotionsPage extends ConsumerWidget {
           minOrderAmount: parsed.minOrderAmount,
           isPublic: parsed.isPublic,
           isStackable: parsed.isStackable,
+          freeDelivery: parsed.freeDelivery,
           firstOrderOnly: parsed.firstOrderOnly,
           emailVerifiedRequired: parsed.emailVerifiedRequired,
           maxUses: parsed.maxUses,
@@ -389,6 +402,7 @@ class PromotionsPage extends ConsumerWidget {
           minOrderAmount: parsed.minOrderAmount,
           isPublic: parsed.isPublic,
           isStackable: parsed.isStackable,
+          freeDelivery: parsed.freeDelivery,
           firstOrderOnly: parsed.firstOrderOnly,
           emailVerifiedRequired: parsed.emailVerifiedRequired,
           maxUses: parsed.maxUses,
@@ -1043,10 +1057,13 @@ PromotionVisualStatus _statusFor(PromotionAdminItem promo) {
 }
 
 String _discountLabel(PromotionAdminItem promo) {
-  if (promo.discountType == 'percent') {
-    return '${promo.discountValue.toStringAsFixed(0)}%';
+  if (promo.freeDelivery && promo.discountValue == 0) {
+    return 'Livraison offerte';
   }
-  return formatMoney(promo.discountValue);
+  final base = promo.discountType == 'percent'
+      ? '${promo.discountValue.toStringAsFixed(0)}%'
+      : formatMoney(promo.discountValue);
+  return promo.freeDelivery ? '$base + livraison offerte' : base;
 }
 
 String _periodLabel(PromotionAdminItem promo) {
@@ -1099,6 +1116,7 @@ _PromotionFormData? _promotionForm(
   required String endsAt,
   required bool isPublic,
   required bool isStackable,
+  required bool freeDelivery,
   required bool firstOrderOnly,
   required bool emailVerifiedRequired,
 }) {
@@ -1113,7 +1131,7 @@ _PromotionFormData? _promotionForm(
     _showSnack(context, 'Code obligatoire');
     return null;
   }
-  if (discountValue <= 0) {
+  if (discountValue < 0 || (discountValue == 0 && !freeDelivery)) {
     _showSnack(context, 'Valeur de remise invalide');
     return null;
   }
@@ -1140,6 +1158,7 @@ _PromotionFormData? _promotionForm(
     minOrderAmount: minOrder,
     isPublic: isPublic,
     isStackable: isStackable,
+    freeDelivery: freeDelivery,
     firstOrderOnly: firstOrderOnly,
     emailVerifiedRequired: emailVerifiedRequired,
     maxUses: globalLimit,
@@ -1157,6 +1176,7 @@ class _PromotionFormData {
     required this.minOrderAmount,
     required this.isPublic,
     required this.isStackable,
+    required this.freeDelivery,
     required this.firstOrderOnly,
     required this.emailVerifiedRequired,
     this.description,
@@ -1173,6 +1193,7 @@ class _PromotionFormData {
   final double minOrderAmount;
   final bool isPublic;
   final bool isStackable;
+  final bool freeDelivery;
   final bool firstOrderOnly;
   final bool emailVerifiedRequired;
   final int? maxUses;

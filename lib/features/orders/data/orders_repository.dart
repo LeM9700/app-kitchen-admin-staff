@@ -465,6 +465,8 @@ class ManualOrderDraft {
     this.tableNumber,
     this.deliveryAddress,
     this.deliveryZoneId,
+    this.deliveryLat,
+    this.deliveryLng,
     this.deliveryInstructions,
     this.customerEmail,
     this.customerName,
@@ -487,6 +489,11 @@ class ManualOrderDraft {
   final String? tableNumber;
   final String? deliveryAddress;
   final int? deliveryZoneId;
+
+  /// Point GPS de livraison (adresse geocodee). Avec lui le serveur retrouve la zone et les
+  /// frais ; sans lui (zone choisie a la main) la zone est utilisee telle quelle.
+  final double? deliveryLat;
+  final double? deliveryLng;
   final String? deliveryInstructions;
   final String? customerEmail;
   final String? customerName;
@@ -512,6 +519,10 @@ class ManualOrderDraft {
         'delivery_address': deliveryAddress,
       if (isDelivery && deliveryZoneId != null)
         'delivery_zone_id': deliveryZoneId,
+      if (isDelivery && deliveryLat != null && deliveryLng != null) ...{
+        'delivery_lat': deliveryLat,
+        'delivery_lng': deliveryLng,
+      },
       if (isDelivery &&
           deliveryInstructions != null &&
           deliveryInstructions!.trim().isNotEmpty)

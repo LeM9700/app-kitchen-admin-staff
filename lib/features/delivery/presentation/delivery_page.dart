@@ -1,7 +1,7 @@
-import 'dart:convert';
-import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:app_admin_staff/app/responsive/breakpoints.dart';
+import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/core/utils/formatters.dart';
 import 'package:app_admin_staff/design_system/components/badges/status_badge.dart';
@@ -12,8 +12,19 @@ import 'package:app_admin_staff/design_system/components/forms/pill_filter_bar.d
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart';
+import 'package:app_admin_staff/features/delivery/presentation/delivery_map.dart';
+import 'package:app_admin_staff/features/delivery/presentation/delivery_zone_editor_page.dart';
+import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
+
+/// Zone mise en avant sur la carte (touchee dans la liste).
+final selectedZoneIdProvider = StateProvider.autoDispose<int?>((ref) => null);
+
+/// Point teste via « Tester une adresse » : affiche un repere sur la carte.
+final coverageTestPointProvider = StateProvider.autoDispose<LatLng?>((ref) => null);
 
 class DeliveryPage extends ConsumerWidget {
   const DeliveryPage({super.key});
@@ -44,16 +55,17 @@ class DeliveryPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      'Couverture, frais et delais estimes',
+                      'Couverture, frais, regles de tarification et delais estimes',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
                 ),
               ),
               Tooltip(
-                message: 'Tester coordonnees',
+                message: 'Tester une adresse',
                 child: IconButton.filledTonal(
-                  onPressed: () => _checkAddress(context, ref),
+                  key: const ValueKey('delivery-test-address'),
+                  onPressed: () => _testAddress(context, ref),
                   icon: const Icon(Icons.my_location_outlined),
                 ),
               ),
@@ -61,21 +73,28 @@ class DeliveryPage extends ConsumerWidget {
               Tooltip(
                 message: 'Rafraichir',
                 child: IconButton.filledTonal(
-                  onPressed: () => ref.invalidate(deliveryZonesProvider),
+                  onPressed: () {
+                    ref
+                      ..invalidate(deliveryZonesProvider)
+                      ..invalidate(deliverySettingsProvider);
+                  },
                   icon: const Icon(Icons.refresh),
                 ),
               ),
               if (isAdmin) ...[
                 const SizedBox(width: AppSpacing.xs),
                 FilledButton.icon(
-                  onPressed: () => _zoneDialog(context, ref),
+                  key: const ValueKey('delivery-new-zone'),
+                  onPressed: () => _openEditor(context, ref),
                   icon: const Icon(Icons.add_location_alt_outlined),
                   label: const Text('Nouvelle zone'),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
+          _DeliverySwitchCard(isAdmin: isAdmin),
+          const SizedBox(height: AppSpacing.md),
           zones.when(
             data: (items) => _DeliveryStats(zones: items),
             loading: () => const LinearProgressIndicator(),
@@ -88,37 +107,13 @@ class DeliveryPage extends ConsumerWidget {
             child: zones.when(
               data: (items) {
                 final visible = _filteredZones(items, filter);
-                if (visible.isEmpty) {
-                  return const AppFeedback(
-                    kind: AppFeedbackKind.noResults,
-                    title: 'Aucune zone',
-                    message: 'Aucune zone ne correspond au filtre.',
-                  );
-                }
-                if (Breakpoints.isCompactDesktop(context) ||
-                    Breakpoints.isMobile(context)) {
-                  return ListView.separated(
-                    itemCount: visible.length + 1,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return _ZonesMapPanel(zones: visible);
-                      }
-                      return _ZoneCard(
-                        zone: visible[index - 1],
-                        isAdmin: isAdmin,
-                      );
-                    },
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(width: 480, child: _ZonesMapPanel(zones: visible)),
-                    const SizedBox(width: AppSpacing.xl),
-                    Expanded(
-                      child: ListView.separated(
+                final list = visible.isEmpty
+                    ? const AppFeedback(
+                        kind: AppFeedbackKind.noResults,
+                        title: 'Aucune zone',
+                        message: 'Aucune zone ne correspond au filtre.',
+                      )
+                    : ListView.separated(
                         itemCount: visible.length,
                         separatorBuilder: (context, index) =>
                             const SizedBox(height: AppSpacing.sm),
@@ -126,8 +121,35 @@ class DeliveryPage extends ConsumerWidget {
                           zone: visible[index],
                           isAdmin: isAdmin,
                         ),
+                      );
+                if (Breakpoints.isCompactDesktop(context) ||
+                    Breakpoints.isMobile(context)) {
+                  return ListView(
+                    children: [
+                      SizedBox(
+                        height: 340,
+                        child: _ZonesMapPanel(zones: items, visible: visible),
                       ),
+                      const SizedBox(height: AppSpacing.sm),
+                      if (visible.isEmpty)
+                        list
+                      else
+                        for (final zone in visible) ...[
+                          _ZoneCard(zone: zone, isAdmin: isAdmin),
+                          const SizedBox(height: AppSpacing.sm),
+                        ],
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 520,
+                      child: _ZonesMapPanel(zones: items, visible: visible),
                     ),
+                    const SizedBox(width: AppSpacing.xl),
+                    Expanded(child: list),
                   ],
                 );
               },
@@ -161,204 +183,129 @@ class DeliveryPage extends ConsumerWidget {
     }).toList();
   }
 
-  Future<void> _zoneDialog(
-    BuildContext context,
-    WidgetRef ref, {
-    DeliveryZone? zone,
-  }) async {
-    final name = TextEditingController(text: zone?.name ?? '');
-    final fee = TextEditingController(text: zone?.fee.toString() ?? '0');
-    final min =
-        TextEditingController(text: zone?.minOrderAmount.toString() ?? '0');
-    final minutes =
-        TextEditingController(text: zone?.estimatedMinutes.toString() ?? '30');
-    final polygon = TextEditingController(
-      text: zone?.polygon == null
-          ? ''
-          : const JsonEncoder.withIndent('  ').convert(zone!.polygon),
-    );
-    final confirmed = await showDialog<bool>(
+  Future<void> _testAddress(BuildContext context, WidgetRef ref) async {
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(zone == null ? 'Nouvelle zone' : 'Modifier ${zone.name}'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  decoration: const InputDecoration(labelText: 'Nom'),
-                  textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: fee,
-                        decoration: const InputDecoration(labelText: 'Frais'),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: TextField(
-                        controller: min,
-                        decoration: const InputDecoration(
-                          labelText: 'Minimum commande',
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: TextField(
-                        controller: minutes,
-                        decoration: const InputDecoration(
-                          labelText: 'Minutes estimees',
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                TextField(
-                  controller: polygon,
-                  decoration:
-                      const InputDecoration(labelText: 'Polygone GeoJSON'),
-                  minLines: 6,
-                  maxLines: 10,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Valider'),
-          ),
-        ],
+      builder: (context) => const _CoverageTestDialog(),
+    );
+  }
+}
+
+/// Ouvre l'editeur plein ecran ; rafraichit la liste si la zone a ete enregistree.
+Future<void> _openEditor(
+  BuildContext context,
+  WidgetRef ref, {
+  DeliveryZone? zone,
+}) async {
+  final establishments = await ref.read(availableEstablishmentsProvider.future);
+  if (!context.mounted) return;
+  final saved = await Navigator.of(context).push<DeliveryZone>(
+    MaterialPageRoute(
+      builder: (context) => DeliveryZoneEditorPage(
+        zone: zone,
+        establishments: establishments,
       ),
-    );
-    if (confirmed != true) {
-      return;
-    }
-    if (!context.mounted) {
-      return;
-    }
-    final draft = _zoneDraft(
-      context,
-      name: name.text,
-      fee: fee.text,
-      min: min.text,
-      minutes: minutes.text,
-      polygon: polygon.text,
-    );
-    if (draft == null) {
-      return;
+    ),
+  );
+  if (saved == null) return;
+  ref.invalidate(deliveryZonesProvider);
+  if (context.mounted) {
+    _showSnack(context, zone == null ? 'Zone creee' : 'Zone mise a jour');
+  }
+}
+
+// --------------------------------------------------------------------------- interrupteur general
+
+class _DeliverySwitchCard extends ConsumerWidget {
+  const _DeliverySwitchCard({required this.isAdmin});
+
+  final bool isAdmin;
+
+  Future<void> _toggle(
+    BuildContext context,
+    WidgetRef ref,
+    DeliverySettings current,
+    bool enabled,
+  ) async {
+    if (!enabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Couper la livraison ?'),
+          content: const Text(
+            'Les clients ne pourront plus commander en livraison (le retrait reste '
+            'possible). Les commandes deja passees ne sont pas affectees.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              key: const ValueKey('delivery-switch-confirm-off'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Couper la livraison'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
     }
     try {
-      final repository = ref.read(deliveryRepositoryProvider);
-      if (zone == null) {
-        await repository.createZone(draft);
-      } else {
-        await repository.updateZone(zone.id, draft);
-      }
-      ref.invalidate(deliveryZonesProvider);
-      if (!context.mounted) {
-        return;
-      }
-      _showSnack(context, zone == null ? 'Zone creee' : 'Zone mise a jour');
+      await ref.read(deliveryRepositoryProvider).setDeliveryEnabled(
+            enabled: enabled,
+            expectedVersion: current.version,
+          );
     } catch (error) {
-      if (context.mounted) {
-        _showSnack(context, _errorMessage(error));
-      }
+      if (context.mounted) _showSnack(context, _errorMessage(error));
+    } finally {
+      ref.invalidate(deliverySettingsProvider);
     }
   }
 
-  Future<void> _checkAddress(BuildContext context, WidgetRef ref) async {
-    final lat = TextEditingController();
-    final lng = TextEditingController();
-    final address = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tester livraison'),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: address,
-                decoration: const InputDecoration(labelText: 'Adresse'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: lat,
-                      decoration: const InputDecoration(labelText: 'Latitude'),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextField(
-                      controller: lng,
-                      decoration: const InputDecoration(labelText: 'Longitude'),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(deliverySettingsProvider);
+    return DsCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      child: settings.when(
+        data: (value) => SwitchListTile(
+          key: const ValueKey('delivery-enabled-switch'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Livraison activee'),
+          subtitle: Text(
+            value.internalEnabled
+                ? 'Les clients peuvent commander en livraison dans les zones actives.'
+                : 'La livraison est coupee : seul le retrait est propose aux clients.',
+          ),
+          value: value.internalEnabled,
+          onChanged: isAdmin
+              ? (enabled) => _toggle(context, ref, value, enabled)
+              : null,
+        ),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(AppSpacing.sm),
+          child: LinearProgressIndicator(),
+        ),
+        error: (error, stackTrace) => ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.error_outline),
+          title: const Text('Reglage de livraison indisponible'),
+          subtitle: Text(_errorMessage(error)),
+          trailing: TextButton(
+            onPressed: () => ref.invalidate(deliverySettingsProvider),
+            child: const Text('Reessayer'),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Tester'),
-          ),
-        ],
       ),
     );
-    if (confirmed != true) {
-      return;
-    }
-    if (!context.mounted) {
-      return;
-    }
-    try {
-      final result = await ref.read(deliveryRepositoryProvider).checkAddress(
-            lat: _double(lat.text),
-            lng: _double(lng.text),
-            address: address.text,
-          );
-      if (!context.mounted) {
-        return;
-      }
-      _showSnack(context, '${result.name} - ${formatMoney(result.fee)}');
-    } catch (error) {
-      if (context.mounted) {
-        _showSnack(context, _errorMessage(error));
-      }
-    }
   }
 }
+
+// --------------------------------------------------------------------------- statistiques / filtres
 
 class _DeliveryStats extends StatelessWidget {
   const _DeliveryStats({required this.zones});
@@ -367,18 +314,18 @@ class _DeliveryStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = zones.where((zone) => zone.isActive).length;
-    final averageFee = zones.isEmpty
+    final active = zones.where((zone) => zone.isActive).toList();
+    final averageFee = active.isEmpty
         ? 0.0
-        : zones.fold<double>(0, (sum, zone) => sum + zone.fee) / zones.length;
-    final averageMin = zones.isEmpty
+        : active.fold<double>(0, (sum, zone) => sum + zone.fee) / active.length;
+    final averageMin = active.isEmpty
         ? 0.0
-        : zones.fold<double>(0, (sum, zone) => sum + zone.minOrderAmount) /
-            zones.length;
-    final averageEta = zones.isEmpty
+        : active.fold<double>(0, (sum, zone) => sum + zone.minOrderAmount) /
+            active.length;
+    final averageEta = active.isEmpty
         ? 0
-        : (zones.fold<int>(0, (sum, zone) => sum + zone.estimatedMinutes) /
-                zones.length)
+        : (active.fold<int>(0, (sum, zone) => sum + zone.estimatedMinutes) /
+                active.length)
             .round();
 
     return Wrap(
@@ -387,7 +334,7 @@ class _DeliveryStats extends StatelessWidget {
       children: [
         AppStatCard(
           label: 'Zones actives',
-          value: active.toString(),
+          value: active.length.toString(),
           icon: Icons.map_outlined,
           accentColor: AppColors.success,
           subtitle: '${zones.length} zones',
@@ -451,41 +398,123 @@ class _DeliveryFilters extends ConsumerWidget {
   }
 }
 
-class _ZonesMapPanel extends StatelessWidget {
-  const _ZonesMapPanel({required this.zones});
+// --------------------------------------------------------------------------- carte
 
+class _ZonesMapPanel extends ConsumerStatefulWidget {
+  const _ZonesMapPanel({required this.zones, required this.visible});
+
+  /// Toutes les zones (pour centrer la carte) ; [visible] : celles que le filtre affiche.
   final List<DeliveryZone> zones;
+  final List<DeliveryZone> visible;
+
+  @override
+  ConsumerState<_ZonesMapPanel> createState() => _ZonesMapPanelState();
+}
+
+class _ZonesMapPanelState extends ConsumerState<_ZonesMapPanel> {
+  final _controller = MapController();
+  bool _ready = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _focus(LatLng? point, {double zoom = 13}) {
+    if (point == null || !_ready) return;
+    _controller.move(point, zoom);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final establishments =
+        ref.watch(availableEstablishmentsProvider).valueOrNull ?? const [];
+    final selectedId = ref.watch(selectedZoneIdProvider);
+    final testPoint = ref.watch(coverageTestPointProvider);
+
+    ref.listen<int?>(selectedZoneIdProvider, (_, id) {
+      if (id == null) return;
+      for (final zone in widget.zones) {
+        if (zone.id == id) _focus(boundsCenter(zone.ring));
+      }
+    });
+    ref.listen<LatLng?>(coverageTestPointProvider, (_, point) => _focus(point, zoom: 14));
+
+    final center = deliveryMapCenter(
+      establishment: establishments.isEmpty ? null : establishments.first,
+      zones: widget.zones,
+    );
+
     return DsCard(
-      height: 420,
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Carte des zones',
-                  style: Theme.of(context).textTheme.titleMedium,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Carte des zones',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
-              ),
-              const StatusBadge(
-                label: 'GeoJSON',
-                tone: StatusTone.info,
-                icon: Icons.polyline_outlined,
-                compact: true,
-              ),
-            ],
+                const StatusBadge(
+                  label: 'Couverture reelle',
+                  tone: StatusTone.info,
+                  icon: Icons.layers_outlined,
+                  compact: true,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
           Expanded(
             child: Semantics(
-              label: 'Representation abstraite des zones de livraison',
-              child: CustomPaint(
-                painter: _ZonesPainter(zones),
-                child: const SizedBox.expand(),
+              label: 'Carte des zones de livraison',
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(12),
+                ),
+                child: FlutterMap(
+                  key: const ValueKey('delivery-zones-map'),
+                  mapController: _controller,
+                  options: MapOptions(
+                    initialCenter: center,
+                    initialZoom: 12,
+                    onMapReady: () => _ready = true,
+                  ),
+                  children: [
+                    ref.watch(deliveryTileLayerProvider),
+                    PolygonLayer(
+                      polygons: zonePolygons(widget.visible, highlightId: selectedId),
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        for (final e in establishments)
+                          if (e.latitude != null && e.longitude != null)
+                            restaurantMarker(LatLng(e.latitude!, e.longitude!)),
+                        if (testPoint != null)
+                          Marker(
+                            point: testPoint,
+                            width: 36,
+                            height: 36,
+                            child: const Icon(
+                              Icons.location_pin,
+                              color: AppColors.danger,
+                              size: 34,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -495,18 +524,62 @@ class _ZonesMapPanel extends StatelessWidget {
   }
 }
 
+// --------------------------------------------------------------------------- liste
+
 class _ZoneCard extends ConsumerWidget {
-  const _ZoneCard({
-    required this.zone,
-    required this.isAdmin,
-  });
+  const _ZoneCard({required this.zone, required this.isAdmin});
 
   final DeliveryZone zone;
   final bool isAdmin;
 
+  static String _shapeLabel(String kind) => switch (kind) {
+        'circle' => 'Rayon',
+        'isochrone' => 'Temps de trajet',
+        _ => 'Dessin',
+      };
+
+  Future<void> _toggleActive(BuildContext context, WidgetRef ref) async {
+    if (zone.isActive) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Desactiver ${zone.name} ?'),
+          content: const Text(
+            'Les clients ne pourront plus se faire livrer dans cette zone. Vous pourrez '
+            'la reactiver a tout moment.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              key: const ValueKey('zone-deactivate-confirm'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Desactiver'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    try {
+      await ref.read(deliveryRepositoryProvider).setZoneActive(zone.id, !zone.isActive);
+      ref.invalidate(deliveryZonesProvider);
+      if (context.mounted) {
+        _showSnack(context, zone.isActive ? 'Zone desactivee' : 'Zone reactivee');
+      }
+    } catch (error) {
+      if (context.mounted) _showSnack(context, _errorMessage(error));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedZoneIdProvider) == zone.id;
     return DsCard(
+      onTap: () => ref.read(selectedZoneIdProvider.notifier).state = zone.id,
+      borderColor: selected ? AppColors.infoAlt : null,
       child: Row(
         children: [
           Container(
@@ -536,9 +609,7 @@ class _ZoneCard extends ConsumerWidget {
                     ),
                     StatusBadge(
                       label: zone.isActive ? 'Active' : 'Inactive',
-                      tone: zone.isActive
-                          ? StatusTone.success
-                          : StatusTone.neutral,
+                      tone: zone.isActive ? StatusTone.success : StatusTone.neutral,
                       icon: zone.isActive
                           ? Icons.play_circle_outline
                           : Icons.pause_circle_outline,
@@ -552,33 +623,50 @@ class _ZoneCard extends ConsumerWidget {
                   runSpacing: AppSpacing.xs,
                   children: [
                     _ZoneMetric(label: 'Frais', value: formatMoney(zone.fee)),
+                    _ZoneMetric(label: 'Minimum', value: formatMoney(zone.minOrderAmount)),
+                    _ZoneMetric(label: 'ETA', value: '${zone.estimatedMinutes} min'),
                     _ZoneMetric(
-                      label: 'Minimum',
-                      value: formatMoney(zone.minOrderAmount),
-                    ),
-                    _ZoneMetric(
-                      label: 'ETA',
-                      value: '${zone.estimatedMinutes} min',
-                    ),
-                    _ZoneMetric(
-                      label: 'Polygone',
-                      value: zone.hasGeoJson ? 'Expose' : 'Non expose',
+                      label: 'Forme',
+                      value: '${_shapeLabel(zone.shapeKind)}'
+                          '${zone.areaKm2 > 0 ? ' · ${zone.areaKm2.toStringAsFixed(1)} km²' : ''}',
                     ),
                   ],
                 ),
+                if (zone.rules.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  for (final rule in zone.rules.take(3))
+                    Text(
+                      '• ${rule.label} : ${rule.describe(formatMoney)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  if (zone.rules.length > 3)
+                    Text(
+                      '+ ${zone.rules.length - 3} autre(s) regle(s)',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
               ],
             ),
           ),
           if (isAdmin) ...[
             const SizedBox(width: AppSpacing.sm),
-            IconButton(
-              tooltip: 'Modifier',
-              onPressed: () => const DeliveryPage()._zoneDialog(
-                context,
-                ref,
-                zone: zone,
-              ),
-              icon: const Icon(Icons.edit_outlined),
+            Column(
+              children: [
+                IconButton(
+                  key: ValueKey('zone-edit-${zone.id}'),
+                  tooltip: 'Modifier',
+                  onPressed: () => _openEditor(context, ref, zone: zone),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                IconButton(
+                  key: ValueKey('zone-toggle-${zone.id}'),
+                  tooltip: zone.isActive ? 'Desactiver' : 'Reactiver',
+                  onPressed: () => _toggleActive(context, ref),
+                  icon: Icon(
+                    zone.isActive ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -596,7 +684,7 @@ class _ZoneMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 112,
+      width: 130,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -614,120 +702,209 @@ class _ZoneMetric extends StatelessWidget {
   }
 }
 
-class _ZonesPainter extends CustomPainter {
-  const _ZonesPainter(this.zones);
+// --------------------------------------------------------------------------- test d'adresse
 
-  final List<DeliveryZone> zones;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final grid = Paint()
-      ..color = AppColors.adminBorder
-      ..strokeWidth = 1;
-    for (double x = 0; x <= size.width; x += 40) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
-    }
-    for (double y = 0; y <= size.height; y += 40) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
-
-    final center = Offset(size.width / 2, size.height / 2);
-    final restaurant = Paint()..color = AppColors.accent;
-    canvas.drawCircle(center, 7, restaurant);
-
-    for (var index = 0; index < zones.length; index++) {
-      final zone = zones[index];
-      final paint = Paint()
-        ..color = (zone.isActive ? AppColors.infoAlt : AppColors.neutral)
-            .withValues(alpha: zone.isActive ? 0.18 : 0.12)
-        ..style = PaintingStyle.fill;
-      final stroke = Paint()
-        ..color = zone.isActive ? AppColors.infoAlt : AppColors.neutral
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke;
-      final radius = math.min(size.width, size.height) *
-          (0.18 + math.min(index, 4) * 0.055);
-      final sides = 5 + (index % 3);
-      final path = Path();
-      for (var point = 0; point < sides; point++) {
-        final angle = (math.pi * 2 * point / sides) + index * 0.28;
-        final offset = Offset(
-          center.dx + math.cos(angle) * radius * (1.2 + index * 0.04),
-          center.dy + math.sin(angle) * radius * (0.75 + index * 0.03),
-        );
-        if (point == 0) {
-          path.moveTo(offset.dx, offset.dy);
-        } else {
-          path.lineTo(offset.dx, offset.dy);
-        }
-      }
-      path.close();
-      canvas.drawPath(path, paint);
-      canvas.drawPath(path, stroke);
-    }
-  }
+/// Saisit une adresse (suggestions via le geocodage serveur) et indique quelle zone la couvre,
+/// avec les frais appliques ; place un repere sur la carte.
+class _CoverageTestDialog extends ConsumerStatefulWidget {
+  const _CoverageTestDialog();
 
   @override
-  bool shouldRepaint(covariant _ZonesPainter oldDelegate) {
-    return oldDelegate.zones != zones;
-  }
+  ConsumerState<_CoverageTestDialog> createState() => _CoverageTestDialogState();
 }
 
-DeliveryZoneDraft? _zoneDraft(
-  BuildContext context, {
-  required String name,
-  required String fee,
-  required String min,
-  required String minutes,
-  required String polygon,
-}) {
-  final trimmedName = name.trim();
-  final parsedFee = _double(fee);
-  final parsedMin = _double(min);
-  final parsedMinutes = int.tryParse(minutes.trim()) ?? 0;
-  final decodedPolygon = _decodePolygon(polygon);
-  if (trimmedName.isEmpty) {
-    _showSnack(context, 'Nom obligatoire');
-    return null;
-  }
-  if (parsedFee < 0 || parsedMin < 0) {
-    _showSnack(context, 'Montants invalides');
-    return null;
-  }
-  if (parsedMinutes <= 0) {
-    _showSnack(context, 'Delai invalide');
-    return null;
-  }
-  if (decodedPolygon == null) {
-    _showSnack(context, 'Polygone GeoJSON obligatoire');
-    return null;
-  }
-  return DeliveryZoneDraft(
-    name: trimmedName,
-    fee: parsedFee,
-    minOrderAmount: parsedMin,
-    estimatedMinutes: parsedMinutes,
-    polygon: decodedPolygon,
-  );
-}
+class _CoverageTestDialogState extends ConsumerState<_CoverageTestDialog> {
+  final _query = TextEditingController();
+  final _subtotal = TextEditingController();
+  List<AddressSuggestion> _suggestions = const [];
+  bool _busy = false;
+  String? _error;
+  _CoverageOutcome? _outcome;
 
-Map<String, dynamic>? _decodePolygon(String value) {
-  try {
-    final decoded = json.decode(value);
-    if (decoded is Map) {
-      final map = Map<String, dynamic>.from(decoded);
-      if (map['type'] != null && map['coordinates'] != null) {
-        return map;
-      }
+  @override
+  void dispose() {
+    _query.dispose();
+    _subtotal.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final text = _query.text.trim();
+    if (text.length < 3) {
+      setState(() => _error = 'Saisissez au moins 3 caracteres');
+      return;
     }
-  } catch (_) {
-    return null;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _outcome = null;
+    });
+    try {
+      final results = await ref.read(deliveryRepositoryProvider).geocode(text);
+      if (!mounted) return;
+      setState(() {
+        _suggestions = results;
+        if (results.isEmpty) _error = 'Aucune adresse trouvee';
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = _errorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
-  return null;
+
+  Future<void> _check(AddressSuggestion suggestion) async {
+    final subtotal = double.tryParse(_subtotal.text.trim().replaceAll(',', '.'));
+    setState(() {
+      _busy = true;
+      _error = null;
+      _suggestions = const [];
+      _query.text = suggestion.label;
+    });
+    ref.read(coverageTestPointProvider.notifier).state = suggestion.point;
+    try {
+      final result = await ref.read(deliveryRepositoryProvider).checkAddress(
+            lat: suggestion.point.latitude,
+            lng: suggestion.point.longitude,
+            address: suggestion.label,
+            subtotal: subtotal,
+          );
+      if (mounted) setState(() => _outcome = _CoverageOutcome.covered(result));
+    } catch (error) {
+      if (!mounted) return;
+      if (error is AppException && error.code == 'DELIVERY_ZONE_UNREACHABLE') {
+        setState(() => _outcome = const _CoverageOutcome.outside());
+      } else {
+        setState(() => _error = _errorMessage(error));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final outcome = _outcome;
+    return AlertDialog(
+      title: const Text('Tester une adresse'),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                key: const ValueKey('coverage-address'),
+                controller: _query,
+                decoration: InputDecoration(
+                  labelText: 'Adresse',
+                  suffixIcon: IconButton(
+                    key: const ValueKey('coverage-search'),
+                    tooltip: 'Rechercher',
+                    icon: const Icon(Icons.search),
+                    onPressed: _busy ? null : _search,
+                  ),
+                ),
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _search(),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                key: const ValueKey('coverage-subtotal'),
+                controller: _subtotal,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Panier (optionnel, pour calculer les frais reels)',
+                ),
+              ),
+              if (_busy)
+                const Padding(
+                  padding: EdgeInsets.only(top: AppSpacing.sm),
+                  child: LinearProgressIndicator(),
+                ),
+              for (final suggestion in _suggestions)
+                ListTile(
+                  key: ValueKey('coverage-suggestion-${suggestion.label}'),
+                  dense: true,
+                  leading: const Icon(Icons.place_outlined),
+                  title: Text(suggestion.label),
+                  onTap: () => _check(suggestion),
+                ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: Text(
+                    _error!,
+                    key: const ValueKey('coverage-error'),
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ),
+              if (outcome != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.md),
+                  child: outcome.result == null
+                      ? const Text(
+                          'Hors zone : aucune zone active ne couvre cette adresse.',
+                          key: ValueKey('coverage-outside'),
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        )
+                      : _CoverageResultView(result: outcome.result!),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Fermer'),
+        ),
+      ],
+    );
+  }
 }
 
-double _double(String value) {
-  return double.tryParse(value.trim().replaceAll(',', '.')) ?? 0;
+class _CoverageOutcome {
+  const _CoverageOutcome.outside() : result = null;
+  const _CoverageOutcome.covered(DeliveryCheckResult this.result);
+
+  final DeliveryCheckResult? result;
+}
+
+class _CoverageResultView extends StatelessWidget {
+  const _CoverageResultView({required this.result});
+
+  final DeliveryCheckResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = <String>[
+      'Zone : ${result.name}',
+      if (result.freeDelivery)
+        'Livraison offerte${result.appliedLabel == null ? '' : ' (${result.appliedLabel})'}'
+      else
+        'Frais : ${formatMoney(result.fee)}'
+            '${result.baseFee != null && result.baseFee != result.fee ? ' (tarif de base ${formatMoney(result.baseFee!)})' : ''}',
+      'Delai estime : ${result.estimatedMinutes} min',
+      if (result.minOrderAmount > 0)
+        'Minimum de commande : ${formatMoney(result.minOrderAmount)}'
+            '${result.minOrderMet == false ? ' (non atteint)' : ''}',
+      if (!result.freeDelivery && (result.remainingForFree ?? 0) > 0)
+        'Plus que ${formatMoney(result.remainingForFree!)} pour la livraison offerte',
+    ];
+    return Column(
+      key: const ValueKey('coverage-result'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final line in lines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+            child: Text(line),
+          ),
+      ],
+    );
+  }
 }
 
 void _showSnack(BuildContext context, String message) {
@@ -738,5 +915,6 @@ void _showSnack(BuildContext context, String message) {
 }
 
 String _errorMessage(Object error) {
+  if (error is AppException) return error.message;
   return error.toString().replaceFirst('Exception: ', '');
 }

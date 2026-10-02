@@ -199,8 +199,15 @@ class ApiEndpoints {
   static String tenantClosure(int closureId) => '/tenant/closures/$closureId';
 
   static const deliveryZones = '/delivery/zones';
+  static const deliveryZonesManage = '/delivery/zones/manage';
+  static const deliveryZonePreview = '/delivery/zones/preview';
   static const deliveryCheck = '/delivery/check';
+  static const deliveryGeocode = '/delivery/geocode';
+  static const deliveryReverseGeocode = '/delivery/reverse-geocode';
+  static const deliverySettings = '/delivery/settings';
   static String deliveryZone(int zoneId) => '/delivery/zones/$zoneId';
+  static String deliveryEstablishmentLocation(int establishmentId) =>
+      '/delivery/establishments/$establishmentId/location';
 
   static const loyaltyConfig = '/loyalty/config';
   static const loyaltyRules = '/loyalty/rules';

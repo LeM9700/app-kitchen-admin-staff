@@ -58,6 +58,8 @@ class Establishment {
     required this.name,
     required this.timezone,
     required this.isActive,
+    this.latitude,
+    this.longitude,
   });
 
   final int id;
@@ -65,12 +67,22 @@ class Establishment {
   final String timezone;
   final bool isActive;
 
+  /// Position (WGS84), centre des cartes de livraison. `null` tant qu'elle n'est pas renseignee.
+  final double? latitude;
+  final double? longitude;
+
   factory Establishment.fromJson(Map<String, dynamic> json) {
     return Establishment(
       id: readInt(json['id']),
       name: json['name']?.toString() ?? '',
       timezone: json['timezone']?.toString() ?? 'Europe/Paris',
       isActive: readBool(json['is_active'], fallback: true),
+      latitude: json['latitude'] is num
+          ? (json['latitude'] as num).toDouble()
+          : null,
+      longitude: json['longitude'] is num
+          ? (json['longitude'] as num).toDouble()
+          : null,
     );
   }
 }

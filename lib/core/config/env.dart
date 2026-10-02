@@ -16,6 +16,15 @@ class Env {
     defaultValue: '',
   );
 
+  /// Jeton Mapbox PUBLIC (`pk.*`) pour afficher les tuiles des cartes de livraison. Fait pour
+  /// etre embarque (restreignez-le a votre domaine / identifiant d'app dans Mapbox). Le jeton
+  /// SECRET du geocodage reste cote serveur. Vide = tuiles OpenStreetMap, a reserver au
+  /// developpement (conditions d'usage OSM).
+  static const mapboxPublicToken = String.fromEnvironment(
+    'MAPBOX_PUBLIC_TOKEN',
+    defaultValue: '',
+  );
+
   static const defaultTenantSlug = String.fromEnvironment(
     'DEFAULT_TENANT_SLUG',
     defaultValue: 'pizza_test',

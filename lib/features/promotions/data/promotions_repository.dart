@@ -66,6 +66,7 @@ class PromotionsRepository {
     double minOrderAmount = 0,
     bool isPublic = true,
     bool isStackable = false,
+    bool freeDelivery = false,
     bool firstOrderOnly = false,
     bool emailVerifiedRequired = false,
     int? maxUses,
@@ -82,6 +83,7 @@ class PromotionsRepository {
         'min_order_amount': minOrderAmount,
         'is_public': isPublic,
         'is_stackable': isStackable,
+        'free_delivery': freeDelivery,
         'first_order_only': firstOrderOnly,
         'email_verified_required': emailVerifiedRequired,
         if (maxUses != null) 'max_uses': maxUses,
@@ -105,6 +107,7 @@ class PromotionsRepository {
     bool? isActive,
     bool? isPublic,
     bool? isStackable,
+    bool? freeDelivery,
     bool? firstOrderOnly,
     bool? emailVerifiedRequired,
     int? maxUses,
@@ -123,6 +126,7 @@ class PromotionsRepository {
         if (isActive != null) 'is_active': isActive,
         if (isPublic != null) 'is_public': isPublic,
         if (isStackable != null) 'is_stackable': isStackable,
+        if (freeDelivery != null) 'free_delivery': freeDelivery,
         if (firstOrderOnly != null) 'first_order_only': firstOrderOnly,
         if (emailVerifiedRequired != null)
           'email_verified_required': emailVerifiedRequired,
@@ -218,10 +222,14 @@ class PromotionAdminItem {
     this.endsAt,
     this.campaignId,
     this.userId,
+    this.freeDelivery = false,
   });
 
   final int id;
   final String code;
+
+  /// Le code offre aussi les frais de livraison (`discountValue` peut etre 0).
+  final bool freeDelivery;
   final String? description;
   final String discountType;
   final double discountValue;
@@ -262,6 +270,7 @@ class PromotionAdminItem {
       isActive: readBool(json['is_active'], fallback: true),
       isPublic: readBool(json['is_public'], fallback: true),
       isStackable: readBool(json['is_stackable']),
+      freeDelivery: readBool(json['free_delivery']),
       firstOrderOnly: readBool(json['first_order_only']),
       emailVerifiedRequired: readBool(json['email_verified_required']),
       usageCount: readInt(json['usage_count']),

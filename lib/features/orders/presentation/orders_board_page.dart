@@ -26,6 +26,7 @@ import 'package:app_admin_staff/features/kitchen/presentation/widgets/kds_pairin
 import 'package:app_admin_staff/features/orders/application/service_board_state.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/orders/presentation/delivery_failure_dialog.dart';
+import 'package:app_admin_staff/features/payments/presentation/guarantee_settlement_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -999,11 +1000,7 @@ class _ServiceOrderCard extends ConsumerWidget {
                             : () => _runAction(
                                   ref,
                                   nextStatus,
-                                  () => _updateStatus(
-                                    context,
-                                    ref,
-                                    nextStatus,
-                                  ),
+                                  () => _advance(context, ref, nextStatus),
                                 ),
                         child: Text(viewModel.actionLabel.toUpperCase()),
                       ),
@@ -1038,6 +1035,26 @@ class _ServiceOrderCard extends ConsumerWidget {
         ...ref.read(_orderActionBusyProvider),
       }..remove(key);
     }
+  }
+
+  /// Fait avancer la commande. Une livraison dont la carte du client porte une
+  /// empreinte ne peut etre livree qu'apres reglement (l'API le refuse sinon).
+  Future<void> _advance(
+    BuildContext context,
+    WidgetRef ref,
+    String status,
+  ) async {
+    if (status == 'delivered' && order.paymentStatus == 'guaranteed') {
+      final settled = await showGuaranteeSettlementDialog(
+        context,
+        orderId: order.id,
+        total: order.total,
+      );
+      if (!settled || !context.mounted) {
+        return;
+      }
+    }
+    await _updateStatus(context, ref, status);
   }
 
   Future<void> _declareDeliveryFailure(
@@ -1372,6 +1389,27 @@ class _ServiceOrderDetailSheet extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
               _DetailGrid(order: order),
+              if (order.paymentStatus == 'guaranteed') ...[
+                const SizedBox(height: 12),
+                // Empreinte bancaire : reglement possible a tout moment (echec de
+                // livraison decide par l'administrateur, annulation, etc.).
+                FilledButton.icon(
+                  onPressed: () async {
+                    final settled = await showGuaranteeSettlementDialog(
+                      context,
+                      orderId: order.id,
+                      total: order.total,
+                    );
+                    if (settled) {
+                      ref
+                        ..invalidate(orderDetailProvider(order.id))
+                        ..invalidate(activeOrdersProvider);
+                    }
+                  },
+                  icon: const Icon(Icons.lock_clock_outlined),
+                  label: const Text('Regler la garantie carte'),
+                ),
+              ],
               if (order.stationSummary.isNotEmpty) ...[
                 const SizedBox(height: 18),
                 _PreparationSummary(order: order),

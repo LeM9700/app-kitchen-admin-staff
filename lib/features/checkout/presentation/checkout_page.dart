@@ -1,4 +1,5 @@
 import 'package:app_admin_staff/app/permissions/permissions.dart';
+import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/core/api/idempotency_key.dart';
 import 'package:app_admin_staff/core/connectivity/connectivity_status.dart';
 import 'package:app_admin_staff/core/printing/printer_registry.dart';
@@ -21,6 +22,7 @@ import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.da
 import 'package:app_admin_staff/features/checkout/presentation/delivery_address_picker.dart';
 import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -172,6 +174,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                           // refuserait pour un retrait ou une commande sur place.
                           if (value != 'delivery' && _selectedRewardIsFreeDelivery) {
                             _selectedLoyaltyRewardId = null;
+                          }
+                          // Livraison : pas d'especes au comptoir, lien d'empreinte a la place.
+                          if (value == 'delivery' && _paymentMethod == 'cash') {
+                            _paymentMethod = 'payment_link';
                           }
                         });
                       },
@@ -417,15 +423,21 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           await ref.read(ordersRepositoryProvider).createManualOrder(draft);
       final receipt = ReceiptBuilder.customerReceipt(result.order);
       final tickets = ReceiptBuilder.kitchenTickets(result.order);
-      ref.read(printJobsProvider.notifier).enqueue(receipt);
-      for (final ticket in tickets) {
-        ref.read(printJobsProvider.notifier).enqueue(ticket);
+      // Commande en attente du client (lien de paiement) : ni recu ni ticket cuisine
+      // tant qu'elle n'est pas confirmee par le webhook de paiement.
+      if (!result.awaitsCustomerPayment) {
+        ref.read(printJobsProvider.notifier).enqueue(receipt);
+        for (final ticket in tickets) {
+          ref.read(printJobsProvider.notifier).enqueue(ticket);
+        }
       }
       ref.invalidate(activeOrdersProvider);
       ref.invalidate(paymentsProvider);
       ref.invalidate(paymentsSummaryProvider);
       setState(_resetAfterSale);
-      if (mounted) {
+      if (mounted && result.awaitsCustomerPayment) {
+        await _showPaymentLinkSheet(result);
+      } else if (mounted) {
         await _showSuccessSheet(
           result: result,
           receiptContent: receipt.content,
@@ -456,6 +468,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         paymentMethod: _paymentMethod,
         deliveryAddress: _deliveryAddressController.text,
         customerPhone: _customerPhoneController.text,
+        customerEmail: _customerEmailController.text,
         deliveryZoneId: _deliveryZoneId,
         externalReference: _externalReferenceController.text,
         loyaltyCustomerId: _loyaltyCustomer?.id,
@@ -996,6 +1009,21 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     );
   }
 
+  Future<void> _showPaymentLinkSheet(ManualOrderResult result) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _posSurface,
+      builder: (context) => _PaymentLinkSheet(
+        orderId: result.order.id,
+        total: result.order.total,
+        initialLink: result.paymentLink,
+        initialError: result.paymentLinkError,
+        defaultMode: result.order.orderType == 'delivery' ? 'guarantee' : 'full',
+      ),
+    );
+  }
+
   Future<void> _showReceiptText(String receiptContent) async {
     await showDialog<void>(
       context: context,
@@ -1491,6 +1519,7 @@ class _CartPanel extends StatelessWidget {
         const SizedBox(height: 10),
         _PaymentSection(
           paymentMethod: paymentMethod,
+          orderType: orderType,
           canUseTerminal: canUseTerminal,
           externalReferenceController: externalReferenceController,
           amountReceivedController: amountReceivedController,
@@ -2263,6 +2292,7 @@ class _CartLinesSection extends StatelessWidget {
 class _PaymentSection extends StatelessWidget {
   const _PaymentSection({
     required this.paymentMethod,
+    required this.orderType,
     required this.canUseTerminal,
     required this.externalReferenceController,
     required this.amountReceivedController,
@@ -2274,6 +2304,7 @@ class _PaymentSection extends StatelessWidget {
   });
 
   final String paymentMethod;
+  final String orderType;
   final bool canUseTerminal;
   final TextEditingController externalReferenceController;
   final TextEditingController amountReceivedController;
@@ -2291,9 +2322,15 @@ class _PaymentSection extends StatelessWidget {
         children: [
           _PaymentPads(
             value: paymentMethod,
+            orderType: orderType,
             canUseTerminal: canUseTerminal,
             onChanged: onPaymentMethodChanged,
           ),
+          if (paymentMethod == 'payment_link')
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: _PaymentLinkHint(isDelivery: orderType == 'delivery'),
+            ),
           if ({'external_terminal', 'cash_register'}.contains(paymentMethod))
             Padding(
               padding: const EdgeInsets.only(top: 10),
@@ -2476,11 +2513,13 @@ class _OrderTypeSelector extends StatelessWidget {
 class _PaymentPads extends StatelessWidget {
   const _PaymentPads({
     required this.value,
+    required this.orderType,
     required this.canUseTerminal,
     required this.onChanged,
   });
 
   final String value;
+  final String orderType;
   final bool canUseTerminal;
   final ValueChanged<String> onChanged;
 
@@ -2494,6 +2533,8 @@ class _PaymentPads extends StatelessWidget {
           label: 'Especes',
           icon: Icons.payments_outlined,
           selected: value == 'cash',
+          // Livraison : les especes ne sont encaissees qu'a la remise, voir « Lien SMS ».
+          disabled: orderType == 'delivery',
           onTap: () => onChanged('cash'),
         ),
         _ModePad(
@@ -2508,6 +2549,13 @@ class _PaymentPads extends StatelessWidget {
           icon: Icons.point_of_sale_outlined,
           selected: value == 'cash_register',
           onTap: () => onChanged('cash_register'),
+        ),
+        _ModePad(
+          label: 'Lien SMS',
+          icon: Icons.sms_outlined,
+          selected: value == 'payment_link',
+          disabled: orderType == 'dine_in',
+          onTap: () => onChanged('payment_link'),
         ),
       ],
     );
@@ -3071,6 +3119,213 @@ String _paymentLabel(String value) {
     'external_terminal' => 'TPE',
     'cash_register' => 'Caisse externe',
     'cash' => 'Especes',
+    'payment_link' => 'Lien de paiement',
     _ => value,
   };
+}
+
+
+class _PaymentLinkHint extends StatelessWidget {
+  const _PaymentLinkHint({required this.isDelivery});
+
+  final bool isDelivery;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _posBackground,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.sms_outlined, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isDelivery
+                  ? 'Le client recoit un lien pour laisser une empreinte '
+                      'bancaire : aucun debit, il paiera le livreur a la '
+                      'remise. La commande part en cuisine des que '
+                      'l\'empreinte est posee.'
+                  : 'Le client recoit un lien de paiement securise. La '
+                      'commande part en cuisine des que le paiement est '
+                      'confirme.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Lien de paiement d'une commande en attente du client : copie, renvoi, et
+/// explication de ce qui va se passer.
+class _PaymentLinkSheet extends ConsumerStatefulWidget {
+  const _PaymentLinkSheet({
+    required this.orderId,
+    required this.total,
+    required this.initialLink,
+    required this.initialError,
+    required this.defaultMode,
+  });
+
+  final int orderId;
+  final double total;
+  final PaymentLink? initialLink;
+  final String? initialError;
+  final String defaultMode;
+
+  @override
+  ConsumerState<_PaymentLinkSheet> createState() => _PaymentLinkSheetState();
+}
+
+class _PaymentLinkSheetState extends ConsumerState<_PaymentLinkSheet> {
+  late PaymentLink? _link = widget.initialLink;
+  late String? _error = widget.initialError;
+  bool _sending = false;
+
+  Future<void> _resend() async {
+    if (_sending) {
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      final link = await ref
+          .read(paymentsRepositoryProvider)
+          .createPaymentLink(widget.orderId, mode: widget.defaultMode);
+      if (mounted) {
+        setState(() => _link = link);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error is ApiError
+              ? error.message
+              : 'Lien indisponible pour le moment';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+      }
+    }
+  }
+
+  Future<void> _copy(String url) async {
+    await Clipboard.setData(ClipboardData(text: url));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lien copie')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final link = _link;
+    final hasLink = link != null && link.url.isNotEmpty;
+    final delivered = link == null
+        ? null
+        : [
+            if (link.sentBySms) 'SMS',
+            if (link.sentByEmail) 'email',
+          ];
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(
+              hasLink ? Icons.mark_email_read_outlined : Icons.warning_amber,
+              size: 52,
+              color: hasLink ? AppColors.success : AppColors.warning,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              hasLink
+                  ? 'Commande #${widget.orderId} en attente du client'
+                  : 'Commande #${widget.orderId} creee, lien indisponible',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              formatMoney(widget.total),
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 16),
+            if (hasLink) ...[
+              _SuccessRow(
+                icon: Icons.lock_clock_outlined,
+                label: link.isGuarantee
+                    ? 'Empreinte bancaire : aucun debit, paiement a la livraison'
+                    : 'Paiement en ligne immediat',
+              ),
+              _SuccessRow(
+                icon: Icons.send_outlined,
+                label: delivered!.isEmpty
+                    ? 'Aucun envoi automatique : transmettez le lien au client'
+                    : 'Lien envoye par ${delivered.join(' et ')}',
+              ),
+              const _SuccessRow(
+                icon: Icons.soup_kitchen_outlined,
+                label: 'Cuisine : des que le client a valide le lien',
+              ),
+              const SizedBox(height: 12),
+              SelectableText(link.url, maxLines: 2),
+            ] else if (_error != null)
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              )
+            else
+              const Text(
+                'Le lien n\'a pas pu etre cree. Relancez-le ci-dessous.',
+                textAlign: TextAlign.center,
+              ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: hasLink ? () => _copy(link.url) : null,
+                    icon: const Icon(Icons.copy_outlined),
+                    label: const Text('Copier le lien'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _sending ? null : _resend,
+                    icon: const Icon(Icons.refresh),
+                    label: Text(hasLink ? 'Renvoyer' : 'Creer le lien'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Nouvelle commande'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

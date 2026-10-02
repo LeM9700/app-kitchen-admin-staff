@@ -10,11 +10,13 @@ import 'package:app_admin_staff/features/kitchen/data/kds_models.dart';
 import 'package:app_admin_staff/features/kitchen/data/kds_repository.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/orders/presentation/orders_board_page.dart';
+import 'package:app_admin_staff/features/payments/data/payments_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 void main() {
   testWidgets('service detail does not expose KDS prepared action', (
@@ -76,6 +78,86 @@ void main() {
     expect(queued.single.feature, 'orders');
     expect(queued.single.payload['status'], 'out_for_delivery');
     expect(find.text('Action mise en file offline'), findsOneWidget);
+  });
+
+  group('livraison avec empreinte bancaire', () {
+    testWidgets('livrer ouvre le reglement avant tout changement de statut', (
+      tester,
+    ) async {
+      final repository = _FakeOrdersRepository();
+      await _pumpService(
+        tester,
+        repository: repository,
+        orders: [
+          _summary(
+            orderType: 'delivery',
+            status: 'out_for_delivery',
+            paymentStatus: 'guaranteed',
+          ),
+        ],
+      );
+
+      await tester.tap(find.text('MARQUER LIVREE'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Regler l'), findsOneWidget);
+      expect(repository.statusUpdates, isEmpty);
+
+      await tester.tap(find.text('Annuler'));
+      await tester.pumpAndSettle();
+      expect(repository.statusUpdates, isEmpty);
+    });
+
+    testWidgets('apres reglement de la garantie la commande passe livree', (
+      tester,
+    ) async {
+      final repository = _FakeOrdersRepository();
+      final payments = _MockPaymentsRepository();
+      when(() => payments.releaseGuarantee(any(), reason: any(named: 'reason')))
+          .thenAnswer((_) async {});
+      await _pumpService(
+        tester,
+        repository: repository,
+        orders: [
+          _summary(
+            orderType: 'delivery',
+            status: 'out_for_delivery',
+            paymentStatus: 'guaranteed',
+          ),
+        ],
+        overrides: [paymentsRepositoryProvider.overrideWithValue(payments)],
+      );
+
+      await tester.tap(find.text('MARQUER LIVREE'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Liberer sans debit'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmer'));
+      await tester.pumpAndSettle();
+
+      verify(() => payments.releaseGuarantee(1, reason: 'released_by_staff'))
+          .called(1);
+      expect(repository.statusUpdates, ['delivered']);
+    });
+
+    testWidgets('une livraison deja payee ne demande aucun reglement', (
+      tester,
+    ) async {
+      final repository = _FakeOrdersRepository();
+      await _pumpService(
+        tester,
+        repository: repository,
+        orders: [
+          _summary(orderType: 'delivery', status: 'out_for_delivery'),
+        ],
+      );
+
+      await tester.tap(find.text('MARQUER LIVREE'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Regler l'), findsNothing);
+      expect(repository.statusUpdates, ['delivered']);
+    });
   });
 
   testWidgets('service board has no layout exceptions across target widths', (
@@ -400,6 +482,7 @@ OrderSummary _summary({
   int id = 1,
   String orderType = 'dine_in',
   String status = 'ready',
+  String paymentStatus = 'paid',
   DateTime? createdAt,
   String? deliveryInstructions,
 }) {
@@ -408,7 +491,7 @@ OrderSummary _summary({
     deliveryInstructions: deliveryInstructions,
     orderType: orderType,
     status: status,
-    paymentStatus: 'paid',
+    paymentStatus: paymentStatus,
     source: 'customer',
     total: 24,
     deliveryFee: orderType == 'delivery' ? 4 : 0,
@@ -458,6 +541,8 @@ OrderDetail _detail({
     ],
   );
 }
+
+class _MockPaymentsRepository extends Mock implements PaymentsRepository {}
 
 class _FakeOrdersRepository implements OrdersRepository {
   _FakeOrdersRepository({

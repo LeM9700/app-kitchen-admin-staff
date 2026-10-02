@@ -401,17 +401,36 @@ class ManualOrderResult {
     required this.order,
     required this.payment,
     required this.receipt,
+    this.paymentLink,
+    this.paymentLinkError,
   });
 
   final OrderDetail order;
-  final PaymentListItem payment;
+
+  /// `null` tant qu'une commande saisie avec un lien de paiement n'est pas reglee.
+  final PaymentListItem? payment;
   final Map<String, dynamic> receipt;
 
+  /// Lien Stripe (empreinte ou paiement) quand la methode etait `payment_link`.
+  final PaymentLink? paymentLink;
+
+  /// Code d'erreur si la commande existe mais que le lien n'a pas pu etre cree.
+  final String? paymentLinkError;
+
+  /// Commande en attente du client : ni encaissee ni a envoyer en cuisine.
+  bool get awaitsCustomerPayment => payment == null;
+
   factory ManualOrderResult.fromJson(Map<String, dynamic> json) {
+    final payment = json['payment'];
+    final link = json['payment_link'];
     return ManualOrderResult(
       order: OrderDetail.fromJson(readMap(json['order'])),
-      payment: PaymentListItem.fromJson(readMap(json['payment'])),
+      payment: payment == null
+          ? null
+          : PaymentListItem.fromJson(readMap(payment)),
       receipt: readMap(json['receipt']),
+      paymentLink: link == null ? null : PaymentLink.fromJson(readMap(link)),
+      paymentLinkError: json['payment_link_error']?.toString(),
     );
   }
 }

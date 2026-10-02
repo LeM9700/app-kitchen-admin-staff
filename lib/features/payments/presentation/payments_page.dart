@@ -784,7 +784,7 @@ class _PaymentsTableRow extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Text(
-                _providerLabel(payment.provider),
+                _providerLabel(payment.provider, purpose: payment.purpose),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -901,7 +901,7 @@ class _PaymentCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            '${_providerLabel(payment.provider)} / ${payment.currency.toUpperCase()}',
+            '${_providerLabel(payment.provider, purpose: payment.purpose)} / ${payment.currency.toUpperCase()}',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -1490,7 +1490,7 @@ class _PaymentDetailSheet extends StatelessWidget {
               children: [
                 _DetailLine(
                   label: 'Moyen',
-                  value: _providerLabel(detail.payment.provider),
+                  value: _providerLabel(detail.payment.provider, purpose: detail.payment.purpose),
                 ),
                 _DetailLine(
                   label: 'Statut',
@@ -2110,9 +2110,10 @@ StatusTone _paymentTone(String status) {
   };
 }
 
-String _providerLabel(String provider) {
+String _providerLabel(String provider, {String purpose = 'sale'}) {
   return switch (provider) {
     'stripe_terminal' => 'Stripe Terminal',
+    'stripe' when purpose == 'guarantee' => 'Stripe (empreinte)',
     'stripe' => 'Stripe',
     'cash' => 'Cash',
     'card' || 'cb' => 'CB',

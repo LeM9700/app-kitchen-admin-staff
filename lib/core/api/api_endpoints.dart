@@ -178,6 +178,13 @@ class ApiEndpoints {
   static const localTestPaymentConfirm = '/payments/local-test/confirm';
   static String paymentDetail(int orderId) => '/payments/$orderId';
   static String paymentRefund(int orderId) => '/payments/$orderId/refund';
+  static String guaranteeRelease(int orderId) =>
+      '/payments/$orderId/guarantee/release';
+  static String guaranteeCapture(int orderId) =>
+      '/payments/$orderId/guarantee/capture';
+  static String guaranteeCashCollected(int orderId) =>
+      '/payments/$orderId/guarantee/cash-collected';
+  static String paymentLink(int orderId) => '/payments/$orderId/link';
   static String terminalReaderProcess(String readerId) {
     return '/payments/terminal/readers/$readerId/process';
   }

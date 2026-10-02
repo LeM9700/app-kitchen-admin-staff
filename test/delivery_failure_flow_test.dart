@@ -14,7 +14,8 @@ CheckoutValidationInput _input({
   return CheckoutValidationInput(
     hasItems: true,
     orderType: orderType,
-    paymentMethod: 'cash',
+    // Livraison : pas d'especes au comptoir, le client laisse une empreinte (lien).
+    paymentMethod: orderType == 'delivery' ? 'payment_link' : 'cash',
     deliveryAddress: address,
     externalReference: '',
     loyaltyCustomerId: null,

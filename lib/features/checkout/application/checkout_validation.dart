@@ -15,6 +15,7 @@ class CheckoutValidationInput {
     this.cartEstablishmentId,
     this.currentEstablishmentId,
     this.customerPhone = '',
+    this.customerEmail = '',
     this.deliveryZoneId,
   });
 
@@ -33,6 +34,7 @@ class CheckoutValidationInput {
   final int? cartEstablishmentId;
   final int? currentEstablishmentId;
   final String customerPhone;
+  final String customerEmail;
   final int? deliveryZoneId;
 }
 
@@ -95,6 +97,25 @@ CheckoutValidationResult validateCheckout(CheckoutValidationInput input) {
     return const CheckoutValidationResult.invalid(
       'Zone de livraison requise : elle determine les frais',
     );
+  }
+  if (input.orderType == 'delivery' && input.paymentMethod == 'cash') {
+    // Especes non encaissees au comptoir : le client doit laisser une empreinte (lien).
+    return const CheckoutValidationResult.invalid(
+      'Livraison : envoyez un lien de paiement (empreinte bancaire) au lieu des especes',
+    );
+  }
+  if (input.paymentMethod == 'payment_link') {
+    if (input.orderType == 'dine_in') {
+      return const CheckoutValidationResult.invalid(
+        'Le lien de paiement n\'est pas disponible pour une commande sur place',
+      );
+    }
+    if (input.customerPhone.trim().isEmpty &&
+        input.customerEmail.trim().isEmpty) {
+      return const CheckoutValidationResult.invalid(
+        'Telephone ou email requis pour envoyer le lien de paiement',
+      );
+    }
   }
   if ({'external_terminal', 'cash_register'}.contains(input.paymentMethod) &&
       input.externalReference.trim().isEmpty) {

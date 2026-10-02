@@ -125,6 +125,31 @@ class OrderStatusUi {
           tone: StatusTone.warning,
           emphasis: false,
         ),
+      // Empreinte bancaire d'une livraison payee a la remise (voir API payments).
+      'guaranteed' => const OrderStatusUi(
+          label: 'Empreinte (a regler)',
+          foreground: AppColors.info,
+          background: AppColors.infoBg,
+          icon: Icons.lock_clock_outlined,
+          tone: StatusTone.info,
+          emphasis: true,
+        ),
+      'guarantee_released' => const OrderStatusUi(
+          label: 'Empreinte liberee',
+          foreground: AppColors.neutral,
+          background: AppColors.neutralBg,
+          icon: Icons.lock_open_outlined,
+          tone: StatusTone.neutral,
+          emphasis: false,
+        ),
+      'guarantee_captured' => const OrderStatusUi(
+          label: 'Empreinte debitee',
+          foreground: AppColors.warning,
+          background: AppColors.warningBg,
+          icon: Icons.credit_score_outlined,
+          tone: StatusTone.warning,
+          emphasis: false,
+        ),
       'failed' => const OrderStatusUi(
           label: 'Echec',
           foreground: AppColors.dangerAlt,

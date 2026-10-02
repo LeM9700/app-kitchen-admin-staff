@@ -98,6 +98,54 @@ class PaymentsRepository {
     return Refund.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// Libere l'empreinte bancaire d'une livraison : rien n'est debite.
+  Future<void> releaseGuarantee(int orderId, {String? reason}) async {
+    await _apiClient.post(
+      ApiEndpoints.guaranteeRelease(orderId),
+      data: {if (reason != null && reason.trim().isNotEmpty) 'reason': reason},
+    );
+  }
+
+  /// Debite tout (`amountCents` null) ou partie de l'empreinte. Reserve aux
+  /// administrateurs cote API ; le motif est obligatoire.
+  Future<void> captureGuarantee(
+    int orderId, {
+    int? amountCents,
+    required String reason,
+  }) async {
+    await _apiClient.post(
+      ApiEndpoints.guaranteeCapture(orderId),
+      data: {
+        if (amountCents != null) 'amount': amountCents,
+        'reason': reason,
+      },
+    );
+  }
+
+  /// Especes encaissees a la remise : libere l'empreinte et enregistre un
+  /// paiement `cash`.
+  Future<void> guaranteeCashCollected(
+    int orderId, {
+    double? amountReceived,
+  }) async {
+    await _apiClient.post(
+      ApiEndpoints.guaranteeCashCollected(orderId),
+      data: {if (amountReceived != null) 'amount_received': amountReceived},
+    );
+  }
+
+  /// Lien de paiement Stripe pour une commande saisie au comptoir (renvoi).
+  Future<PaymentLink> createPaymentLink(
+    int orderId, {
+    required String mode,
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.paymentLink(orderId),
+      data: {'mode': mode},
+    );
+    return PaymentLink.fromJson(readMap(response.data));
+  }
+
   Future<List<TerminalReader>> listTerminalReaders() async {
     final response = await _apiClient.get(ApiEndpoints.terminalReaders);
     final data = readMap(response.data);
@@ -170,11 +218,19 @@ class PaymentListItem {
     this.amountReceived,
     this.createdByUserId,
     this.createdAt,
+    this.purpose = 'sale',
+    this.capturedAmount,
   });
 
   final int id;
   final int orderId;
   final String provider;
+
+  /// `sale` ou `guarantee` (empreinte bancaire d'une livraison payee a la remise).
+  final String purpose;
+
+  /// Montant reellement debite d'une empreinte (peut etre inferieur a [amount]).
+  final double? capturedAmount;
   final String? providerPaymentId;
   final String? externalReference;
   final double amount;
@@ -203,6 +259,43 @@ class PaymentListItem {
           : readInt(json['created_by_user_id']),
       createdAt: readDateTime(json['created_at']),
       refundedAmountCents: readInt(json['refunded_amount_cents']),
+      purpose: json['purpose']?.toString() ?? 'sale',
+      capturedAmount: json['captured_amount'] == null
+          ? null
+          : readDouble(json['captured_amount']),
+    );
+  }
+}
+
+/// Lien de paiement Stripe (SMS / email) d'une commande saisie au comptoir.
+class PaymentLink {
+  const PaymentLink({
+    required this.url,
+    required this.mode,
+    required this.paymentId,
+    this.expiresAt,
+    this.sentBySms = false,
+    this.sentByEmail = false,
+  });
+
+  /// `full` (paiement immediat) ou `guarantee` (empreinte, reglement a la livraison).
+  final String mode;
+  final String url;
+  final int paymentId;
+  final DateTime? expiresAt;
+  final bool sentBySms;
+  final bool sentByEmail;
+
+  bool get isGuarantee => mode == 'guarantee';
+
+  factory PaymentLink.fromJson(Map<String, dynamic> json) {
+    return PaymentLink(
+      url: json['url']?.toString() ?? '',
+      mode: json['mode']?.toString() ?? 'full',
+      paymentId: readInt(json['payment_id']),
+      expiresAt: readDateTime(json['expires_at']),
+      sentBySms: readBool(json['sent_by_sms']),
+      sentByEmail: readBool(json['sent_by_email']),
     );
   }
 }

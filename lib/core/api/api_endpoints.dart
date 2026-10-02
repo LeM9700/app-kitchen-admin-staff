@@ -220,6 +220,12 @@ class ApiEndpoints {
   static const driverDeliveries = '/delivery/driver/deliveries';
   static const driverDepart = '/delivery/driver/depart';
   static const driverRecap = '/delivery/driver/recap';
+  static String driverFailed(int id) => '/delivery/driver/deliveries/$id/failed';
+  static const deliveryFailures = '/delivery/failures';
+  static String deliveryFailureResolve(int id) =>
+      '/delivery/failures/$id/resolve';
+  static String deliverWithoutCode(int orderId) =>
+      '/delivery/dispatch/orders/$orderId/deliver-without-code';
   static String driverArrived(int id) => '/delivery/driver/deliveries/$id/arrived';
   static String driverDelivered(int id) =>
       '/delivery/driver/deliveries/$id/delivered';

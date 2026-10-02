@@ -139,6 +139,30 @@ class DeliveryRepository {
     return DeliverySettings.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// Preuve de remise par code et regles d'echec (administrateur). Les champs `null` ne sont pas
+  /// envoyes : le serveur les laisse inchanges.
+  Future<DeliverySettings> updateProofSettings({
+    required bool internalEnabled,
+    required int expectedVersion,
+    bool? proofRequired,
+    int? failureMinWaitMinutes,
+    int? failureMinCallAttempts,
+  }) async {
+    final response = await _apiClient.put(
+      ApiEndpoints.deliverySettings,
+      data: {
+        'internal_enabled': internalEnabled,
+        'expected_version': expectedVersion,
+        if (proofRequired != null) 'delivery_proof_required': proofRequired,
+        if (failureMinWaitMinutes != null)
+          'failure_min_wait_minutes': failureMinWaitMinutes,
+        if (failureMinCallAttempts != null)
+          'failure_min_call_attempts': failureMinCallAttempts,
+      },
+    );
+    return DeliverySettings.fromJson(response.data as Map<String, dynamic>);
+  }
+
   /// Active ou coupe le dispatch par livreurs. L'API exige `internal_enabled` avec chaque
   /// ecriture : on renvoie sa valeur courante pour ne pas la modifier.
   Future<DeliverySettings> setDriverDispatch({
@@ -183,7 +207,17 @@ class DeliverySettings {
     required this.internalEnabled,
     required this.version,
     this.driverDispatchEnabled = false,
+    this.deliveryProofRequired = false,
+    this.failureMinWaitMinutes = 5,
+    this.failureMinCallAttempts = 1,
   });
+
+  /// Le livreur doit saisir le code a 4 chiffres du client pour livrer.
+  final bool deliveryProofRequired;
+
+  /// « Client absent / injoignable » : attente depuis l'arrivee et appels minimaux.
+  final int failureMinWaitMinutes;
+  final int failureMinCallAttempts;
 
   /// Dispatch par livreurs : `ready -> out_for_delivery` exige un livreur assigne.
   final bool driverDispatchEnabled;
@@ -198,6 +232,9 @@ class DeliverySettings {
     return DeliverySettings(
       internalEnabled: readBool(json['internal_enabled'], fallback: true),
       driverDispatchEnabled: readBool(json['driver_dispatch_enabled']),
+      deliveryProofRequired: readBool(json['delivery_proof_required']),
+      failureMinWaitMinutes: readInt(json['failure_min_wait_minutes'], fallback: 5),
+      failureMinCallAttempts: readInt(json['failure_min_call_attempts'], fallback: 1),
       version: readInt(json['version']),
     );
   }

@@ -7,6 +7,7 @@ import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart'
 import 'package:app_admin_staff/features/delivery/data/dispatch_repository.dart';
 import 'package:app_admin_staff/features/delivery/presentation/dispatch_page.dart';
 import 'package:app_admin_staff/features/driver/presentation/driver_deliveries_page.dart';
+import 'package:app_admin_staff/features/driver/presentation/driver_dialogs.dart';
 import 'package:app_admin_staff/features/driver/presentation/driver_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -529,7 +530,7 @@ void main() {
       await tester.enterText(find.byKey(const ValueKey('cash-received')), '10');
       await tester.pump();
       expect(
-        tester.widget<FilledButton>(find.byKey(const ValueKey('confirm-cash'))).onPressed,
+        tester.widget<FilledButton>(find.byKey(const ValueKey('confirm-delivered'))).onPressed,
         isNull,
       );
       expect(find.text('Montant insuffisant ou invalide'), findsOneWidget);
@@ -537,7 +538,7 @@ void main() {
       await tester.enterText(find.byKey(const ValueKey('cash-received')), '30');
       await tester.pump();
       expect(find.textContaining('A rendre'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('confirm-cash')));
+      await tester.tap(find.byKey(const ValueKey('confirm-delivered')));
       await tester.pumpAndSettle();
 
       verify(() => repo.delivered(1, cashReceived: 30)).called(1);

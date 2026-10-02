@@ -7,8 +7,7 @@ import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/delivery/data/dispatch_repository.dart';
-import 'package:app_admin_staff/features/payments/presentation/guarantee_settlement_dialog.dart'
-    show parseSettlementAmount;
+import 'package:app_admin_staff/features/driver/presentation/driver_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -42,13 +41,6 @@ Uri? phoneUriFor(DriverDelivery delivery) {
   return Uri(scheme: 'tel', path: phone);
 }
 
-/// Especes recues saisies par le livreur : au moins le montant du, sinon `null`.
-double? validCashReceived(String raw, double amountDue) {
-  final value = parseSettlementAmount(raw);
-  if (value == null || value < amountDue) return null;
-  return value;
-}
-
 /// Ecran principal du livreur : « En cours » puis « A venir ».
 class DriverDeliveriesPage extends ConsumerStatefulWidget {
   const DriverDeliveriesPage({super.key});
@@ -60,6 +52,9 @@ class DriverDeliveriesPage extends ConsumerStatefulWidget {
 
 class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
   final Set<int> _selected = {};
+  // Appels passes au client depuis cet ecran, par livraison : l'API les exige avant de laisser
+  // declarer un client absent ou injoignable.
+  final Map<int, int> _calls = {};
   Timer? _timer;
   bool _busy = false;
 
@@ -118,37 +113,39 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
     );
   }
 
+  Future<void> _call(DriverDelivery delivery) async {
+    setState(() => _calls[delivery.id] = (_calls[delivery.id] ?? 0) + 1);
+    await _open(phoneUriFor(delivery), 'Appel impossible');
+  }
+
   Future<void> _deliver(DriverDelivery delivery) async {
-    double? cash;
-    if (delivery.amountDue > 0) {
-      cash = await showCashCollectionDialog(context, delivery);
-      if (cash == null) return;
-    } else {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Livrer la commande #${delivery.orderId} ?'),
-          content: const Text('Deja payee : rien a encaisser.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler'),
-            ),
-            FilledButton(
-              key: const ValueKey('confirm-delivered'),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Livree'),
-            ),
-          ],
-        ),
-      );
-      if (ok != true) return;
-    }
+    final input = await showDeliveryProofDialog(context, delivery);
+    if (input == null) return;
     await _run(
-      () => ref
-          .read(dispatchRepositoryProvider)
-          .delivered(delivery.id, cashReceived: cash),
+      () => ref.read(dispatchRepositoryProvider).delivered(
+            delivery.id,
+            cashReceived: input.cash,
+            code: input.code,
+          ),
       success: 'Commande #${delivery.orderId} livree',
+    );
+  }
+
+  Future<void> _fail(DriverDelivery delivery) async {
+    final input = await showFailureDialog(
+      context,
+      delivery,
+      callAttempts: _calls[delivery.id] ?? 0,
+    );
+    if (input == null) return;
+    await _run(
+      () => ref.read(dispatchRepositoryProvider).failed(
+            delivery.id,
+            reason: input.reason,
+            note: input.note,
+            callAttempts: _calls[delivery.id] ?? 0,
+          ),
+      success: 'Echec declare : le restaurant va statuer',
     );
   }
 
@@ -210,9 +207,11 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
                       _DeliveryCard(
                         delivery: delivery,
                         busy: _busy,
-                        onCall: () => _open(phoneUriFor(delivery), 'Appel impossible'),
+                        callCount: _calls[delivery.id] ?? 0,
+                        onCall: () => _call(delivery),
                         onRoute: () =>
                             _open(routeUriFor(delivery), 'Itineraire indisponible'),
+                        onFailed: () => _fail(delivery),
                         onArrived: delivery.phase == 'en_route'
                             ? () => _run(
                                   () => ref
@@ -240,7 +239,7 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
                                   }
                                 })
                             : null,
-                        onCall: () => _open(phoneUriFor(delivery), 'Appel impossible'),
+                        onCall: () => _call(delivery),
                         onRoute: () =>
                             _open(routeUriFor(delivery), 'Itineraire indisponible'),
                       ),
@@ -267,92 +266,6 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
           ],
         );
       },
-    );
-  }
-}
-
-/// Encaissement a la remise : le livreur saisit les especes recues (au moins le montant du).
-Future<double?> showCashCollectionDialog(
-  BuildContext context,
-  DriverDelivery delivery,
-) {
-  return showDialog<double>(
-    context: context,
-    builder: (context) => _CashDialog(delivery: delivery),
-  );
-}
-
-class _CashDialog extends StatefulWidget {
-  const _CashDialog({required this.delivery});
-
-  final DriverDelivery delivery;
-
-  @override
-  State<_CashDialog> createState() => _CashDialogState();
-}
-
-class _CashDialogState extends State<_CashDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.delivery.amountDue.toStringAsFixed(2),
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  double? get _value => validCashReceived(_controller.text, widget.delivery.amountDue);
-
-  @override
-  Widget build(BuildContext context) {
-    final due = widget.delivery.amountDue;
-    final value = _value;
-    final change = value == null ? null : value - due;
-    return AlertDialog(
-      title: Text('Encaisser ${formatMoney(due)}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Commande #${widget.delivery.orderId} : a regler en especes a la remise.'),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('cash-received'),
-            controller: _controller,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Especes recues',
-              suffixText: 'EUR',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 8),
-          if (value == null)
-            Text(
-              'Montant insuffisant ou invalide',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            )
-          else
-            Text(
-              'A rendre : ${formatMoney(change!)}',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annuler'),
-        ),
-        FilledButton(
-          key: const ValueKey('confirm-cash'),
-          onPressed: value == null ? null : () => Navigator.pop(context, value),
-          child: const Text('Encaisse et livree'),
-        ),
-      ],
     );
   }
 }
@@ -387,6 +300,8 @@ class _DeliveryCard extends StatelessWidget {
     this.onSelectedChanged,
     this.onArrived,
     this.onDelivered,
+    this.onFailed,
+    this.callCount = 0,
   });
 
   final DriverDelivery delivery;
@@ -397,6 +312,8 @@ class _DeliveryCard extends StatelessWidget {
   final VoidCallback onRoute;
   final VoidCallback? onArrived;
   final VoidCallback? onDelivered;
+  final VoidCallback? onFailed;
+  final int callCount;
 
   (String, StatusTone) get _phaseBadge => switch (delivery.phase) {
         'arrived' => ('Arrive chez le client', StatusTone.success),
@@ -488,7 +405,7 @@ class _DeliveryCard extends StatelessWidget {
                   key: ValueKey('call-${delivery.id}'),
                   onPressed: delivery.customerPhone == null ? null : onCall,
                   icon: const Icon(Icons.call_outlined),
-                  label: const Text('Appeler'),
+                  label: Text(callCount > 0 ? 'Appeler ($callCount)' : 'Appeler'),
                 ),
                 OutlinedButton.icon(
                   key: ValueKey('route-${delivery.id}'),
@@ -502,6 +419,16 @@ class _DeliveryCard extends StatelessWidget {
                     onPressed: busy ? null : onArrived,
                     icon: const Icon(Icons.location_on_outlined),
                     label: const Text('Arrive'),
+                  ),
+                if (onFailed != null)
+                  OutlinedButton.icon(
+                    key: ValueKey('failed-${delivery.id}'),
+                    onPressed: busy ? null : onFailed,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    icon: const Icon(Icons.report_problem_outlined),
+                    label: const Text('Echec'),
                   ),
                 if (onDelivered != null)
                   FilledButton.icon(

@@ -9,6 +9,7 @@ import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart';
 import 'package:app_admin_staff/features/delivery/data/dispatch_repository.dart';
+import 'package:app_admin_staff/features/delivery/presentation/failures_section.dart';
 import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -105,6 +106,15 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
       success: orderIds.length == 1
           ? 'Commande #${orderIds.first} attribuee a ${driver.label}'
           : '${orderIds.length} commandes attribuees a ${driver.label}',
+    );
+  }
+
+  Future<void> _deliverWithoutCode(int orderId) async {
+    final reason = await showDeliverWithoutCodeDialog(context, orderId);
+    if (reason == null || !mounted) return;
+    await _run(
+      () => ref.read(dispatchRepositoryProvider).deliverWithoutCode(orderId, reason),
+      success: 'Commande #$orderId livree (sans code, motif enregistre)',
     );
   }
 
@@ -209,7 +219,15 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                             : null,
                       ),
                     ),
+                  if (settings != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    ProofSettingsCard(settings: settings, isAdmin: isAdmin),
+                  ],
                   const SizedBox(height: AppSpacing.md),
+                  FailuresSection(
+                    isAdmin: isAdmin,
+                    onChanged: () => ref.invalidate(dispatchBoardProvider),
+                  ),
                   _SectionHeader(
                     title: 'Livreurs',
                     trailing: isAdmin
@@ -270,6 +288,9 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                             .unassign(delivery.order.orderId),
                         success: 'Livreur retire de la commande #${delivery.order.orderId}',
                       ),
+                      onDeliverWithoutCode: isAdmin && !delivery.canReassign
+                          ? () => _deliverWithoutCode(delivery.order.orderId)
+                          : null,
                     ),
                 ],
               ),
@@ -578,12 +599,16 @@ class _DeliveryTile extends StatelessWidget {
     required this.enabled,
     required this.onReassign,
     required this.onUnassign,
+    this.onDeliverWithoutCode,
   });
 
   final DispatchDelivery delivery;
   final bool enabled;
   final VoidCallback onReassign;
   final VoidCallback onUnassign;
+
+  /// Administrateur seulement, une fois le livreur parti.
+  final VoidCallback? onDeliverWithoutCode;
 
   static String _statusLabel(String status) => switch (status) {
         'assigned' => 'Attribuee',
@@ -613,6 +638,12 @@ class _DeliveryTile extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
+                if (onDeliverWithoutCode != null)
+                  TextButton(
+                    key: ValueKey('no-code-${delivery.order.orderId}'),
+                    onPressed: enabled ? onDeliverWithoutCode : null,
+                    child: const Text('Livrer sans code'),
+                  ),
                 if (delivery.canReassign) ...[
                   TextButton(
                     key: ValueKey('reassign-${delivery.order.orderId}'),

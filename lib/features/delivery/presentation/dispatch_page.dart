@@ -10,6 +10,7 @@ import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart';
 import 'package:app_admin_staff/features/delivery/data/dispatch_repository.dart';
 import 'package:app_admin_staff/features/delivery/presentation/failures_section.dart';
+import 'package:app_admin_staff/features/delivery/presentation/live_drivers_map.dart';
 import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -46,11 +47,16 @@ class DispatchPage extends ConsumerStatefulWidget {
 class _DispatchPageState extends ConsumerState<DispatchPage> {
   final Set<int> _selected = {};
   Timer? _refreshTimer;
+  Timer? _liveTimer;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    // Positions des livreurs : plus frequent que le tableau, sans depasser la limite du serveur.
+    _liveTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) ref.invalidate(liveDriversProvider);
+    });
     // Le comptoir doit voir le pointage et les departs sans recharger a la main.
     _refreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       if (mounted && !_busy) ref.invalidate(dispatchBoardProvider);
@@ -59,6 +65,7 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
 
   @override
   void dispose() {
+    _liveTimer?.cancel();
     _refreshTimer?.cancel();
     super.dispose();
   }
@@ -228,6 +235,7 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                     isAdmin: isAdmin,
                     onChanged: () => ref.invalidate(dispatchBoardProvider),
                   ),
+                  const LiveDriversSection(),
                   _SectionHeader(
                     title: 'Livreurs',
                     trailing: isAdmin

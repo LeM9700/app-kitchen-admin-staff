@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
 import 'package:app_admin_staff/core/utils/json.dart';
+import 'package:app_admin_staff/features/driver/application/location_sharing.dart' show LocationSample;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final dispatchRepositoryProvider = Provider<DispatchRepository>((ref) {
@@ -22,6 +23,17 @@ final driverDeliveriesProvider =
 final deliveryFailuresProvider =
     FutureProvider.autoDispose<List<DeliveryFailure>>((ref) async {
   return ref.watch(dispatchRepositoryProvider).failures();
+});
+
+/// Profil du livreur connecte, avec son accord de partage de position.
+final driverMeProvider = FutureProvider.autoDispose<DriverMe>((ref) async {
+  return ref.watch(dispatchRepositoryProvider).driverMe();
+});
+
+/// Carte du comptoir : livreurs actifs et positions, actualisee par la page de dispatch.
+final liveDriversProvider =
+    FutureProvider.autoDispose<List<LiveDriver>>((ref) async {
+  return ref.watch(dispatchRepositoryProvider).liveDrivers();
 });
 
 final driverRecapProvider =
@@ -147,6 +159,41 @@ class DispatchRepository {
         'call_attempts': callAttempts,
       },
     );
+  }
+
+  // ------------------------------------------------------------ GPS
+
+  Future<DriverMe> driverMe() async {
+    final response = await _apiClient.get(ApiEndpoints.driverMe);
+    return DriverMe.fromJson(readMap(response.data));
+  }
+
+  /// Le livreur accepte le partage de sa position (version du texte d'information incluse).
+  Future<void> grantLocationConsent(String version) async {
+    await _apiClient.post(
+      ApiEndpoints.driverLocationConsent,
+      data: {'version': version},
+    );
+  }
+
+  Future<void> withdrawLocationConsent() async {
+    await _apiClient.delete(ApiEndpoints.driverLocationConsent);
+  }
+
+  /// Envoie un lot de positions (le telephone peut en accumuler hors reseau).
+  Future<void> sendLocation(List<LocationSample> samples) async {
+    await _apiClient.post(
+      ApiEndpoints.driverLocation,
+      data: {'points': samples.map((s) => s.toJson()).toList()},
+    );
+  }
+
+  Future<List<LiveDriver>> liveDrivers() async {
+    final response = await _apiClient.get(ApiEndpoints.deliveryLive);
+    return (response.data as List? ?? const [])
+        .whereType<Map>()
+        .map((value) => LiveDriver.fromJson(Map<String, dynamic>.from(value)))
+        .toList();
   }
 
   // ------------------------------------------------------------ echecs (admin)
@@ -588,6 +635,132 @@ class DriverRecap {
       deliveries: (json['deliveries'] as List? ?? const [])
           .whereType<Map>()
           .map((value) => DriverRecapItem.fromJson(Map<String, dynamic>.from(value)))
+          .toList(),
+    );
+  }
+}
+
+
+/// Le livreur connecte : etat de pointage et accord de partage de position.
+class DriverMe {
+  const DriverMe({
+    required this.id,
+    this.fullName,
+    this.clockedIn = false,
+    this.locationConsent = false,
+    this.locationNoticeVersion = '',
+    this.locationRetentionHours = 96,
+  });
+
+  /// Duree de conservation des positions annoncee au livreur (donnee par le serveur).
+  final int locationRetentionHours;
+
+  final int id;
+  final String? fullName;
+  final bool clockedIn;
+
+  /// Accord a la version courante du texte d'information : sans lui rien n'est partage.
+  final bool locationConsent;
+
+  /// Version du texte d'information que le serveur attend (renvoyee avec l'accord).
+  final String locationNoticeVersion;
+
+  factory DriverMe.fromJson(Map<String, dynamic> json) {
+    return DriverMe(
+      id: readInt(json['id']),
+      fullName: json['full_name']?.toString(),
+      clockedIn: readBool(json['clocked_in']),
+      locationConsent: readBool(json['location_consent']),
+      locationNoticeVersion: json['location_notice_version']?.toString() ?? '',
+      locationRetentionHours: readInt(json['location_retention_hours'], fallback: 96),
+    );
+  }
+}
+
+class LiveDelivery {
+  const LiveDelivery({
+    required this.deliveryId,
+    required this.orderId,
+    required this.status,
+    this.address,
+    this.lat,
+    this.lng,
+  });
+
+  final int deliveryId;
+  final int orderId;
+  final String status;
+  final String? address;
+  final double? lat;
+  final double? lng;
+
+  factory LiveDelivery.fromJson(Map<String, dynamic> json) {
+    return LiveDelivery(
+      deliveryId: readInt(json['delivery_id']),
+      orderId: readInt(json['order_id']),
+      status: json['status']?.toString() ?? 'assigned',
+      address: json['address']?.toString(),
+      lat: json['lat'] == null ? null : readDouble(json['lat']),
+      lng: json['lng'] == null ? null : readDouble(json['lng']),
+    );
+  }
+}
+
+/// Un livreur sur la carte du comptoir. La position n'existe que pendant une livraison en route.
+class LiveDriver {
+  const LiveDriver({
+    required this.driverId,
+    required this.state,
+    this.driverName,
+    this.clockedIn = false,
+    this.lat,
+    this.lng,
+    this.ageSeconds,
+    this.stale = false,
+    this.signalLost = false,
+    this.sharingConsent = false,
+    this.deliveries = const [],
+  });
+
+  final int driverId;
+  final String? driverName;
+  final bool clockedIn;
+
+  /// `free`, `assigned` ou `en_route`.
+  final String state;
+  final double? lat;
+  final double? lng;
+  final int? ageSeconds;
+
+  /// Position pas actualisee depuis plus d'une minute (ou jamais recue alors qu'il est parti).
+  final bool stale;
+
+  /// Plus de deux minutes sans signal en route : a verifier avec le livreur.
+  final bool signalLost;
+  final bool sharingConsent;
+  final List<LiveDelivery> deliveries;
+
+  bool get hasPosition => lat != null && lng != null;
+  bool get isEnRoute => state == 'en_route';
+  String get label => (driverName ?? 'Livreur #$driverId').trim();
+
+  factory LiveDriver.fromJson(Map<String, dynamic> json) {
+    final position = json['position'];
+    final map = position is Map ? Map<String, dynamic>.from(position) : null;
+    return LiveDriver(
+      driverId: readInt(json['driver_id']),
+      driverName: json['driver_name']?.toString(),
+      clockedIn: readBool(json['clocked_in']),
+      state: json['state']?.toString() ?? 'free',
+      lat: map == null ? null : readDouble(map['lat']),
+      lng: map == null ? null : readDouble(map['lng']),
+      ageSeconds: json['age_seconds'] == null ? null : readInt(json['age_seconds']),
+      stale: readBool(json['stale']),
+      signalLost: readBool(json['signal_lost']),
+      sharingConsent: readBool(json['sharing_consent']),
+      deliveries: (json['deliveries'] as List? ?? const [])
+          .whereType<Map>()
+          .map((value) => LiveDelivery.fromJson(Map<String, dynamic>.from(value)))
           .toList(),
     );
   }

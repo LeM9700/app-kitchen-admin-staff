@@ -68,5 +68,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Votre position est partagee avec le restaurant et le client uniquement pendant une livraison en cours, avec votre accord.</string>
 </dict>
 </plist>

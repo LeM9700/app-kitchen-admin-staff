@@ -69,6 +69,10 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Votre position est partagee avec le restaurant et le client uniquement pendant une livraison en cours, avec votre accord.</string>
+	<string>Votre position est partagee avec le restaurant et le client uniquement pendant une livraison en cours, meme ecran verrouille, avec votre accord.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 </dict>
 </plist>

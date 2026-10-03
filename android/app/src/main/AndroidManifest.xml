@@ -3,6 +3,13 @@
     <!-- Position du livreur, partagee pendant une livraison en cours et seulement avec son accord. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Partage en arriere-plan pendant une livraison : service de premier plan de type localisation
+         (declare par le plugin geolocator, mais pas ses permissions : sans elles Android 14 refuse de
+         le demarrer). Demarre quand l'app est au premier plan, donc ACCESS_BACKGROUND_LOCATION n'est
+         pas necessaire. POST_NOTIFICATIONS : afficher la notification permanente (Android 13+). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:label="app_admin_staff"

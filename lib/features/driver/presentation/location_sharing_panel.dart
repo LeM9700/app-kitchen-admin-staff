@@ -15,6 +15,8 @@ String locationNoticeText(int retentionHours) {
       : '$retentionHours heures';
   return 'Pendant une livraison en cours, votre position est partagee avec le restaurant et avec '
       'le client de la commande que vous livrez, pour qu\'il suive son arrivee. '
+      'Le partage continue application en arriere-plan ou ecran verrouille : une notification '
+      '(Android) ou un indicateur (iPhone) reste affiche pendant ce temps. '
       'Rien n\'est partage en dehors d\'une livraison. '
       'Les positions sont conservees $duration pour pouvoir verifier un litige, '
       'puis supprimees. Vous pouvez retirer votre accord a tout moment : le partage s\'arrete.';
@@ -125,7 +127,7 @@ class LocationSharingPanel extends ConsumerWidget {
     final (icon, text, color) = switch (sharing.status) {
       SharingStatus.sharing => (
           Icons.my_location,
-          'Position partagee avec le restaurant et le client. Gardez l\'application ouverte.',
+          'Position partagee avec le restaurant et le client, meme ecran verrouille.',
           AppColors.success,
         ),
       SharingStatus.permissionDenied => (

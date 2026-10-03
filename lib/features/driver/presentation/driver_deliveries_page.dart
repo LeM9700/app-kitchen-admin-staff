@@ -7,7 +7,6 @@ import 'package:app_admin_staff/design_system/components/cards/ds_card.dart';
 import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/delivery/data/dispatch_repository.dart';
-import 'package:app_admin_staff/features/driver/application/location_sharing.dart';
 import 'package:app_admin_staff/features/driver/presentation/driver_dialogs.dart';
 import 'package:app_admin_staff/features/driver/presentation/location_sharing_panel.dart';
 import 'package:flutter/material.dart';
@@ -181,14 +180,6 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
           });
         final departable = upcoming.where((d) => d.canDepart).map((d) => d.id).toSet();
         _selected.removeWhere((id) => !departable.contains(id));
-        // La position n'est lue et partagee que pendant une livraison en route, avec l'accord du livreur.
-        final consent = ref.watch(driverMeProvider).valueOrNull?.locationConsent ?? false;
-        final shouldShare = consent && ongoing.isNotEmpty;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ref.read(driverLocationSharerProvider.notifier).setActive(shouldShare);
-          }
-        });
         return Stack(
           children: [
             RefreshIndicator(

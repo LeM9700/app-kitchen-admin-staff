@@ -1,16 +1,23 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:app_admin_staff/core/api/api_error.dart';
+import 'package:app_admin_staff/core/auth/session_controller.dart';
 import 'package:app_admin_staff/features/delivery/data/dispatch_repository.dart';
 import 'package:app_admin_staff/features/delivery/presentation/delivery_map.dart';
 import 'package:app_admin_staff/features/delivery/presentation/live_drivers_map.dart';
 import 'package:app_admin_staff/features/driver/application/location_sharing.dart';
+import 'package:app_admin_staff/features/driver/application/location_sharing_controller.dart';
 import 'package:app_admin_staff/features/driver/presentation/driver_deliveries_page.dart';
+import 'package:app_admin_staff/features/driver/presentation/driver_shell.dart';
 import 'package:app_admin_staff/features/driver/presentation/location_sharing_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mocktail/mocktail.dart';
+
+import 'delivery_test_support.dart' show FakeSession;
 
 class _MockDispatchRepository extends Mock implements DispatchRepository {}
 
@@ -51,7 +58,7 @@ DriverDelivery _delivery(int id, {String phase = 'en_route'}) => DriverDelivery(
 const _consentedMe = DriverMe(
   id: 1,
   locationConsent: true,
-  locationNoticeVersion: '2026-10-03',
+  locationNoticeVersion: '2026-10-03-bg',
 );
 
 void main() {
@@ -312,7 +319,7 @@ void main() {
     testWidgets('sans accord : le texte d\'information et un bouton, rien d\'autre', (tester) async {
       await pump(
         tester,
-        const DriverMe(id: 1, locationNoticeVersion: '2026-10-03', locationRetentionHours: 96),
+        const DriverMe(id: 1, locationNoticeVersion: '2026-10-03-bg', locationRetentionHours: 96),
       );
 
       expect(find.byKey(const ValueKey('location-notice')), findsOneWidget);
@@ -322,7 +329,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('grant-location-consent')));
       await tester.pumpAndSettle();
       // L'accord part avec la version du texte que le livreur vient de lire.
-      verify(() => repo.grantLocationConsent('2026-10-03')).called(1);
+      verify(() => repo.grantLocationConsent('2026-10-03-bg')).called(1);
     });
 
     testWidgets('avec accord : etat du partage et retrait possible', (tester) async {
@@ -352,13 +359,109 @@ void main() {
     });
   });
 
-  group('ecran des livraisons et partage', () {
+  group('reglages GPS par plateforme (arriere-plan)', () {
+    test('Android : service de premier plan avec notification permanente et wake lock', () {
+      final settings = buildLocationSettings(TargetPlatform.android) as AndroidSettings;
+      final notification = settings.foregroundNotificationConfig!;
+      expect(notification.notificationTitle, 'Livraison en cours');
+      expect(notification.notificationText, contains('position est partagee'));
+      expect(notification.enableWakeLock, isTrue);
+      expect(notification.setOngoing, isTrue);
+      expect(settings.distanceFilter, 10);
+    });
+
+    test('iPhone : mises a jour en arriere-plan, indicateur visible, jamais de pause automatique', () {
+      for (final platform in [TargetPlatform.iOS, TargetPlatform.macOS]) {
+        final settings = buildLocationSettings(platform) as AppleSettings;
+        expect(settings.allowBackgroundLocationUpdates, isTrue, reason: '$platform');
+        expect(settings.showBackgroundLocationIndicator, isTrue);
+        expect(settings.pauseLocationUpdatesAutomatically, isFalse);
+      }
+    });
+
+    test('web et bureau : reglages simples', () {
+      expect(buildLocationSettings(TargetPlatform.android, isWeb: true), isNot(isA<AndroidSettings>()));
+      for (final platform in [TargetPlatform.windows, TargetPlatform.linux, TargetPlatform.fuchsia]) {
+        final settings = buildLocationSettings(platform);
+        expect(settings, isNot(isA<AndroidSettings>()));
+        expect(settings, isNot(isA<AppleSettings>()));
+      }
+    });
+
+    test('le manifeste Android declare les permissions du service de premier plan', () {
+      // Sans FOREGROUND_SERVICE_LOCATION, Android 14 refuse de demarrer le service du plugin.
+      final manifest = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+      for (final permission in [
+        'ACCESS_FINE_LOCATION',
+        'FOREGROUND_SERVICE',
+        'FOREGROUND_SERVICE_LOCATION',
+        'POST_NOTIFICATIONS',
+      ]) {
+        expect(manifest, contains('android.permission.$permission'), reason: permission);
+      }
+    });
+
+    test('Info.plist autorise la localisation en arriere-plan et explique son usage', () {
+      final plist = File('ios/Runner/Info.plist').readAsStringSync();
+      expect(plist, contains('<key>UIBackgroundModes</key>'));
+      expect(RegExp(r'UIBackgroundModes</key>\s*<array>[^<]*(<string>[^<]*</string>\s*)*<string>location</string>').hasMatch(plist), isTrue);
+      expect(plist, contains('NSLocationWhenInUseUsageDescription'));
+      expect(plist, contains('meme ecran verrouille'));
+    });
+  });
+
+  group('reverification de l\'autorisation', () {
+    test('autorisation retiree pendant l\'arriere-plan : le flux est ferme et l\'etat le dit', () async {
+      final source = _FakeSource();
+      final sharer = makeSharer(source);
+      await sharer.setActive(true);
+      expect(source.isListening, isTrue);
+
+      source.permission = PositionPermission.denied;
+      await sharer.recheckPermission();
+
+      expect(sharer.state.status, SharingStatus.permissionDenied);
+      expect(sharer.state.lastError, contains('retiree'));
+      expect(source.isListening, isFalse);
+    });
+
+    test('autorisation toujours valide : rien ne change', () async {
+      final source = _FakeSource();
+      final sharer = makeSharer(source);
+      await sharer.setActive(true);
+
+      await sharer.recheckPermission();
+
+      expect(sharer.state.status, SharingStatus.sharing);
+      expect(source.isListening, isTrue);
+    });
+
+    test('sans partage actif : aucune verification', () async {
+      final source = _FakeSource(PositionPermission.denied);
+      final sharer = makeSharer(source);
+
+      await sharer.recheckPermission();
+
+      expect(sharer.state.status, SharingStatus.idle);
+    });
+  });
+
+  group('coque livreur : le partage vit avec elle', () {
     late _FakeSource source;
 
     setUp(() {
       source = _FakeSource();
       when(() => repo.grantLocationConsent(any())).thenAnswer((_) async {});
     });
+
+    Widget app({required String location, required Widget child}) => ProviderScope(
+          overrides: [
+            dispatchRepositoryProvider.overrideWithValue(repo),
+            positionSourceProvider.overrideWithValue(source),
+            sessionControllerProvider.overrideWith(() => FakeSession('driver')),
+          ],
+          child: MaterialApp(home: DriverShell(location: location, child: child)),
+        );
 
     Future<void> pump(
       WidgetTester tester, {
@@ -370,30 +473,27 @@ void main() {
       addTearDown(tester.view.reset);
       when(() => repo.driverDeliveries()).thenAnswer((_) async => deliveries);
       when(() => repo.driverMe()).thenAnswer((_) async => me);
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            dispatchRepositoryProvider.overrideWithValue(repo),
-            positionSourceProvider.overrideWithValue(source),
-          ],
-          child: const MaterialApp(home: Scaffold(body: DriverDeliveriesPage())),
-        ),
-      );
+      await tester.pumpWidget(app(location: '/driver', child: const DriverDeliveriesPage()));
       await tester.pumpAndSettle();
     }
+
+    SharingState sharing(WidgetTester tester) => ProviderScope.containerOf(
+          tester.element(find.byType(DriverShell)),
+        ).read(driverLocationSharerProvider);
 
     testWidgets('livraison en route + accord : la position est partagee', (tester) async {
       await pump(tester, deliveries: [_delivery(1)], me: _consentedMe);
 
       expect(source.isListening, isTrue);
       expect(find.textContaining('Position partagee'), findsOneWidget);
+      expect(find.textContaining('meme ecran verrouille'), findsOneWidget);
     });
 
     testWidgets('sans accord : jamais de lecture du GPS, meme en livraison', (tester) async {
       await pump(
         tester,
         deliveries: [_delivery(1)],
-        me: const DriverMe(id: 1, locationNoticeVersion: '2026-10-03'),
+        me: const DriverMe(id: 1, locationNoticeVersion: '2026-10-03-bg'),
       );
 
       expect(source.isListening, isFalse);
@@ -410,15 +510,65 @@ void main() {
       expect(source.isListening, isFalse);
     });
 
-    testWidgets('la fin de la livraison arrete le partage', (tester) async {
+    testWidgets('changer d\'onglet ne coupe pas le partage', (tester) async {
+      await pump(tester, deliveries: [_delivery(1)], me: _consentedMe);
+      expect(source.isListening, isTrue);
+
+      // Le livreur ouvre « Recap » : la page des livraisons disparait, la coque reste.
+      await tester.pumpWidget(app(location: '/driver/recap', child: const Text('recap')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DriverDeliveriesPage), findsNothing);
+      expect(source.isListening, isTrue);
+    });
+
+    testWidgets('la fin de la livraison arrete le partage, sans action de l\'utilisateur', (tester) async {
       await pump(tester, deliveries: [_delivery(1)], me: _consentedMe);
       expect(source.isListening, isTrue);
 
       when(() => repo.driverDeliveries()).thenAnswer((_) async => []);
-      final container = ProviderScope.containerOf(tester.element(find.byType(DriverDeliveriesPage)));
-      container.invalidate(driverDeliveriesProvider);
+      await tester.pump(driverLocationWatchInterval);
       await tester.pumpAndSettle();
 
+      expect(source.isListening, isFalse);
+      expect(sharing(tester).status, SharingStatus.idle);
+    });
+
+    testWidgets('quitter la coque (deconnexion) ferme le GPS immediatement', (tester) async {
+      await pump(tester, deliveries: [_delivery(1)], me: _consentedMe);
+      expect(source.isListening, isTrue);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            dispatchRepositoryProvider.overrideWithValue(repo),
+            positionSourceProvider.overrideWithValue(source),
+            sessionControllerProvider.overrideWith(() => FakeSession('driver')),
+          ],
+          child: const MaterialApp(home: Text('ecran de connexion')),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(source.isListening, isFalse);
+    });
+
+    testWidgets('retour au premier plan : autorisation reverifiee et envoi immediat', (tester) async {
+      await pump(tester, deliveries: [_delivery(1)], me: _consentedMe);
+      source.controller.add(_sample());
+      await tester.pump();
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      verify(() => repo.sendLocation(any())).called(1); // ce qui attendait part tout de suite
+      expect(source.isListening, isTrue);
+
+      // L'autorisation a ete retiree pendant l'arriere-plan.
+      source.permission = PositionPermission.denied;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(sharing(tester).status, SharingStatus.permissionDenied);
       expect(source.isListening, isFalse);
     });
   });

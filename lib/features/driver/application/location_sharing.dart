@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_admin_staff/core/api/api_error.dart';
 import 'package:app_admin_staff/features/delivery/data/dispatch_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -41,6 +42,50 @@ abstract class PositionSource {
   Stream<LocationSample> watch();
 }
 
+/// Reglages GPS par plateforme, pour que le partage **continue application en arriere-plan ou ecran
+/// verrouille** pendant une livraison :
+/// - Android : service de premier plan avec une notification permanente et un wake lock ;
+/// - iPhone : mises a jour en arriere-plan avec l'indicateur de localisation visible, sans pause automatique ;
+/// - ailleurs : reglages simples.
+/// Le flux n'est ouvert que pendant une livraison en route (voir `DriverLocationSharer`).
+LocationSettings buildLocationSettings(TargetPlatform platform, {bool isWeb = false}) {
+  const distanceFilter = 10;
+  if (isWeb) {
+    return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: distanceFilter);
+  }
+  switch (platform) {
+    case TargetPlatform.android:
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: distanceFilter,
+        intervalDuration: const Duration(seconds: 5),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'Livraison en cours',
+          notificationText:
+              'Votre position est partagee avec le restaurant et le client pendant la livraison.',
+          notificationChannelName: 'Livraison en cours',
+          notificationIcon: AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
+    case TargetPlatform.iOS:
+    case TargetPlatform.macOS:
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        activityType: ActivityType.automotiveNavigation,
+        distanceFilter: distanceFilter,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
+      );
+    case TargetPlatform.fuchsia:
+    case TargetPlatform.linux:
+    case TargetPlatform.windows:
+      return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: distanceFilter);
+  }
+}
+
 class GeolocatorPositionSource implements PositionSource {
   const GeolocatorPositionSource();
 
@@ -65,10 +110,7 @@ class GeolocatorPositionSource implements PositionSource {
   @override
   Stream<LocationSample> watch() {
     return Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-      ),
+      locationSettings: buildLocationSettings(defaultTargetPlatform, isWeb: kIsWeb),
     ).map(
       (p) => LocationSample(
         lat: p.latitude,
@@ -124,8 +166,10 @@ class SharingState {
 ///   (au plus [maxBuffer], les plus anciennes sont abandonnees) puis sont renvoyees ;
 /// - le serveur est l'autorite : `LOCATION_NOT_ACTIVE` ou `LOCATION_CONSENT_REQUIRED` arretent le partage.
 ///
-/// Limite connue : le partage ne fonctionne qu'application ouverte au premier plan (pas de service
-/// d'arriere-plan configure ni verifie sur appareil).
+/// Arriere-plan : voir [buildLocationSettings] (service de premier plan Android avec notification
+/// permanente, mode d'arriere-plan iPhone avec indicateur). Limite connue : application **fermee**
+/// (balayee des applications recentes), le partage s'arrete ; la configuration n'a pas ete verifiee
+/// sur appareil reel dans cet environnement.
 class DriverLocationSharer extends StateNotifier<SharingState> {
   DriverLocationSharer(
     this._repository,
@@ -146,7 +190,22 @@ class DriverLocationSharer extends StateNotifier<SharingState> {
   bool _starting = false;
   bool _flushing = false;
 
+  /// Reverifie l'autorisation (au retour au premier plan) : le livreur a pu la retirer dans les reglages
+  /// du telephone pendant que l'application tournait en arriere-plan. Si elle manque, le flux est ferme
+  /// et l'etat l'indique ; sinon rien ne change.
+  Future<void> recheckPermission() async {
+    if (!mounted || !_active) return;
+    final permission = await _source.requestPermission();
+    if (!mounted || !_active || permission == PositionPermission.granted) return;
+    _stop();
+    state = const SharingState(
+      status: SharingStatus.permissionDenied,
+      lastError: 'Autorisation de localisation retiree : la position n\'est plus partagee.',
+    );
+  }
+
   Future<void> setActive(bool active) async {
+    if (!mounted) return;
     if (!active) {
       if (_active || state.status != SharingStatus.idle) {
         _stop();

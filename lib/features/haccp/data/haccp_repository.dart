@@ -1,6 +1,7 @@
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
 import 'package:app_admin_staff/features/haccp/data/haccp_models.dart';
+import 'package:app_admin_staff/features/haccp/data/haccp_strict_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ─── Repository ───────────────────────────────────────────────────────────────
@@ -13,6 +14,13 @@ class HaccpRepository {
   const HaccpRepository(this._api);
 
   final ApiClient _api;
+
+  Future<HaccpStrictStatus> getStrictStatus(int establishmentId) async {
+    final response = await _api.get(
+      ApiEndpoints.haccpStrictStatus(establishmentId),
+    );
+    return HaccpStrictStatus.fromJson(response.data as Map<String, dynamic>);
+  }
 
   // ── Status (gate bloquant) ─────────────────────────────────────────────────
 
@@ -375,6 +383,11 @@ class HaccpRepository {
 /// État HACCP du jour — rechargeable manuellement.
 final haccpStatusProvider = FutureProvider.autoDispose<HaccpStatus>((ref) {
   return ref.watch(haccpRepositoryProvider).getStatusToday();
+});
+
+final haccpStrictStatusProvider = FutureProvider.autoDispose
+    .family<HaccpStrictStatus, int>((ref, establishmentId) {
+  return ref.watch(haccpRepositoryProvider).getStrictStatus(establishmentId);
 });
 
 /// Sessions du jour.

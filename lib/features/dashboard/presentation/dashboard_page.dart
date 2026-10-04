@@ -16,6 +16,7 @@ import 'package:app_admin_staff/features/hr/data/hr_repository.dart';
 import 'package:app_admin_staff/features/orders/data/orders_repository.dart';
 import 'package:app_admin_staff/features/payments/data/payments_repository.dart';
 import 'package:app_admin_staff/features/stock/data/stock_repository.dart';
+import 'package:app_admin_staff/features/haccp/presentation/haccp_readiness_card.dart';
 import 'package:app_admin_staff/features/tenant_config/data/tenant_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -129,6 +130,8 @@ class DashboardPage extends ConsumerWidget {
                   establishment: establishmentLabel,
                 ),
                 const SizedBox(height: AppSpacing.lg),
+                const HaccpReadinessCard(),
+                const SizedBox(height: AppSpacing.md),
                 _HomeAlertSection(
                   alerts: alertItems,
                   loading: orders.isLoading || stockAlerts.isLoading,

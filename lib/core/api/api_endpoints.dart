@@ -221,9 +221,15 @@ class ApiEndpoints {
   static const driverDepart = '/delivery/driver/depart';
   static const driverRecap = '/delivery/driver/recap';
   static const driverMe = '/delivery/driver/me';
+  static const driverAvailable = '/delivery/driver/available';
+  static const driverClaim = '/delivery/driver/claim';
   static const driverLocation = '/delivery/driver/location';
   static const driverLocationConsent = '/delivery/driver/location-consent';
   static const deliveryLive = '/delivery/live';
+  static String driverRelease(int id) =>
+      '/delivery/driver/deliveries/$id/release';
+  static String dispatchSettings(int establishmentId) =>
+      '/delivery/establishments/$establishmentId/dispatch-settings';
   static String driverFailed(int id) => '/delivery/driver/deliveries/$id/failed';
   static const deliveryFailures = '/delivery/failures';
   static String deliveryFailureResolve(int id) =>
@@ -332,6 +338,8 @@ class ApiEndpoints {
 
   // ── HACCP ──────────────────────────────────────────────────────────────────
   static const haccpStatusToday = '/haccp/status/today';
+  static String haccpStrictStatus(int establishmentId) =>
+      '/haccp/strict/establishments/$establishmentId/status';
   static const haccpSessions = '/haccp/sessions';
   static const haccpSessionsToday = '/haccp/sessions/today';
   static String haccpSessionComplete(int id) => '/haccp/sessions/$id/complete';

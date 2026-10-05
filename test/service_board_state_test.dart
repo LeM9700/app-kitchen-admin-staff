@@ -78,6 +78,79 @@ void main() {
     expect(state.counts[ServiceFilter.pickup], 1);
     expect(state.counts[ServiceFilter.delivery], 0);
   });
+
+  group('estimated delivery time', () {
+    final now = DateTime(2026, 10, 3, 19, 30);
+
+    test('a delivery is late only once its estimate has passed', () {
+      final created = now.subtract(const Duration(minutes: 50));
+      // 50 min after creation would be late with the fixed threshold, but the
+      // estimate (recomputed at departure) says 10 more minutes.
+      final onTime = _summary(
+        orderType: 'delivery',
+        createdAt: created,
+        estimatedDeliveryAt: now.add(const Duration(minutes: 10)),
+      );
+      final overdue = _summary(
+        orderType: 'delivery',
+        createdAt: created,
+        estimatedDeliveryAt: now.subtract(const Duration(minutes: 1)),
+      );
+
+      expect(isLateForService(onTime, now: now), isFalse);
+      expect(isLateForService(overdue, now: now), isTrue);
+    });
+
+    test('falls back to the 30 minute threshold without estimate', () {
+      final created = now.subtract(const Duration(minutes: 31));
+
+      expect(
+        isLateForService(
+          _summary(orderType: 'delivery', createdAt: created),
+          now: now,
+        ),
+        isTrue,
+      );
+      // The estimate does not apply to counter or table orders.
+      expect(
+        isLateForService(
+          _summary(
+            createdAt: created,
+            estimatedDeliveryAt: now.add(const Duration(hours: 1)),
+          ),
+          now: now,
+        ),
+        isTrue,
+      );
+    });
+
+    test('readable label before and after the estimate', () {
+      OrderSummary at(int minutes) => _summary(
+            orderType: 'delivery',
+            estimatedDeliveryAt: now.add(Duration(minutes: minutes)),
+          );
+
+      expect(deliveryEstimateLabel(at(12), now: now),
+          'Prevue 19:42 (dans 12 min)',);
+      expect(deliveryEstimateLabel(at(95), now: now),
+          'Prevue 21:05 (dans 1 h 35)',);
+      expect(deliveryEstimateLabel(at(-8), now: now),
+          'En retard de 8 min (prevue 19:22)',);
+      expect(
+          deliveryEstimateLabel(at(0), now: now), 'Prevue 19:30 (imminente)',);
+      expect(
+        deliveryEstimateLabel(_summary(orderType: 'delivery'), now: now),
+        isNull,
+      );
+      expect(
+        deliveryEstimateLabel(
+          _summary(estimatedDeliveryAt: now.add(const Duration(minutes: 5))),
+          now: now,
+        ),
+        isNull,
+      );
+    });
+  });
 }
 
 OrderSummary _summary({
@@ -92,6 +165,7 @@ OrderSummary _summary({
   String? customerName,
   int? establishmentId,
   DateTime? createdAt,
+  DateTime? estimatedDeliveryAt,
 }) {
   return OrderSummary(
     id: id,
@@ -105,5 +179,6 @@ OrderSummary _summary({
     customerName: customerName,
     establishmentId: establishmentId,
     createdAt: createdAt,
+    estimatedDeliveryAt: estimatedDeliveryAt,
   );
 }

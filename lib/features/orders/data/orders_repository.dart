@@ -161,6 +161,7 @@ class OrderSummary {
     this.deliveryInstructions,
     this.tableNumber,
     this.createdAt,
+    this.estimatedDeliveryAt,
   });
 
   final int id;
@@ -179,6 +180,9 @@ class OrderSummary {
   final String? tableNumber;
   final DateTime? createdAt;
 
+  /// Heure de remise estimee (recalculee au depart de la livraison). Null sans estimation.
+  final DateTime? estimatedDeliveryAt;
+
   factory OrderSummary.fromJson(Map<String, dynamic> json) {
     return OrderSummary(
       id: readInt(json['id']),
@@ -196,6 +200,7 @@ class OrderSummary {
       deliveryInstructions: json['delivery_instructions']?.toString(),
       tableNumber: json['table_number']?.toString(),
       createdAt: readDateTime(json['created_at']),
+      estimatedDeliveryAt: readDateTime(json['estimated_delivery_at']),
     );
   }
 }
@@ -220,6 +225,7 @@ class OrderDetail extends OrderSummary {
     super.deliveryInstructions,
     super.tableNumber,
     super.createdAt,
+    super.estimatedDeliveryAt,
   });
 
   final List<OrderItem> items;
@@ -244,6 +250,7 @@ class OrderDetail extends OrderSummary {
       deliveryInstructions: summary.deliveryInstructions,
       tableNumber: summary.tableNumber,
       createdAt: summary.createdAt,
+      estimatedDeliveryAt: summary.estimatedDeliveryAt,
       items: (json['items'] as List? ?? const [])
           .whereType<Map>()
           .map((value) => OrderItem.fromJson(Map<String, dynamic>.from(value)))

@@ -36,6 +36,18 @@ final liveDriversProvider =
   return ref.watch(dispatchRepositoryProvider).liveDrivers();
 });
 
+/// Commandes que le livreur peut prendre lui-meme (vide hors mode libre-service).
+final driverAvailableProvider =
+    FutureProvider.autoDispose<AvailableOrders>((ref) async {
+  return ref.watch(dispatchRepositoryProvider).driverAvailable();
+});
+
+/// Reglages de livraison d'un etablissement (mode, plafond, regles d'echec).
+final dispatchSettingsProvider = FutureProvider.autoDispose
+    .family<EstablishmentDispatchSettings, int>((ref, establishmentId) async {
+  return ref.watch(dispatchRepositoryProvider).dispatchSettings(establishmentId);
+});
+
 final driverRecapProvider =
     FutureProvider.autoDispose<DriverRecap>((ref) async {
   return ref.watch(dispatchRepositoryProvider).driverRecap();
@@ -114,6 +126,25 @@ class DispatchRepository {
         .whereType<Map>()
         .map((value) => DriverDelivery.fromJson(Map<String, dynamic>.from(value)))
         .toList();
+  }
+
+  /// Commandes prenables en libre-service, avec le plafond et la charge du livreur.
+  Future<AvailableOrders> driverAvailable() async {
+    final response = await _apiClient.get(ApiEndpoints.driverAvailable);
+    return AvailableOrders.fromJson(readMap(response.data));
+  }
+
+  /// Prend une ou plusieurs commandes (tout ou rien cote serveur : plafond, commande deja prise).
+  Future<void> claim(List<int> orderIds) async {
+    await _apiClient.post(
+      ApiEndpoints.driverClaim,
+      data: {'order_ids': orderIds},
+    );
+  }
+
+  /// Rend une commande prise en libre-service, tant qu'elle n'est pas partie.
+  Future<void> release(int deliveryId) async {
+    await _apiClient.post(ApiEndpoints.driverRelease(deliveryId));
   }
 
   Future<void> depart(List<int> deliveryIds) async {
@@ -238,6 +269,30 @@ class DispatchRepository {
   Future<DriverRecap> driverRecap() async {
     final response = await _apiClient.get(ApiEndpoints.driverRecap);
     return DriverRecap.fromJson(readMap(response.data));
+  }
+
+  // ------------------------------------------------------------ reglages par etablissement
+
+  Future<EstablishmentDispatchSettings> dispatchSettings(
+    int establishmentId,
+  ) async {
+    final response =
+        await _apiClient.get(ApiEndpoints.dispatchSettings(establishmentId));
+    return EstablishmentDispatchSettings.fromJson(readMap(response.data));
+  }
+
+  /// N'envoie que les champs de [changes] ; [expectedVersion] protege contre une modification
+  /// concurrente. Une valeur `null` pour une regle d'echec = revenir au reglage general.
+  Future<EstablishmentDispatchSettings> updateDispatchSettings(
+    int establishmentId, {
+    required int expectedVersion,
+    required Map<String, Object?> changes,
+  }) async {
+    final response = await _apiClient.put(
+      ApiEndpoints.dispatchSettings(establishmentId),
+      data: {'expected_version': expectedVersion, ...changes},
+    );
+    return EstablishmentDispatchSettings.fromJson(readMap(response.data));
   }
 }
 
@@ -650,7 +705,19 @@ class DriverMe {
     this.locationConsent = false,
     this.locationNoticeVersion = '',
     this.locationRetentionHours = 96,
+    this.dispatchMode = 'counter',
+    this.maxActiveDeliveries = 3,
+    this.activeDeliveries = 0,
+    this.remainingCapacity = 3,
   });
+
+  /// `counter` : le comptoir attribue ; `self_assign` : le livreur prend lui-meme.
+  final String dispatchMode;
+  final int maxActiveDeliveries;
+  final int activeDeliveries;
+  final int remainingCapacity;
+
+  bool get selfAssign => dispatchMode == 'self_assign';
 
   /// Duree de conservation des positions annoncee au livreur (donnee par le serveur).
   final int locationRetentionHours;
@@ -673,6 +740,85 @@ class DriverMe {
       locationConsent: readBool(json['location_consent']),
       locationNoticeVersion: json['location_notice_version']?.toString() ?? '',
       locationRetentionHours: readInt(json['location_retention_hours'], fallback: 96),
+      dispatchMode: json['dispatch_mode']?.toString() ?? 'counter',
+      maxActiveDeliveries:
+          readInt(json['max_active_deliveries'], fallback: 3),
+      activeDeliveries: readInt(json['active_deliveries']),
+      remainingCapacity: readInt(json['remaining_capacity'], fallback: 3),
+    );
+  }
+}
+
+/// Reponse de `driver/available` : commandes prenables et charge du livreur.
+class AvailableOrders {
+  const AvailableOrders({
+    required this.enabled,
+    required this.dispatchMode,
+    required this.maxActiveDeliveries,
+    required this.activeDeliveries,
+    required this.remainingCapacity,
+    required this.orders,
+  });
+
+  final bool enabled;
+  final String dispatchMode;
+  final int maxActiveDeliveries;
+  final int activeDeliveries;
+  final int remainingCapacity;
+  final List<DispatchOrder> orders;
+
+  factory AvailableOrders.fromJson(Map<String, dynamic> json) {
+    return AvailableOrders(
+      enabled: readBool(json['enabled']),
+      dispatchMode: json['dispatch_mode']?.toString() ?? 'counter',
+      maxActiveDeliveries:
+          readInt(json['max_active_deliveries'], fallback: 3),
+      activeDeliveries: readInt(json['active_deliveries']),
+      remainingCapacity: readInt(json['remaining_capacity'], fallback: 3),
+      orders: (json['orders'] as List? ?? const [])
+          .whereType<Map>()
+          .map((value) => DispatchOrder.fromJson(Map<String, dynamic>.from(value)))
+          .toList(),
+    );
+  }
+}
+
+/// Reglages de livraison d'un etablissement (valeurs effectives, heritees comprises).
+class EstablishmentDispatchSettings {
+  const EstablishmentDispatchSettings({
+    required this.establishmentId,
+    required this.dispatchMode,
+    required this.maxActiveDeliveries,
+    required this.failureMinWaitMinutes,
+    required this.failureMinCallAttempts,
+    required this.failureRulesOverridden,
+    required this.version,
+  });
+
+  final int establishmentId;
+  final String dispatchMode;
+  final int maxActiveDeliveries;
+  final int failureMinWaitMinutes;
+  final int failureMinCallAttempts;
+
+  /// Vrai quand les regles d'echec sont propres a l'etablissement (faux = heritees du general).
+  final bool failureRulesOverridden;
+  final int version;
+
+  bool get selfAssign => dispatchMode == 'self_assign';
+
+  factory EstablishmentDispatchSettings.fromJson(Map<String, dynamic> json) {
+    return EstablishmentDispatchSettings(
+      establishmentId: readInt(json['establishment_id']),
+      dispatchMode: json['dispatch_mode']?.toString() ?? 'counter',
+      maxActiveDeliveries:
+          readInt(json['max_active_deliveries'], fallback: 3),
+      failureMinWaitMinutes:
+          readInt(json['failure_min_wait_minutes'], fallback: 5),
+      failureMinCallAttempts:
+          readInt(json['failure_min_call_attempts'], fallback: 1),
+      failureRulesOverridden: readBool(json['failure_rules_overridden']),
+      version: readInt(json['version']),
     );
   }
 }

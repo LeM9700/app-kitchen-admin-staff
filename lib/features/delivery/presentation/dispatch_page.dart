@@ -9,6 +9,7 @@ import 'package:app_admin_staff/design_system/tokens/app_colors.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/delivery/data/delivery_repository.dart';
 import 'package:app_admin_staff/features/delivery/data/dispatch_repository.dart';
+import 'package:app_admin_staff/features/delivery/presentation/establishment_dispatch_card.dart';
 import 'package:app_admin_staff/features/delivery/presentation/failures_section.dart';
 import 'package:app_admin_staff/features/delivery/presentation/live_drivers_map.dart';
 import 'package:app_admin_staff/features/establishments/data/establishment_repository.dart';
@@ -230,6 +231,8 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                     const SizedBox(height: AppSpacing.sm),
                     ProofSettingsCard(settings: settings, isAdmin: isAdmin),
                   ],
+                  const SizedBox(height: AppSpacing.sm),
+                  EstablishmentDispatchCard(isAdmin: isAdmin),
                   const SizedBox(height: AppSpacing.md),
                   FailuresSection(
                     isAdmin: isAdmin,

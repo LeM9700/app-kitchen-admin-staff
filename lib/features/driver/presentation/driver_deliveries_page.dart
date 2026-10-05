@@ -64,7 +64,12 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
     super.initState();
     // Le comptoir peut attribuer ou retirer une livraison a tout moment.
     _timer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted && !_busy) ref.invalidate(driverDeliveriesProvider);
+      if (mounted && !_busy) {
+        ref
+          ..invalidate(driverDeliveriesProvider)
+          ..invalidate(driverMeProvider)
+          ..invalidate(driverAvailableProvider);
+      }
     });
   }
 
@@ -76,7 +81,8 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _run(Future<void> Function() action, {String? success}) async {
@@ -90,9 +96,46 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
     } finally {
       ref
         ..invalidate(driverDeliveriesProvider)
-        ..invalidate(driverRecapProvider);
+        ..invalidate(driverRecapProvider)
+        ..invalidate(driverMeProvider)
+        ..invalidate(driverAvailableProvider);
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _claim(DispatchOrder order) async {
+    await _run(
+      () => ref.read(dispatchRepositoryProvider).claim([order.orderId]),
+      success: 'Commande #${order.orderId} prise',
+    );
+  }
+
+  Future<void> _release(DriverDelivery delivery) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Rendre la commande #${delivery.orderId} ?'),
+        content: const Text(
+          'Elle redeviendra disponible pour les autres livreurs.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Garder'),
+          ),
+          FilledButton(
+            key: const ValueKey('release-confirm'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Rendre'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _run(
+      () => ref.read(dispatchRepositoryProvider).release(delivery.id),
+      success: 'Commande #${delivery.orderId} rendue',
+    );
   }
 
   Future<void> _open(Uri? uri, String failure) async {
@@ -110,7 +153,9 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
         await ref.read(dispatchRepositoryProvider).depart(ids);
         setState(_selected.clear);
       },
-      success: ids.length == 1 ? 'Bon depart !' : 'Bon depart avec ${ids.length} commandes !',
+      success: ids.length == 1
+          ? 'Bon depart !'
+          : 'Bon depart avec ${ids.length} commandes !',
     );
   }
 
@@ -153,6 +198,12 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
   @override
   Widget build(BuildContext context) {
     final deliveries = ref.watch(driverDeliveriesProvider);
+    // Mode libre-service : plafond, charge et commandes prenables. Une erreur ici ne bloque pas
+    // l'ecran principal (le livreur garde ses livraisons).
+    final me = ref.watch(driverMeProvider).valueOrNull;
+    final selfAssign = me?.selfAssign ?? false;
+    final available =
+        selfAssign ? ref.watch(driverAvailableProvider).valueOrNull : null;
     return deliveries.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(
@@ -178,12 +229,14 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
             if (a.canDepart != b.canDepart) return a.canDepart ? -1 : 1;
             return a.orderId.compareTo(b.orderId);
           });
-        final departable = upcoming.where((d) => d.canDepart).map((d) => d.id).toSet();
+        final departable =
+            upcoming.where((d) => d.canDepart).map((d) => d.id).toSet();
         _selected.removeWhere((id) => !departable.contains(id));
         return Stack(
           children: [
             RefreshIndicator(
-              onRefresh: () async => ref.refresh(driverDeliveriesProvider.future),
+              onRefresh: () async =>
+                  ref.refresh(driverDeliveriesProvider.future),
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md,
@@ -193,7 +246,8 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
                 ),
                 children: [
                   const LocationSharingPanel(),
-                  if (items.isEmpty)
+                  if (selfAssign && me != null) _CapacityBanner(me: me),
+                  if (items.isEmpty && !(available?.orders.isNotEmpty ?? false))
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
                       child: Center(
@@ -211,8 +265,8 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
                         busy: _busy,
                         callCount: _calls[delivery.id] ?? 0,
                         onCall: () => _call(delivery),
-                        onRoute: () =>
-                            _open(routeUriFor(delivery), 'Itineraire indisponible'),
+                        onRoute: () => _open(
+                            routeUriFor(delivery), 'Itineraire indisponible',),
                         onFailed: () => _fail(delivery),
                         onArrived: delivery.phase == 'en_route'
                             ? () => _run(
@@ -242,8 +296,21 @@ class _DriverDeliveriesPageState extends ConsumerState<DriverDeliveriesPage> {
                                 })
                             : null,
                         onCall: () => _call(delivery),
-                        onRoute: () =>
-                            _open(routeUriFor(delivery), 'Itineraire indisponible'),
+                        onRoute: () => _open(
+                            routeUriFor(delivery), 'Itineraire indisponible',),
+                        onRelease: selfAssign && delivery.phase != 'en_route'
+                            ? () => _release(delivery)
+                            : null,
+                      ),
+                  ],
+                  if (available != null && available.enabled) ...[
+                    _Header('Disponibles (${available.orders.length})'),
+                    for (final order in available.orders)
+                      _AvailableCard(
+                        order: order,
+                        busy: _busy,
+                        full: available.remainingCapacity <= 0,
+                        onClaim: () => _claim(order),
                       ),
                   ],
                 ],
@@ -292,6 +359,120 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// Charge du livreur en mode libre-service : « 2 / 3 livraisons en cours ».
+class _CapacityBanner extends StatelessWidget {
+  const _CapacityBanner({required this.me});
+
+  final DriverMe me;
+
+  @override
+  Widget build(BuildContext context) {
+    final full = me.remainingCapacity <= 0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Semantics(
+        container: true,
+        child: StatusBadge(
+          key: const ValueKey('driver-capacity'),
+          label: full
+              ? 'Plafond atteint : ${me.activeDeliveries} / ${me.maxActiveDeliveries} livraisons'
+              : '${me.activeDeliveries} / ${me.maxActiveDeliveries} livraisons en cours',
+          tone: full ? StatusTone.warning : StatusTone.info,
+          icon: Icons.delivery_dining_outlined,
+        ),
+      ),
+    );
+  }
+}
+
+/// Commande que le livreur peut prendre lui-meme.
+class _AvailableCard extends StatelessWidget {
+  const _AvailableCard({
+    required this.order,
+    required this.busy,
+    required this.full,
+    required this.onClaim,
+  });
+
+  final DispatchOrder order;
+  final bool busy;
+  final bool full;
+  final VoidCallback onClaim;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final eta = order.estimatedDeliveryAt?.toLocal();
+    final etaLabel = eta == null
+        ? null
+        : 'Prevue ${eta.hour.toString().padLeft(2, '0')}:${eta.minute.toString().padLeft(2, '0')}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: DsCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Commande #${order.orderId}',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                StatusBadge(
+                  label: order.status == 'ready' ? 'Prete' : 'En preparation',
+                  tone: order.status == 'ready'
+                      ? StatusTone.success
+                      : StatusTone.warning,
+                  compact: true,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(order.deliveryAddress ?? 'Adresse indisponible'),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                StatusBadge(
+                  label: '${order.itemsCount} article(s)',
+                  tone: StatusTone.neutral,
+                  compact: true,
+                ),
+                if (order.dueOnDelivery)
+                  StatusBadge(
+                    label: 'Encaisser ${formatMoney(order.total)}',
+                    tone: StatusTone.warning,
+                    icon: Icons.payments_outlined,
+                    compact: true,
+                  ),
+                if (etaLabel != null)
+                  StatusBadge(
+                    label: etaLabel,
+                    tone: StatusTone.neutral,
+                    icon: Icons.schedule_outlined,
+                    compact: true,
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FilledButton.icon(
+              key: ValueKey('claim-order-${order.orderId}'),
+              onPressed: busy || full ? null : onClaim,
+              icon: const Icon(Icons.add_task_outlined),
+              label: Text(full ? 'Plafond atteint' : 'Prendre'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DeliveryCard extends StatelessWidget {
   const _DeliveryCard({
     required this.delivery,
@@ -303,9 +484,11 @@ class _DeliveryCard extends StatelessWidget {
     this.onArrived,
     this.onDelivered,
     this.onFailed,
+    this.onRelease,
     this.callCount = 0,
   });
 
+  final VoidCallback? onRelease;
   final DriverDelivery delivery;
   final bool busy;
   final bool selected;
@@ -341,7 +524,8 @@ class _DeliveryCard extends StatelessWidget {
                   Checkbox(
                     key: ValueKey('select-delivery-${delivery.id}'),
                     value: selected,
-                    onChanged: busy ? null : (v) => onSelectedChanged!(v ?? false),
+                    onChanged:
+                        busy ? null : (v) => onSelectedChanged!(v ?? false),
                   ),
                 Expanded(
                   child: Text(
@@ -407,7 +591,8 @@ class _DeliveryCard extends StatelessWidget {
                   key: ValueKey('call-${delivery.id}'),
                   onPressed: delivery.customerPhone == null ? null : onCall,
                   icon: const Icon(Icons.call_outlined),
-                  label: Text(callCount > 0 ? 'Appeler ($callCount)' : 'Appeler'),
+                  label:
+                      Text(callCount > 0 ? 'Appeler ($callCount)' : 'Appeler'),
                 ),
                 OutlinedButton.icon(
                   key: ValueKey('route-${delivery.id}'),
@@ -415,6 +600,13 @@ class _DeliveryCard extends StatelessWidget {
                   icon: const Icon(Icons.directions_outlined),
                   label: const Text('Itineraire'),
                 ),
+                if (onRelease != null)
+                  TextButton.icon(
+                    key: ValueKey('release-${delivery.id}'),
+                    onPressed: busy ? null : onRelease,
+                    icon: const Icon(Icons.undo_outlined),
+                    label: const Text('Rendre'),
+                  ),
                 if (onArrived != null)
                   FilledButton.tonalIcon(
                     key: ValueKey('arrived-${delivery.id}'),

@@ -160,6 +160,40 @@ String? resolveServiceNextStatus(OrderSummary order) {
   };
 }
 
+/// Libelle lisible de l'heure de remise : "Prevue 19:42 (dans 12 min)" ou
+/// "En retard de 8 min (prevue 19:42)". Null sans estimation (hors livraison).
+String? deliveryEstimateLabel(
+  OrderSummary order, {
+  DateTime? now,
+}) {
+  final estimate = order.estimatedDeliveryAt?.toLocal();
+  if (order.orderType != 'delivery' || estimate == null) {
+    return null;
+  }
+  final clock = now ?? DateTime.now();
+  final hh = estimate.hour.toString().padLeft(2, '0');
+  final mm = estimate.minute.toString().padLeft(2, '0');
+  final minutes = estimate.difference(clock).inMinutes;
+  if (clock.isAfter(estimate)) {
+    final late = clock.difference(estimate).inMinutes;
+    return late < 1
+        ? 'En retard (prevue $hh:$mm)'
+        : 'En retard de ${_readableMinutes(late)} (prevue $hh:$mm)';
+  }
+  return minutes < 1
+      ? 'Prevue $hh:$mm (imminente)'
+      : 'Prevue $hh:$mm (dans ${_readableMinutes(minutes)})';
+}
+
+String _readableMinutes(int minutes) {
+  if (minutes < 60) {
+    return '$minutes min';
+  }
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  return m == 0 ? '$h h' : '$h h ${m.toString().padLeft(2, '0')}';
+}
+
 bool isLateForService(
   OrderSummary order, {
   DateTime? now,
@@ -167,6 +201,13 @@ bool isLateForService(
   final createdAt = order.createdAt;
   if (createdAt == null || !isServiceStatus(order.status)) {
     return false;
+  }
+
+  // Une livraison avec une heure de remise estimee est en retard des que cette
+  // heure est depassee (estimation recalculee au depart par l'API).
+  final estimate = order.estimatedDeliveryAt;
+  if (order.orderType == 'delivery' && estimate != null) {
+    return (now ?? DateTime.now()).isAfter(estimate);
   }
 
   // The list endpoint does not expose ready_at. Keep the existing 30 minute

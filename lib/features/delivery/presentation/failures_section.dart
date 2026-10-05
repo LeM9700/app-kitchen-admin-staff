@@ -510,8 +510,11 @@ class ProofSettingsCard extends ConsumerWidget {
           ),
           const ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('Client absent ou injoignable'),
-            subtitle: Text('Avant de declarer l\'echec, le livreur doit avoir :'),
+            title: Text('Client absent ou injoignable (regles generales)'),
+            subtitle: Text(
+              'Valables pour tous les etablissements, sauf reglage propre a un '
+              'etablissement. Avant de declarer l\'echec, le livreur doit avoir :',
+            ),
           ),
           Row(
             children: [

@@ -979,6 +979,19 @@ class _ServiceOrderCard extends ConsumerWidget {
                       ),
                     ],
                   ],
+                  if (deliveryEstimateLabel(order) case final estimate?) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      estimate,
+                      key: ValueKey('service-eta-${order.id}'),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: viewModel.isLate
+                                ? AppColors.dangerAlt
+                                : AppColors.textSecondary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Row(
                     children: [

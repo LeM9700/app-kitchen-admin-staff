@@ -18,7 +18,7 @@ final deliveryTileLayerProvider = Provider<Widget>((ref) {
     urlTemplate: token.isEmpty
         ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
         : 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x'
-            '?access_token=$token',
+              '?access_token=$token',
     userAgentPackageName: 'com.opizza.app_admin_staff',
   );
 });
@@ -67,7 +67,9 @@ List<Polygon> zonePolygons(List<DeliveryZone> zones, {int? highlightId}) {
         Polygon(
           points: zone.ring,
           color: zoneColor(zone).withValues(
-            alpha: highlightId == zone.id ? 0.35 : (zone.isActive ? 0.18 : 0.08),
+            alpha: highlightId == zone.id
+                ? 0.35
+                : (zone.isActive ? 0.18 : 0.08),
           ),
           borderColor: zoneColor(zone),
           borderStrokeWidth: highlightId == zone.id ? 3 : 1.5,

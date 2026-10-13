@@ -22,7 +22,8 @@ class DeliveryRulesEditor extends StatelessWidget {
   Future<void> _edit(BuildContext context, {int? index}) async {
     final result = await showDialog<DeliveryZoneRule>(
       context: context,
-      builder: (context) => _RuleDialog(rule: index == null ? null : rules[index]),
+      builder: (context) =>
+          _RuleDialog(rule: index == null ? null : rules[index]),
     );
     if (result == null) return;
     final next = [...rules];
@@ -115,7 +116,9 @@ class _RuleDialogState extends State<_RuleDialog> {
     final rule = widget.rule;
     _label = TextEditingController(text: rule?.label ?? '');
     _fee = TextEditingController(text: rule?.fee?.toString() ?? '');
-    _minSubtotal = TextEditingController(text: rule?.minSubtotal?.toString() ?? '');
+    _minSubtotal = TextEditingController(
+      text: rule?.minSubtotal?.toString() ?? '',
+    );
     _priority = TextEditingController(text: (rule?.priority ?? 0).toString());
     _kind = rule?.kind ?? DeliveryZoneRule.kindFree;
     _days = {...?rule?.daysOfWeek};
@@ -151,12 +154,14 @@ class _RuleDialogState extends State<_RuleDialog> {
   static String _formatDate(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-  double? _number(String text) => double.tryParse(text.trim().replaceAll(',', '.'));
+  double? _number(String text) =>
+      double.tryParse(text.trim().replaceAll(',', '.'));
 
   Future<void> _pickTime({required bool start}) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: (start ? _start : _end) ?? const TimeOfDay(hour: 19, minute: 0),
+      initialTime:
+          (start ? _start : _end) ?? const TimeOfDay(hour: 19, minute: 0),
     );
     if (picked == null) return;
     setState(() => start ? _start = picked : _end = picked);
@@ -179,14 +184,17 @@ class _RuleDialogState extends State<_RuleDialog> {
   void _submit() {
     final label = _label.text.trim();
     final fee = _number(_fee.text);
-    final min = _minSubtotal.text.trim().isEmpty ? null : _number(_minSubtotal.text);
+    final min = _minSubtotal.text.trim().isEmpty
+        ? null
+        : _number(_minSubtotal.text);
     final priority = int.tryParse(_priority.text.trim()) ?? 0;
     String? error;
     if (label.isEmpty) {
       error = 'Nom de la regle obligatoire';
     } else if (_kind == DeliveryZoneRule.kindFee && (fee == null || fee < 0)) {
       error = 'Tarif invalide';
-    } else if (_minSubtotal.text.trim().isNotEmpty && (min == null || min < 0)) {
+    } else if (_minSubtotal.text.trim().isNotEmpty &&
+        (min == null || min < 0)) {
       error = 'Montant de panier invalide';
     } else if ((_start == null) != (_end == null)) {
       error = 'Indiquez l\'heure de debut ET de fin';
@@ -231,7 +239,9 @@ class _RuleDialogState extends State<_RuleDialog> {
               TextField(
                 key: const ValueKey('rule-label'),
                 controller: _label,
-                decoration: const InputDecoration(labelText: 'Nom (ex. Offerte des 25)'),
+                decoration: const InputDecoration(
+                  labelText: 'Nom (ex. Offerte des 25)',
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               SegmentedButton<String>(
@@ -249,7 +259,8 @@ class _RuleDialogState extends State<_RuleDialog> {
                   ),
                 ],
                 selected: {_kind},
-                onSelectionChanged: (value) => setState(() => _kind = value.first),
+                onSelectionChanged: (value) =>
+                    setState(() => _kind = value.first),
               ),
               if (_kind == DeliveryZoneRule.kindFee) ...[
                 const SizedBox(height: AppSpacing.sm),
@@ -257,7 +268,9 @@ class _RuleDialogState extends State<_RuleDialog> {
                   key: const ValueKey('rule-fee'),
                   controller: _fee,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Tarif de livraison'),
+                  decoration: const InputDecoration(
+                    labelText: 'Tarif de livraison',
+                  ),
                 ),
               ],
               const SizedBox(height: AppSpacing.sm),
@@ -270,7 +283,10 @@ class _RuleDialogState extends State<_RuleDialog> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              Text('Jours (aucun = tous les jours)', style: Theme.of(context).textTheme.labelMedium),
+              Text(
+                'Jours (aucun = tous les jours)',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
               Wrap(
                 spacing: AppSpacing.xs,
                 children: [
@@ -279,7 +295,8 @@ class _RuleDialogState extends State<_RuleDialog> {
                       key: ValueKey('rule-day-$d'),
                       label: Text(_dayLabels[d]),
                       selected: _days.contains(d),
-                      onSelected: (on) => setState(() => on ? _days.add(d) : _days.remove(d)),
+                      onSelected: (on) =>
+                          setState(() => on ? _days.add(d) : _days.remove(d)),
                     ),
                 ],
               ),
@@ -290,7 +307,11 @@ class _RuleDialogState extends State<_RuleDialog> {
                     child: OutlinedButton(
                       key: const ValueKey('rule-start-time'),
                       onPressed: () => _pickTime(start: true),
-                      child: Text(_start == null ? 'Heure de debut' : _formatTime(_start!)),
+                      child: Text(
+                        _start == null
+                            ? 'Heure de debut'
+                            : _formatTime(_start!),
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -298,7 +319,9 @@ class _RuleDialogState extends State<_RuleDialog> {
                     child: OutlinedButton(
                       key: const ValueKey('rule-end-time'),
                       onPressed: () => _pickTime(start: false),
-                      child: Text(_end == null ? 'Heure de fin' : _formatTime(_end!)),
+                      child: Text(
+                        _end == null ? 'Heure de fin' : _formatTime(_end!),
+                      ),
                     ),
                   ),
                   if (_start != null || _end != null)
@@ -344,7 +367,8 @@ class _RuleDialogState extends State<_RuleDialog> {
                 controller: _priority,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Priorite (0-100, la plus haute gagne entre deux tarifs)',
+                  labelText:
+                      'Priorite (0-100, la plus haute gagne entre deux tarifs)',
                 ),
               ),
               if (_error != null) ...[

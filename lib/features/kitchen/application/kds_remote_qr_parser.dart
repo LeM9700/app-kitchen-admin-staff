@@ -5,22 +5,13 @@ import 'package:app_admin_staff/core/config/env.dart';
 enum KdsRemoteQrPayloadKind { pairingPayload, pairingCode }
 
 class KdsRemoteQrPayload {
-  const KdsRemoteQrPayload._({
-    required this.kind,
-    required this.value,
-  });
+  const KdsRemoteQrPayload._({required this.kind, required this.value});
 
   const KdsRemoteQrPayload.pairingPayload(String value)
-      : this._(
-          kind: KdsRemoteQrPayloadKind.pairingPayload,
-          value: value,
-        );
+    : this._(kind: KdsRemoteQrPayloadKind.pairingPayload, value: value);
 
   const KdsRemoteQrPayload.pairingCode(String value)
-      : this._(
-          kind: KdsRemoteQrPayloadKind.pairingCode,
-          value: value,
-        );
+    : this._(kind: KdsRemoteQrPayloadKind.pairingCode, value: value);
 
   final KdsRemoteQrPayloadKind kind;
   final String value;
@@ -70,7 +61,9 @@ String buildKdsRemotePairingQrData(String pairingPayload) {
     return Uri(path: '/kitchen/remote', queryParameters: query).toString();
   }
 
-  return base.replace(path: '/kitchen/remote', queryParameters: query).toString();
+  return base
+      .replace(path: '/kitchen/remote', queryParameters: query)
+      .toString();
 }
 
 KdsRemoteQrPayload? _parseJsonPayload(String value) {
@@ -102,7 +95,8 @@ KdsRemoteQrPayload? _parseUriPayload(String value) {
     return null;
   }
 
-  final pair = uri.queryParameters['pair'] ??
+  final pair =
+      uri.queryParameters['pair'] ??
       uri.queryParameters['pairing_payload'] ??
       uri.queryParameters['payload'];
   if (pair != null && pair.trim().isNotEmpty) {

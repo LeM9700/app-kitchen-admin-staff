@@ -11,8 +11,9 @@ import 'package:app_admin_staff/features/payments/presentation/guarantee_settlem
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-String _apiMessage(Object error) =>
-    error is ApiError ? error.message : 'Action impossible pour le moment. Reessayez.';
+String _apiMessage(Object error) => error is ApiError
+    ? error.message
+    : 'Action impossible pour le moment. Reessayez.';
 
 // --------------------------------------------------------------------------- aides pures
 
@@ -41,7 +42,8 @@ String? validateResolution(
       if (amount > failure.total) {
         return 'Le montant depasse le total (${formatMoney(failure.total)}).';
       }
-      if (note.trim().isEmpty) return 'Un motif est requis pour retenir des frais.';
+      if (note.trim().isEmpty)
+        return 'Un motif est requis pour retenir des frais.';
       return null;
     case 'redeliver':
       return failure.canRedeliver
@@ -56,7 +58,11 @@ String? validateResolution(
 /// Echecs de livraison en attente de decision. Tout le personnel les voit ; seul un
 /// administrateur les traite.
 class FailuresSection extends ConsumerWidget {
-  const FailuresSection({required this.isAdmin, required this.onChanged, super.key});
+  const FailuresSection({
+    required this.isAdmin,
+    required this.onChanged,
+    super.key,
+  });
 
   final bool isAdmin;
 
@@ -75,10 +81,9 @@ class FailuresSection extends ConsumerWidget {
         children: [
           Text(
             'Echecs a traiter (${items.length})',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.xs),
           for (final failure in items)
@@ -135,21 +140,27 @@ class _FailureTile extends StatelessWidget {
                 failure.deliveryAddress!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: AppColors.textSecondary),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
               ),
             if (failure.note != null)
-              Text(failure.note!, style: const TextStyle(fontStyle: FontStyle.italic)),
+              Text(
+                failure.note!,
+                style: const TextStyle(fontStyle: FontStyle.italic),
+              ),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
                 StatusBadge(
-                  label: failure.customerFault ? 'Faute du client' : 'Faute du restaurant',
-                  tone: failure.customerFault ? StatusTone.warning : StatusTone.danger,
+                  label: failure.customerFault
+                      ? 'Faute du client'
+                      : 'Faute du restaurant',
+                  tone: failure.customerFault
+                      ? StatusTone.warning
+                      : StatusTone.danger,
                   compact: true,
                 ),
                 StatusBadge(
@@ -180,7 +191,9 @@ class _FailureTile extends StatelessWidget {
               child: FilledButton(
                 key: ValueKey('resolve-failure-${failure.id}'),
                 onPressed: isAdmin ? onResolve : null,
-                child: Text(isAdmin ? 'Traiter' : 'Reserve a l\'administrateur'),
+                child: Text(
+                  isAdmin ? 'Traiter' : 'Reserve a l\'administrateur',
+                ),
               ),
             ),
           ],
@@ -191,7 +204,10 @@ class _FailureTile extends StatelessWidget {
 }
 
 /// Traitement d'un echec : rembourser, retenir des frais ou relivrer. `true` si l'action est faite.
-Future<bool?> showResolveFailureDialog(BuildContext context, DeliveryFailure failure) {
+Future<bool?> showResolveFailureDialog(
+  BuildContext context,
+  DeliveryFailure failure,
+) {
   return showDialog<bool>(
     context: context,
     builder: (context) => _ResolveDialog(failure: failure),
@@ -222,11 +238,11 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
   }
 
   String? get _validation => validateResolution(
-        widget.failure,
-        action: _action,
-        amountText: _amount.text,
-        note: _note.text,
-      );
+    widget.failure,
+    action: _action,
+    amountText: _amount.text,
+    note: _note.text,
+  );
 
   Future<void> _submit() async {
     if (_validation != null || _submitting) return;
@@ -235,8 +251,12 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
       _error = null;
     });
     try {
-      final amount = _action == 'retain' ? parseSettlementAmount(_amount.text) : null;
-      await ref.read(dispatchRepositoryProvider).resolveFailure(
+      final amount = _action == 'retain'
+          ? parseSettlementAmount(_amount.text)
+          : null;
+      await ref
+          .read(dispatchRepositoryProvider)
+          .resolveFailure(
             widget.failure.id,
             action: _action!,
             amountCents: amount == null ? null : (amount * 100).round(),
@@ -267,8 +287,10 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${failure.reasonLabel} - ${formatMoney(failure.total)} - '
-                  '${humanStatus(failure.paymentStatus)}'),
+              Text(
+                '${failure.reasonLabel} - ${formatMoney(failure.total)} - '
+                '${humanStatus(failure.paymentStatus)}',
+              ),
               const SizedBox(height: 8),
               RadioGroup<String>(
                 groupValue: _action,
@@ -299,8 +321,8 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
                       subtitle: Text(
                         failure.customerFault
                             ? (guaranteed
-                                ? 'Debite ce montant sur l\'empreinte, le reste est libere'
-                                : 'Rembourse le reste, garde ce montant')
+                                  ? 'Debite ce montant sur l\'empreinte, le reste est libere'
+                                  : 'Rembourse le reste, garde ce montant')
                             : 'Impossible : faute du restaurant',
                       ),
                     ),
@@ -324,7 +346,9 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
                   key: const ValueKey('retain-amount'),
                   controller: _amount,
                   enabled: !_submitting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     labelText: 'Montant retenu (EUR)',
                     border: OutlineInputBorder(),
@@ -338,7 +362,9 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
                 controller: _note,
                 enabled: !_submitting,
                 decoration: InputDecoration(
-                  labelText: _action == 'retain' ? 'Motif (obligatoire)' : 'Note (optionnel)',
+                  labelText: _action == 'retain'
+                      ? 'Motif (obligatoire)'
+                      : 'Note (optionnel)',
                   border: const OutlineInputBorder(),
                 ),
                 onChanged: (_) => setState(() {}),
@@ -348,7 +374,9 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     validation,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               if (_error != null)
@@ -356,7 +384,9 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
             ],
@@ -365,7 +395,9 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _submitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: const Text('Annuler'),
         ),
         FilledButton(
@@ -381,7 +413,10 @@ class _ResolveDialogState extends ConsumerState<_ResolveDialog> {
 // --------------------------------------------------------------------------- livrer sans code
 
 /// Motif d'une livraison sans code (administrateur), ou `null` si on annule.
-Future<String?> showDeliverWithoutCodeDialog(BuildContext context, int orderId) {
+Future<String?> showDeliverWithoutCodeDialog(
+  BuildContext context,
+  int orderId,
+) {
   return showDialog<String>(
     context: context,
     builder: (context) => _NoCodeDialog(orderId: orderId),
@@ -440,7 +475,9 @@ class _NoCodeDialogState extends State<_NoCodeDialog> {
         ),
         FilledButton(
           key: const ValueKey('confirm-no-code'),
-          onPressed: _valid ? () => Navigator.pop(context, _reason.text.trim()) : null,
+          onPressed: _valid
+              ? () => Navigator.pop(context, _reason.text.trim())
+              : null,
           child: const Text('Livrer sans code'),
         ),
       ],
@@ -452,7 +489,11 @@ class _NoCodeDialogState extends State<_NoCodeDialog> {
 
 /// Preuve de remise et regles d'echec (administrateur ; lecture seule pour le personnel).
 class ProofSettingsCard extends ConsumerWidget {
-  const ProofSettingsCard({required this.settings, required this.isAdmin, super.key});
+  const ProofSettingsCard({
+    required this.settings,
+    required this.isAdmin,
+    super.key,
+  });
 
   final DeliverySettings settings;
   final bool isAdmin;
@@ -468,7 +509,9 @@ class ProofSettingsCard extends ConsumerWidget {
     int? calls,
   }) async {
     try {
-      await ref.read(deliveryRepositoryProvider).updateProofSettings(
+      await ref
+          .read(deliveryRepositoryProvider)
+          .updateProofSettings(
             internalEnabled: settings.internalEnabled,
             expectedVersion: settings.version,
             proofRequired: proofRequired,
@@ -477,7 +520,9 @@ class ProofSettingsCard extends ConsumerWidget {
           );
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_apiMessage(error))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_apiMessage(error))));
       }
     } finally {
       ref.invalidate(deliverySettingsProvider);
@@ -501,7 +546,7 @@ class ProofSettingsCard extends ConsumerWidget {
               settings.deliveryProofRequired
                   ? 'Le livreur doit saisir le code a 4 chiffres du client.'
                   : 'Coupee : le livreur peut livrer sans code. A activer quand l\'app client '
-                      'affichant le code est deployee.',
+                        'affichant le code est deployee.',
             ),
             value: settings.deliveryProofRequired,
             onChanged: isAdmin
@@ -521,7 +566,8 @@ class ProofSettingsCard extends ConsumerWidget {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   key: const ValueKey('failure-wait'),
-                  initialValue: waitOptions.contains(settings.failureMinWaitMinutes)
+                  initialValue:
+                      waitOptions.contains(settings.failureMinWaitMinutes)
                       ? settings.failureMinWaitMinutes
                       : null,
                   decoration: const InputDecoration(labelText: 'Attendu (min)'),
@@ -538,13 +584,17 @@ class ProofSettingsCard extends ConsumerWidget {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   key: const ValueKey('failure-calls'),
-                  initialValue: callOptions.contains(settings.failureMinCallAttempts)
+                  initialValue:
+                      callOptions.contains(settings.failureMinCallAttempts)
                       ? settings.failureMinCallAttempts
                       : null,
                   decoration: const InputDecoration(labelText: 'Appels'),
                   items: [
                     for (final value in callOptions)
-                      DropdownMenuItem(value: value, child: Text('$value appel(s)')),
+                      DropdownMenuItem(
+                        value: value,
+                        child: Text('$value appel(s)'),
+                      ),
                   ],
                   onChanged: isAdmin
                       ? (value) => _update(context, ref, calls: value)

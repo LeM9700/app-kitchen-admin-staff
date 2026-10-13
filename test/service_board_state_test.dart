@@ -40,44 +40,46 @@ void main() {
     expect(state.all.map((order) => order.order.id), [5, 6]);
   });
 
-  test('filters by order type, late state, search query, and establishment',
-      () {
-    final now = DateTime(2026, 9, 23, 12);
-    final state = ServiceBoardState.build(
-      orders: [
-        _summary(
-          id: 10,
-          orderType: 'dine_in',
-          tableNumber: '12',
-          createdAt: now.subtract(const Duration(minutes: 35)),
-          establishmentId: 1,
-        ),
-        _summary(
-          id: 11,
-          orderType: 'pickup',
-          customerName: 'Malik B.',
-          establishmentId: 1,
-        ),
-        _summary(
-          id: 12,
-          orderType: 'delivery',
-          customerName: 'Nora',
-          establishmentId: 2,
-        ),
-      ],
-      filter: ServiceFilter.late,
-      query: 'table 12',
-      establishmentId: 1,
-      now: now,
-    );
+  test(
+    'filters by order type, late state, search query, and establishment',
+    () {
+      final now = DateTime(2026, 9, 23, 12);
+      final state = ServiceBoardState.build(
+        orders: [
+          _summary(
+            id: 10,
+            orderType: 'dine_in',
+            tableNumber: '12',
+            createdAt: now.subtract(const Duration(minutes: 35)),
+            establishmentId: 1,
+          ),
+          _summary(
+            id: 11,
+            orderType: 'pickup',
+            customerName: 'Malik B.',
+            establishmentId: 1,
+          ),
+          _summary(
+            id: 12,
+            orderType: 'delivery',
+            customerName: 'Nora',
+            establishmentId: 2,
+          ),
+        ],
+        filter: ServiceFilter.late,
+        query: 'table 12',
+        establishmentId: 1,
+        now: now,
+      );
 
-    expect(state.total, 2);
-    expect(state.lateCount, 1);
-    expect(state.ready.single.order.id, 10);
-    expect(state.counts[ServiceFilter.dineIn], 1);
-    expect(state.counts[ServiceFilter.pickup], 1);
-    expect(state.counts[ServiceFilter.delivery], 0);
-  });
+      expect(state.total, 2);
+      expect(state.lateCount, 1);
+      expect(state.ready.single.order.id, 10);
+      expect(state.counts[ServiceFilter.dineIn], 1);
+      expect(state.counts[ServiceFilter.pickup], 1);
+      expect(state.counts[ServiceFilter.delivery], 0);
+    },
+  );
 
   group('estimated delivery time', () {
     final now = DateTime(2026, 10, 3, 19, 30);
@@ -126,18 +128,26 @@ void main() {
 
     test('readable label before and after the estimate', () {
       OrderSummary at(int minutes) => _summary(
-            orderType: 'delivery',
-            estimatedDeliveryAt: now.add(Duration(minutes: minutes)),
-          );
+        orderType: 'delivery',
+        estimatedDeliveryAt: now.add(Duration(minutes: minutes)),
+      );
 
-      expect(deliveryEstimateLabel(at(12), now: now),
-          'Prevue 19:42 (dans 12 min)',);
-      expect(deliveryEstimateLabel(at(95), now: now),
-          'Prevue 21:05 (dans 1 h 35)',);
-      expect(deliveryEstimateLabel(at(-8), now: now),
-          'En retard de 8 min (prevue 19:22)',);
       expect(
-          deliveryEstimateLabel(at(0), now: now), 'Prevue 19:30 (imminente)',);
+        deliveryEstimateLabel(at(12), now: now),
+        'Prevue 19:42 (dans 12 min)',
+      );
+      expect(
+        deliveryEstimateLabel(at(95), now: now),
+        'Prevue 21:05 (dans 1 h 35)',
+      );
+      expect(
+        deliveryEstimateLabel(at(-8), now: now),
+        'En retard de 8 min (prevue 19:22)',
+      );
+      expect(
+        deliveryEstimateLabel(at(0), now: now),
+        'Prevue 19:30 (imminente)',
+      );
       expect(
         deliveryEstimateLabel(_summary(orderType: 'delivery'), now: now),
         isNull,

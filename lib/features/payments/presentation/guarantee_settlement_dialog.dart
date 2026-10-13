@@ -161,7 +161,10 @@ class _GuaranteeSettlementDialogState
             reason: _composedReason,
           );
         case GuaranteeSettlement.release:
-          await repo.releaseGuarantee(widget.orderId, reason: 'released_by_staff');
+          await repo.releaseGuarantee(
+            widget.orderId,
+            reason: 'released_by_staff',
+          );
       }
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -247,8 +250,9 @@ class _GuaranteeSettlementDialogState
                 TextField(
                   controller: _amount,
                   enabled: !_submitting,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: InputDecoration(
                     labelText: _choice == GuaranteeSettlement.cash
                         ? 'Montant recu (optionnel)'
@@ -272,8 +276,7 @@ class _GuaranteeSettlementDialogState
                   ],
                   onChanged: _submitting
                       ? null
-                      : (value) =>
-                          setState(() => _reason = value ?? _reason),
+                      : (value) => setState(() => _reason = value ?? _reason),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -306,7 +309,9 @@ class _GuaranteeSettlementDialogState
       ),
       actions: [
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _submitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: const Text('Annuler'),
         ),
         FilledButton(

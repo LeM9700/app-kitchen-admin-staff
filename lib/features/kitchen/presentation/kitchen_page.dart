@@ -27,10 +27,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 final _kitchenRemotePairingBusyProvider = StateProvider<bool>((ref) => false);
 
 class KitchenPage extends ConsumerWidget {
-  const KitchenPage({
-    this.screenMode = KitchenScreenMode.kitchen,
-    super.key,
-  });
+  const KitchenPage({this.screenMode = KitchenScreenMode.kitchen, super.key});
 
   final KitchenScreenMode screenMode;
 
@@ -43,9 +40,9 @@ class KitchenPage extends ConsumerWidget {
           return;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next)));
         ref.read(kitchenActionsProvider.notifier).clearError();
       },
     );
@@ -60,12 +57,7 @@ class KitchenPage extends ConsumerWidget {
           final profile = ref.watch(
             kitchenScreenProfileProviderFor(screenMode),
           );
-          _syncProfileWithPolicy(
-            ref,
-            profile,
-            policy,
-            screenMode,
-          );
+          _syncProfileWithPolicy(ref, profile, policy, screenMode);
 
           final queue = ref.watch(kitchenQueueProviderFor(screenMode));
 
@@ -104,9 +96,9 @@ class KitchenPage extends ConsumerWidget {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(kitchenQueueProviderFor(screenMode).notifier).setProfile(
-            profile.copyWith(ticketsPerPage: policy.ticketsPerPage),
-          );
+      ref
+          .read(kitchenQueueProviderFor(screenMode).notifier)
+          .setProfile(profile.copyWith(ticketsPerPage: policy.ticketsPerPage));
     });
   }
 }
@@ -260,9 +252,9 @@ Future<void> _showKitchenRemotePairing(
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mapKdsError(error))),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(mapKdsError(error))));
   } finally {
     ref.read(_kitchenRemotePairingBusyProvider.notifier).state = false;
   }
@@ -283,9 +275,9 @@ Future<KdsScreen?> _resolveKitchenRemoteScreen(
     return selectedScreen;
   }
   if (selectedScreen != null && !selectedScreen.isActive) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('ÉCRAN INACTIF')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('ÉCRAN INACTIF')));
     return null;
   }
   if (selectedScreen != null && !selectedScreen.remoteEnabled) {
@@ -299,9 +291,7 @@ Future<KdsScreen?> _resolveKitchenRemoteScreen(
   final candidates = screens
       .where(
         (screen) =>
-            screen.isActive &&
-            screen.remoteEnabled &&
-            screen.mode == rawMode,
+            screen.isActive && screen.remoteEnabled && screen.mode == rawMode,
       )
       .toList();
   if (candidates.isEmpty) {
@@ -331,9 +321,9 @@ Future<KdsScreen?> _resolveKitchenRemoteScreen(
           children: [
             Text(
               'ÉCRAN $modeLabel REMOTE',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             for (final screen in candidates)
@@ -360,17 +350,15 @@ void _selectKitchenRemoteScreen(
   KdsScreen screen,
   KitchenScreenMode screenMode,
 ) {
-  ref.read(kitchenSelectedScreenProviderFor(screenMode).notifier).state = screen;
-  ref.read(kitchenQueueProviderFor(screenMode).notifier).setProfile(
-        profileFromKdsScreen(screen),
-      );
+  ref.read(kitchenSelectedScreenProviderFor(screenMode).notifier).state =
+      screen;
+  ref
+      .read(kitchenQueueProviderFor(screenMode).notifier)
+      .setProfile(profileFromKdsScreen(screen));
 }
 
 class _KitchenLoadingBoard extends ConsumerWidget {
-  const _KitchenLoadingBoard({
-    required this.profile,
-    required this.screenMode,
-  });
+  const _KitchenLoadingBoard({required this.profile, required this.screenMode});
 
   final KitchenScreenProfile profile;
   final KitchenScreenMode screenMode;
@@ -392,8 +380,9 @@ class _KitchenLoadingBoard extends ConsumerWidget {
           totalPreparing: 0,
           totalNew: 0,
           connection: connection,
-          onProfileSelected:
-              ref.read(kitchenQueueProviderFor(screenMode).notifier).setProfile,
+          onProfileSelected: ref
+              .read(kitchenQueueProviderFor(screenMode).notifier)
+              .setProfile,
           selectedScreen: selectedScreen,
           screenMode: screenMode,
           onRemotePairingRequested: () => _showKitchenRemotePairing(
@@ -408,9 +397,7 @@ class _KitchenLoadingBoard extends ConsumerWidget {
           remotePairingBusy: remotePairingBusy,
         ),
         KitchenOfflineBanner(connection: connection),
-        const Expanded(
-          child: Center(child: CircularProgressIndicator()),
-        ),
+        const Expanded(child: Center(child: CircularProgressIndicator())),
       ],
     );
   }
@@ -445,8 +432,9 @@ class _KitchenErrorBoard extends ConsumerWidget {
           totalPreparing: 0,
           totalNew: 0,
           connection: connection,
-          onProfileSelected:
-              ref.read(kitchenQueueProviderFor(screenMode).notifier).setProfile,
+          onProfileSelected: ref
+              .read(kitchenQueueProviderFor(screenMode).notifier)
+              .setProfile,
           selectedScreen: selectedScreen,
           screenMode: screenMode,
           onRemotePairingRequested: () => _showKitchenRemotePairing(

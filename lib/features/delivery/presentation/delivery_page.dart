@@ -24,7 +24,9 @@ import 'package:latlong2/latlong.dart';
 final selectedZoneIdProvider = StateProvider.autoDispose<int?>((ref) => null);
 
 /// Point teste via « Tester une adresse » : affiche un repere sur la carte.
-final coverageTestPointProvider = StateProvider.autoDispose<LatLng?>((ref) => null);
+final coverageTestPointProvider = StateProvider.autoDispose<LatLng?>(
+  (ref) => null,
+);
 
 class DeliveryPage extends ConsumerWidget {
   const DeliveryPage({super.key});
@@ -117,10 +119,8 @@ class DeliveryPage extends ConsumerWidget {
                         itemCount: visible.length,
                         separatorBuilder: (context, index) =>
                             const SizedBox(height: AppSpacing.sm),
-                        itemBuilder: (context, index) => _ZoneCard(
-                          zone: visible[index],
-                          isAdmin: isAdmin,
-                        ),
+                        itemBuilder: (context, index) =>
+                            _ZoneCard(zone: visible[index], isAdmin: isAdmin),
                       );
                 if (Breakpoints.isCompactDesktop(context) ||
                     Breakpoints.isMobile(context)) {
@@ -201,10 +201,8 @@ Future<void> _openEditor(
   if (!context.mounted) return;
   final saved = await Navigator.of(context).push<DeliveryZone>(
     MaterialPageRoute(
-      builder: (context) => DeliveryZoneEditorPage(
-        zone: zone,
-        establishments: establishments,
-      ),
+      builder: (context) =>
+          DeliveryZoneEditorPage(zone: zone, establishments: establishments),
     ),
   );
   if (saved == null) return;
@@ -252,7 +250,9 @@ class _DeliverySwitchCard extends ConsumerWidget {
       if (confirmed != true) return;
     }
     try {
-      await ref.read(deliveryRepositoryProvider).setDeliveryEnabled(
+      await ref
+          .read(deliveryRepositoryProvider)
+          .setDeliveryEnabled(
             enabled: enabled,
             expectedVersion: current.version,
           );
@@ -321,12 +321,12 @@ class _DeliveryStats extends StatelessWidget {
     final averageMin = active.isEmpty
         ? 0.0
         : active.fold<double>(0, (sum, zone) => sum + zone.minOrderAmount) /
-            active.length;
+              active.length;
     final averageEta = active.isEmpty
         ? 0
         : (active.fold<int>(0, (sum, zone) => sum + zone.estimatedMinutes) /
-                active.length)
-            .round();
+                  active.length)
+              .round();
 
     return Wrap(
       spacing: AppSpacing.sm,
@@ -439,7 +439,10 @@ class _ZonesMapPanelState extends ConsumerState<_ZonesMapPanel> {
         if (zone.id == id) _focus(boundsCenter(zone.ring));
       }
     });
-    ref.listen<LatLng?>(coverageTestPointProvider, (_, point) => _focus(point, zoom: 14));
+    ref.listen<LatLng?>(
+      coverageTestPointProvider,
+      (_, point) => _focus(point, zoom: 14),
+    );
 
     final center = deliveryMapCenter(
       establishment: establishments.isEmpty ? null : establishments.first,
@@ -493,7 +496,10 @@ class _ZonesMapPanelState extends ConsumerState<_ZonesMapPanel> {
                   children: [
                     ref.watch(deliveryTileLayerProvider),
                     PolygonLayer(
-                      polygons: zonePolygons(widget.visible, highlightId: selectedId),
+                      polygons: zonePolygons(
+                        widget.visible,
+                        highlightId: selectedId,
+                      ),
                     ),
                     MarkerLayer(
                       markers: [
@@ -533,10 +539,10 @@ class _ZoneCard extends ConsumerWidget {
   final bool isAdmin;
 
   static String _shapeLabel(String kind) => switch (kind) {
-        'circle' => 'Rayon',
-        'isochrone' => 'Temps de trajet',
-        _ => 'Dessin',
-      };
+    'circle' => 'Rayon',
+    'isochrone' => 'Temps de trajet',
+    _ => 'Dessin',
+  };
 
   Future<void> _toggleActive(BuildContext context, WidgetRef ref) async {
     if (zone.isActive) {
@@ -564,10 +570,15 @@ class _ZoneCard extends ConsumerWidget {
       if (confirmed != true) return;
     }
     try {
-      await ref.read(deliveryRepositoryProvider).setZoneActive(zone.id, !zone.isActive);
+      await ref
+          .read(deliveryRepositoryProvider)
+          .setZoneActive(zone.id, !zone.isActive);
       ref.invalidate(deliveryZonesProvider);
       if (context.mounted) {
-        _showSnack(context, zone.isActive ? 'Zone desactivee' : 'Zone reactivee');
+        _showSnack(
+          context,
+          zone.isActive ? 'Zone desactivee' : 'Zone reactivee',
+        );
       }
     } catch (error) {
       if (context.mounted) _showSnack(context, _errorMessage(error));
@@ -609,7 +620,9 @@ class _ZoneCard extends ConsumerWidget {
                     ),
                     StatusBadge(
                       label: zone.isActive ? 'Active' : 'Inactive',
-                      tone: zone.isActive ? StatusTone.success : StatusTone.neutral,
+                      tone: zone.isActive
+                          ? StatusTone.success
+                          : StatusTone.neutral,
                       icon: zone.isActive
                           ? Icons.play_circle_outline
                           : Icons.pause_circle_outline,
@@ -623,11 +636,18 @@ class _ZoneCard extends ConsumerWidget {
                   runSpacing: AppSpacing.xs,
                   children: [
                     _ZoneMetric(label: 'Frais', value: formatMoney(zone.fee)),
-                    _ZoneMetric(label: 'Minimum', value: formatMoney(zone.minOrderAmount)),
-                    _ZoneMetric(label: 'ETA', value: '${zone.estimatedMinutes} min'),
+                    _ZoneMetric(
+                      label: 'Minimum',
+                      value: formatMoney(zone.minOrderAmount),
+                    ),
+                    _ZoneMetric(
+                      label: 'ETA',
+                      value: '${zone.estimatedMinutes} min',
+                    ),
                     _ZoneMetric(
                       label: 'Forme',
-                      value: '${_shapeLabel(zone.shapeKind)}'
+                      value:
+                          '${_shapeLabel(zone.shapeKind)}'
                           '${zone.areaKm2 > 0 ? ' · ${zone.areaKm2.toStringAsFixed(1)} km²' : ''}',
                     ),
                   ],
@@ -663,7 +683,9 @@ class _ZoneCard extends ConsumerWidget {
                   tooltip: zone.isActive ? 'Desactiver' : 'Reactiver',
                   onPressed: () => _toggleActive(context, ref),
                   icon: Icon(
-                    zone.isActive ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                    zone.isActive
+                        ? Icons.pause_circle_outline
+                        : Icons.play_circle_outline,
                   ),
                 ),
               ],
@@ -710,7 +732,8 @@ class _CoverageTestDialog extends ConsumerStatefulWidget {
   const _CoverageTestDialog();
 
   @override
-  ConsumerState<_CoverageTestDialog> createState() => _CoverageTestDialogState();
+  ConsumerState<_CoverageTestDialog> createState() =>
+      _CoverageTestDialogState();
 }
 
 class _CoverageTestDialogState extends ConsumerState<_CoverageTestDialog> {
@@ -754,7 +777,9 @@ class _CoverageTestDialogState extends ConsumerState<_CoverageTestDialog> {
   }
 
   Future<void> _check(AddressSuggestion suggestion) async {
-    final subtotal = double.tryParse(_subtotal.text.trim().replaceAll(',', '.'));
+    final subtotal = double.tryParse(
+      _subtotal.text.trim().replaceAll(',', '.'),
+    );
     setState(() {
       _busy = true;
       _error = null;
@@ -763,7 +788,9 @@ class _CoverageTestDialogState extends ConsumerState<_CoverageTestDialog> {
     });
     ref.read(coverageTestPointProvider.notifier).state = suggestion.point;
     try {
-      final result = await ref.read(deliveryRepositoryProvider).checkAddress(
+      final result = await ref
+          .read(deliveryRepositoryProvider)
+          .checkAddress(
             lat: suggestion.point.latitude,
             lng: suggestion.point.longitude,
             address: suggestion.label,
@@ -815,7 +842,8 @@ class _CoverageTestDialogState extends ConsumerState<_CoverageTestDialog> {
                 controller: _subtotal,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Panier (optionnel, pour calculer les frais reels)',
+                  labelText:
+                      'Panier (optionnel, pour calculer les frais reels)',
                 ),
               ),
               if (_busy)
@@ -837,7 +865,9 @@ class _CoverageTestDialogState extends ConsumerState<_CoverageTestDialog> {
                   child: Text(
                     _error!,
                     key: const ValueKey('coverage-error'),
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               if (outcome != null)

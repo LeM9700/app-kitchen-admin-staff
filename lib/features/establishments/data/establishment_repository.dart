@@ -3,38 +3,41 @@ import 'package:app_admin_staff/core/api/api_endpoints.dart';
 import 'package:app_admin_staff/core/utils/json.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final establishmentRepositoryProvider =
-    Provider<EstablishmentRepository>((ref) {
+final establishmentRepositoryProvider = Provider<EstablishmentRepository>((
+  ref,
+) {
   return EstablishmentRepository(ref.watch(apiClientProvider));
 });
 
 final availableEstablishmentsProvider =
     FutureProvider.autoDispose<List<Establishment>>((ref) {
-  return ref.watch(establishmentRepositoryProvider).listEstablishments();
-});
+      return ref.watch(establishmentRepositoryProvider).listEstablishments();
+    });
 
 final selectedEstablishmentIdProvider = StateProvider<int?>((ref) => null);
 
-final currentEstablishmentProvider =
-    FutureProvider.autoDispose<Establishment?>((ref) async {
-  final establishments =
-      await ref.watch(availableEstablishmentsProvider.future);
-  if (establishments.isEmpty) {
-    return null;
-  }
-
-  final selectedId = ref.watch(selectedEstablishmentIdProvider);
-  if (selectedId == null) {
-    return establishments.first;
-  }
-
-  for (final establishment in establishments) {
-    if (establishment.id == selectedId) {
-      return establishment;
+final currentEstablishmentProvider = FutureProvider.autoDispose<Establishment?>(
+  (ref) async {
+    final establishments = await ref.watch(
+      availableEstablishmentsProvider.future,
+    );
+    if (establishments.isEmpty) {
+      return null;
     }
-  }
-  return establishments.first;
-});
+
+    final selectedId = ref.watch(selectedEstablishmentIdProvider);
+    if (selectedId == null) {
+      return establishments.first;
+    }
+
+    for (final establishment in establishments) {
+      if (establishment.id == selectedId) {
+        return establishment;
+      }
+    }
+    return establishments.first;
+  },
+);
 
 class EstablishmentRepository {
   const EstablishmentRepository(this._apiClient);

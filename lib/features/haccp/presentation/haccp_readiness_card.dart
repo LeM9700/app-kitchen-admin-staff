@@ -11,7 +11,8 @@ class HaccpReadinessCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final permissions = ref.watch(currentPermissionSetProvider);
-    if (!permissions.can(AppPermission.haccpRead)) return const SizedBox.shrink();
+    if (!permissions.can(AppPermission.haccpRead))
+      return const SizedBox.shrink();
     final establishment = ref.watch(currentEstablishmentProvider);
     return establishment.when(
       loading: () => const _HaccpCardShell(child: LinearProgressIndicator()),
@@ -20,17 +21,21 @@ class HaccpReadinessCard extends ConsumerWidget {
       ),
       data: (site) {
         if (site == null) {
-          return const _HaccpCardShell(child: Text('Aucun établissement sélectionné.'));
+          return const _HaccpCardShell(
+            child: Text('Aucun établissement sélectionné.'),
+          );
         }
         final status = ref.watch(haccpStrictStatusProvider(site.id));
         return status.when(
-          loading: () => const _HaccpCardShell(child: LinearProgressIndicator()),
+          loading: () =>
+              const _HaccpCardShell(child: LinearProgressIndicator()),
           error: (_, __) => _HaccpCardShell(
             child: Row(
               children: [
                 const Expanded(child: Text('Statut HACCP indisponible.')),
                 TextButton(
-                  onPressed: () => ref.invalidate(haccpStrictStatusProvider(site.id)),
+                  onPressed: () =>
+                      ref.invalidate(haccpStrictStatusProvider(site.id)),
                   child: const Text('Réessayer'),
                 ),
               ],
@@ -40,7 +45,9 @@ class HaccpReadinessCard extends ConsumerWidget {
             child: Row(
               children: [
                 Icon(
-                  value.satisfied ? Icons.verified_outlined : Icons.warning_amber_rounded,
+                  value.satisfied
+                      ? Icons.verified_outlined
+                      : Icons.warning_amber_rounded,
                   color: value.satisfied ? Colors.green : Colors.orange,
                 ),
                 const SizedBox(width: 12),
@@ -48,7 +55,10 @@ class HaccpReadinessCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('HACCP — ${site.name}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(
+                        'HACCP — ${site.name}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         value.satisfied
@@ -60,7 +70,9 @@ class HaccpReadinessCard extends ConsumerWidget {
                 ),
                 FilledButton(
                   onPressed: () => context.push('/haccp'),
-                  child: Text(value.satisfied ? 'Consulter' : 'Préparer l’ouverture'),
+                  child: Text(
+                    value.satisfied ? 'Consulter' : 'Préparer l’ouverture',
+                  ),
                 ),
               ],
             ),

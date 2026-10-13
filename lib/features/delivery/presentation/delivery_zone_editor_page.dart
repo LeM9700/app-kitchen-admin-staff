@@ -95,10 +95,14 @@ class _DeliveryZoneEditorPageState
     _isActive = zone?.isActive ?? true;
     _rules = [...?zone?.rules];
 
-    final activeEstablishments =
-        widget.establishments.where((e) => e.isActive).toList();
-    _establishmentId = zone?.establishmentId ??
-        (activeEstablishments.isNotEmpty ? activeEstablishments.first.id : null);
+    final activeEstablishments = widget.establishments
+        .where((e) => e.isActive)
+        .toList();
+    _establishmentId =
+        zone?.establishmentId ??
+        (activeEstablishments.isNotEmpty
+            ? activeEstablishments.first.id
+            : null);
 
     if (zone != null) {
       final shape = ZoneShape.fromZone(zone);
@@ -106,11 +110,17 @@ class _DeliveryZoneEditorPageState
         case CircleZoneShape():
           _mode = ZoneEditMode.circle;
           _center = shape.center;
-          _radiusKm = (shape.radiusMeters / 1000).clamp(_minRadiusKm, _maxRadiusKm);
+          _radiusKm = (shape.radiusMeters / 1000).clamp(
+            _minRadiusKm,
+            _maxRadiusKm,
+          );
         case IsochroneZoneShape():
           _mode = ZoneEditMode.isochrone;
           _center = shape.center;
-          _isoMinutes = shape.minutes.toDouble().clamp(_minIsoMinutes, _maxIsoMinutes);
+          _isoMinutes = shape.minutes.toDouble().clamp(
+            _minIsoMinutes,
+            _maxIsoMinutes,
+          );
         case PolygonZoneShape():
           _mode = ZoneEditMode.draw;
           _drawn = [...shape.points];
@@ -134,8 +144,9 @@ class _DeliveryZoneEditorPageState
     super.dispose();
   }
 
-  static String _plain(double value) =>
-      value == value.roundToDouble() ? value.toInt().toString() : value.toString();
+  static String _plain(double value) => value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toString();
 
   LatLng get _initialCenter {
     final zones = ref.read(deliveryZonesProvider).valueOrNull ?? const [];
@@ -157,8 +168,9 @@ class _DeliveryZoneEditorPageState
     });
   }
 
-  String _errorText(Object error) =>
-      error is AppException ? error.message : 'Operation impossible, reessayez.';
+  String _errorText(Object error) => error is AppException
+      ? error.message
+      : 'Operation impossible, reessayez.';
 
   // ------------------------------------------------------------------ interactions carte
 
@@ -226,10 +238,14 @@ class _DeliveryZoneEditorPageState
         return _drawn.length >= 3 ? PolygonZoneShape(_drawn) : null;
       case ZoneEditMode.circle:
         final center = _center;
-        return center == null ? null : CircleZoneShape(center, _radiusKm * 1000);
+        return center == null
+            ? null
+            : CircleZoneShape(center, _radiusKm * 1000);
       case ZoneEditMode.isochrone:
         final center = _center;
-        return center == null ? null : IsochroneZoneShape(center, _isoMinutes.round());
+        return center == null
+            ? null
+            : IsochroneZoneShape(center, _isoMinutes.round());
     }
   }
 
@@ -241,7 +257,9 @@ class _DeliveryZoneEditorPageState
       _message = null;
     });
     try {
-      final preview = await ref.read(deliveryRepositoryProvider).previewShape(shape);
+      final preview = await ref
+          .read(deliveryRepositoryProvider)
+          .previewShape(shape);
       if (!mounted) return;
       setState(() {
         _preview = preview.points;
@@ -264,7 +282,9 @@ class _DeliveryZoneEditorPageState
     final point = _center ?? (_drawn.isNotEmpty ? _drawn.first : null);
     if (id == null || point == null) return;
     try {
-      await ref.read(deliveryRepositoryProvider).setEstablishmentLocation(id, point);
+      await ref
+          .read(deliveryRepositoryProvider)
+          .setEstablishmentLocation(id, point);
       ref.invalidate(availableEstablishmentsProvider);
       if (!mounted) return;
       _setMessage('Position du restaurant enregistree');
@@ -365,7 +385,11 @@ class _DeliveryZoneEditorPageState
         else if (_mode == ZoneEditMode.draw && polygon.length == 2)
           PolylineLayer(
             polylines: [
-              Polyline(points: polygon, color: AppColors.accent, strokeWidth: 3),
+              Polyline(
+                points: polygon,
+                color: AppColors.accent,
+                strokeWidth: 3,
+              ),
             ],
           ),
         MarkerLayer(
@@ -376,7 +400,11 @@ class _DeliveryZoneEditorPageState
                 point: _center!,
                 width: 36,
                 height: 36,
-                child: const Icon(Icons.my_location, color: AppColors.accent, size: 30),
+                child: const Icon(
+                  Icons.my_location,
+                  color: AppColors.accent,
+                  size: 30,
+                ),
               ),
             if (_mode == ZoneEditMode.draw)
               for (var i = 0; i < _drawn.length; i++)
@@ -396,7 +424,10 @@ class _DeliveryZoneEditorPageState
                       alignment: Alignment.center,
                       child: Text(
                         '${i + 1}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
@@ -408,7 +439,9 @@ class _DeliveryZoneEditorPageState
   }
 
   Widget _buildForm(BuildContext context) {
-    final establishments = widget.establishments.where((e) => e.isActive).toList();
+    final establishments = widget.establishments
+        .where((e) => e.isActive)
+        .toList();
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
@@ -423,7 +456,9 @@ class _DeliveryZoneEditorPageState
             key: const ValueKey('zone-establishment'),
             initialValue: _establishmentId,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Etablissement qui livre'),
+            decoration: const InputDecoration(
+              labelText: 'Etablissement qui livre',
+            ),
             items: [
               for (final e in establishments)
                 DropdownMenuItem(value: e.id, child: Text(e.name)),
@@ -438,7 +473,9 @@ class _DeliveryZoneEditorPageState
                 key: const ValueKey('zone-fee-field'),
                 controller: _fee,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Frais de livraison'),
+                decoration: const InputDecoration(
+                  labelText: 'Frais de livraison',
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -447,7 +484,9 @@ class _DeliveryZoneEditorPageState
                 key: const ValueKey('zone-min-field'),
                 controller: _minOrder,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Minimum de commande'),
+                decoration: const InputDecoration(
+                  labelText: 'Minimum de commande',
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -456,7 +495,9 @@ class _DeliveryZoneEditorPageState
                 key: const ValueKey('zone-minutes-field'),
                 controller: _minutes,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Minutes estimees'),
+                decoration: const InputDecoration(
+                  labelText: 'Minutes estimees',
+                ),
               ),
             ),
           ],
@@ -465,7 +506,9 @@ class _DeliveryZoneEditorPageState
           key: const ValueKey('zone-active-switch'),
           contentPadding: EdgeInsets.zero,
           title: const Text('Zone active'),
-          subtitle: const Text('Une zone inactive n\'est plus proposee aux clients.'),
+          subtitle: const Text(
+            'Une zone inactive n\'est plus proposee aux clients.',
+          ),
           value: _isActive,
           onChanged: (value) => setState(() => _isActive = value),
         ),
@@ -558,13 +601,17 @@ class _DeliveryZoneEditorPageState
                 key: const ValueKey('zone-undo-point'),
                 onPressed: _drawn.isEmpty
                     ? null
-                    : () => setState(() => _drawn = _drawn.sublist(0, _drawn.length - 1)),
+                    : () => setState(
+                        () => _drawn = _drawn.sublist(0, _drawn.length - 1),
+                      ),
                 icon: const Icon(Icons.undo),
                 label: const Text('Annuler le dernier point'),
               ),
               TextButton.icon(
                 key: const ValueKey('zone-clear-points'),
-                onPressed: _drawn.isEmpty ? null : () => setState(() => _drawn = const []),
+                onPressed: _drawn.isEmpty
+                    ? null
+                    : () => setState(() => _drawn = const []),
                 icon: const Icon(Icons.delete_sweep_outlined),
                 label: const Text('Effacer'),
               ),
@@ -615,22 +662,29 @@ class _DeliveryZoneEditorPageState
 
   @override
   Widget build(BuildContext context) {
-    final otherZones = (ref.watch(deliveryZonesProvider).valueOrNull ?? const [])
-        .where((z) => z.id != widget.zone?.id)
-        .toList();
+    final otherZones =
+        (ref.watch(deliveryZonesProvider).valueOrNull ?? const [])
+            .where((z) => z.id != widget.zone?.id)
+            .toList();
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final map = Stack(
       children: [
         _buildMap(otherZones),
         if (_busy)
-          const Positioned(top: 8, right: 8, child: CircularProgressIndicator()),
+          const Positioned(
+            top: 8,
+            right: 8,
+            child: CircularProgressIndicator(),
+          ),
         if (_establishmentPoint == null && _establishmentId != null)
           Positioned(
             left: 8,
             right: 8,
             top: 8,
             child: Material(
-              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+              color: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(8),
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.sm),
@@ -658,7 +712,11 @@ class _DeliveryZoneEditorPageState
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(_editing ? 'Modifier ${widget.zone!.name}' : 'Nouvelle zone')),
+      appBar: AppBar(
+        title: Text(
+          _editing ? 'Modifier ${widget.zone!.name}' : 'Nouvelle zone',
+        ),
+      ),
       body: wide
           ? Row(
               children: [

@@ -73,7 +73,9 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _run(Future<void> Function() action, {String? success}) async {
@@ -121,14 +123,18 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
     final reason = await showDeliverWithoutCodeDialog(context, orderId);
     if (reason == null || !mounted) return;
     await _run(
-      () => ref.read(dispatchRepositoryProvider).deliverWithoutCode(orderId, reason),
+      () => ref
+          .read(dispatchRepositoryProvider)
+          .deliverWithoutCode(orderId, reason),
       success: 'Commande #$orderId livree (sans code, motif enregistre)',
     );
   }
 
   Future<void> _toggleDispatch(DeliverySettings current, bool enabled) async {
     await _run(() async {
-      await ref.read(deliveryRepositoryProvider).setDriverDispatch(
+      await ref
+          .read(deliveryRepositoryProvider)
+          .setDriverDispatch(
             enabled: enabled,
             internalEnabled: current.internalEnabled,
             expectedVersion: current.version,
@@ -138,8 +144,7 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
   }
 
   Future<void> _addDriver() async {
-    final establishment =
-        await ref.read(currentEstablishmentProvider.future);
+    final establishment = await ref.read(currentEstablishmentProvider.future);
     if (establishment == null) {
       _snack('Aucun etablissement actif.');
       return;
@@ -162,8 +167,9 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
     final board = ref.watch(dispatchBoardProvider);
     final settings = ref.watch(deliverySettingsProvider).valueOrNull;
     final isAdmin = ref.watch(currentPermissionSetProvider).hasRole('admin');
-    final canAssign =
-        ref.watch(currentPermissionSetProvider).can(AppPermission.ordersWrite);
+    final canAssign = ref
+        .watch(currentPermissionSetProvider)
+        .can(AppPermission.ordersWrite);
 
     return board.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -202,8 +208,8 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                   Text(
                     'Dispatch livraison',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   if (settings != null)
@@ -264,7 +270,9 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                       ),
                     ),
                   const SizedBox(height: AppSpacing.md),
-                  _SectionHeader(title: 'A attribuer (${data.unassigned.length})'),
+                  _SectionHeader(
+                    title: 'A attribuer (${data.unassigned.length})',
+                  ),
                   if (data.unassigned.isEmpty)
                     const _EmptyHint('Aucune livraison en attente de livreur.'),
                   for (final order in data.unassigned)
@@ -288,16 +296,15 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                     _DeliveryTile(
                       delivery: delivery,
                       enabled: canAssign && !_busy,
-                      onReassign: () => _assign(
-                        data.drivers,
-                        [delivery.order.orderId],
-                        excludeDriverId: delivery.driverId,
-                      ),
+                      onReassign: () => _assign(data.drivers, [
+                        delivery.order.orderId,
+                      ], excludeDriverId: delivery.driverId),
                       onUnassign: () => _run(
                         () => ref
                             .read(dispatchRepositoryProvider)
                             .unassign(delivery.order.orderId),
-                        success: 'Livreur retire de la commande #${delivery.order.orderId}',
+                        success:
+                            'Livreur retire de la commande #${delivery.order.orderId}',
                       ),
                       onDeliverWithoutCode: isAdmin && !delivery.canReassign
                           ? () => _deliverWithoutCode(delivery.order.orderId)
@@ -344,17 +351,21 @@ Future<DriverSummary?> showDriverPicker(
     showDragHandle: true,
     builder: (context) => SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          0,
+          AppSpacing.md,
+          AppSpacing.md,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: AppSpacing.sm),
             if (candidates.isEmpty) const Text('Aucun livreur disponible.'),
@@ -399,10 +410,9 @@ class _SectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
           ),
           if (trailing != null) trailing!,
@@ -423,10 +433,9 @@ class _EmptyHint extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Text(
         text,
-        style: Theme.of(context)
-            .textTheme
-            .bodyMedium
-            ?.copyWith(color: AppColors.textSecondary),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
       ),
     );
   }
@@ -458,10 +467,9 @@ class _DriverCard extends StatelessWidget {
                 children: [
                   Text(
                     driver.label,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Wrap(
@@ -494,12 +502,13 @@ class _DriverCard extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        [driver.vehicle, driver.phone]
-                            .whereType<String>()
-                            .join(' - '),
+                        [
+                          driver.vehicle,
+                          driver.phone,
+                        ].whereType<String>().join(' - '),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                 ],
@@ -565,10 +574,9 @@ class _OrderSummary extends StatelessWidget {
           children: [
             Text(
               'Commande #${order.orderId}',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(width: 8),
             Text(humanStatus(order.status)),
@@ -584,10 +592,9 @@ class _OrderSummary extends StatelessWidget {
             order.deliveryAddress!,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppColors.textSecondary),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
           ),
         if (order.dueOnDelivery)
           const Padding(
@@ -622,11 +629,11 @@ class _DeliveryTile extends StatelessWidget {
   final VoidCallback? onDeliverWithoutCode;
 
   static String _statusLabel(String status) => switch (status) {
-        'assigned' => 'Attribuee',
-        'out_for_delivery' => 'En route',
-        'arrived' => 'Arrive chez le client',
-        _ => status,
-      };
+    'assigned' => 'Attribuee',
+    'out_for_delivery' => 'En route',
+    'arrived' => 'Arrive chez le client',
+    _ => status,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -703,7 +710,9 @@ class _NewDriverDialogState extends ConsumerState<_NewDriverDialog> {
   }
 
   bool get _valid =>
-      _name.text.trim().isNotEmpty && _email.text.contains('@') && _email.text.contains('.');
+      _name.text.trim().isNotEmpty &&
+      _email.text.contains('@') &&
+      _email.text.contains('.');
 
   Future<void> _submit() async {
     if (!_valid || _submitting) return;
@@ -712,7 +721,9 @@ class _NewDriverDialogState extends ConsumerState<_NewDriverDialog> {
       _error = null;
     });
     try {
-      final created = await ref.read(dispatchRepositoryProvider).createDriver(
+      final created = await ref
+          .read(dispatchRepositoryProvider)
+          .createDriver(
             email: _email.text,
             fullName: _name.text,
             establishmentId: widget.establishmentId,
@@ -751,26 +762,34 @@ class _NewDriverDialogState extends ConsumerState<_NewDriverDialog> {
                 controller: _email,
                 enabled: !_submitting,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email (identifiant)'),
+                decoration: const InputDecoration(
+                  labelText: 'Email (identifiant)',
+                ),
                 onChanged: (_) => setState(() {}),
               ),
               TextField(
                 controller: _phone,
                 enabled: !_submitting,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Telephone (optionnel)'),
+                decoration: const InputDecoration(
+                  labelText: 'Telephone (optionnel)',
+                ),
               ),
               TextField(
                 controller: _vehicle,
                 enabled: !_submitting,
-                decoration: const InputDecoration(labelText: 'Vehicule (optionnel)'),
+                decoration: const InputDecoration(
+                  labelText: 'Vehicule (optionnel)',
+                ),
               ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
             ],

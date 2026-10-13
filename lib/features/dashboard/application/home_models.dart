@@ -93,8 +93,9 @@ List<HomeAlert> buildHomeAlerts({
     );
   }
 
-  final pendingOrders =
-      orders.where((order) => order.status == 'pending').length;
+  final pendingOrders = orders
+      .where((order) => order.status == 'pending')
+      .length;
   if (pendingOrders >= 6) {
     alerts.add(
       HomeAlert(
@@ -125,21 +126,25 @@ List<HomeAlert> buildHomeAlerts({
 
   if (dlcOverview != null) {
     final critical = dlcOverview.criticalCount;
-    final near = dlcOverview.counters.primaryNearCount +
+    final near =
+        dlcOverview.counters.primaryNearCount +
         dlcOverview.counters.secondaryNearCount +
         dlcOverview.counters.tertiaryNearCount;
     if (critical > 0 || near > 0) {
       alerts.add(
         HomeAlert(
           type: 'Securite alimentaire',
-          title: critical > 0 ? '$critical DLC critique(s)' : '$near DLC proche(s)',
+          title: critical > 0
+              ? '$critical DLC critique(s)'
+              : '$near DLC proche(s)',
           body: critical > 0
               ? 'Lots expires, a regulariser ou controles non conformes.'
               : 'Dates limites a surveiller avant le service.',
           route: '/stock',
           icon: Icons.health_and_safety_outlined,
-          severity:
-              critical > 0 ? HomeAlertSeverity.critical : HomeAlertSeverity.watch,
+          severity: critical > 0
+              ? HomeAlertSeverity.critical
+              : HomeAlertSeverity.watch,
           establishmentLabel: establishmentLabel,
         ),
       );
@@ -176,9 +181,9 @@ List<HomeAlert> buildHomeAlerts({
   }
 
   alerts.sort((a, b) {
-    final severity = _severityWeight(b.severity).compareTo(
-      _severityWeight(a.severity),
-    );
+    final severity = _severityWeight(
+      b.severity,
+    ).compareTo(_severityWeight(a.severity));
     if (severity != 0) {
       return severity;
     }
@@ -190,8 +195,13 @@ List<HomeAlert> buildHomeAlerts({
 int _lateMinutes(OrderSummary order, DateTime now) {
   final createdAt = order.createdAt;
   if (createdAt == null ||
-      {'ready', 'delivered', 'cancelled', 'delivery_failed', 'rejected'}
-          .contains(order.status)) {
+      {
+        'ready',
+        'delivered',
+        'cancelled',
+        'delivery_failed',
+        'rejected',
+      }.contains(order.status)) {
     return 0;
   }
   return now.difference(createdAt.toLocal()).inMinutes;

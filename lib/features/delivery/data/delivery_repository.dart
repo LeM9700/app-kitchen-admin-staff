@@ -9,13 +9,15 @@ final deliveryRepositoryProvider = Provider<DeliveryRepository>((ref) {
 });
 
 /// Toutes les zones (actives ou non) avec contour et regles : lecture reservee au personnel.
-final deliveryZonesProvider =
-    FutureProvider.autoDispose<List<DeliveryZone>>((ref) {
+final deliveryZonesProvider = FutureProvider.autoDispose<List<DeliveryZone>>((
+  ref,
+) {
   return ref.watch(deliveryRepositoryProvider).listZones();
 });
 
-final deliverySettingsProvider =
-    FutureProvider.autoDispose<DeliverySettings>((ref) {
+final deliverySettingsProvider = FutureProvider.autoDispose<DeliverySettings>((
+  ref,
+) {
   return ref.watch(deliveryRepositoryProvider).getSettings();
 });
 
@@ -23,8 +25,8 @@ enum DeliveryZoneStatusFilter { all, active, inactive }
 
 final deliveryZoneStatusFilterProvider =
     StateProvider<DeliveryZoneStatusFilter>((ref) {
-  return DeliveryZoneStatusFilter.all;
-});
+      return DeliveryZoneStatusFilter.all;
+    });
 
 class DeliveryRepository {
   const DeliveryRepository(this._apiClient);
@@ -93,10 +95,7 @@ class DeliveryRepository {
     return DeliveryCheckResult.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<List<AddressSuggestion>> geocode(
-    String query, {
-    LatLng? near,
-  }) async {
+  Future<List<AddressSuggestion>> geocode(String query, {LatLng? near}) async {
     final response = await _apiClient.get(
       ApiEndpoints.deliveryGeocode,
       queryParameters: {
@@ -131,10 +130,7 @@ class DeliveryRepository {
   }) async {
     final response = await _apiClient.put(
       ApiEndpoints.deliverySettings,
-      data: {
-        'internal_enabled': enabled,
-        'expected_version': expectedVersion,
-      },
+      data: {'internal_enabled': enabled, 'expected_version': expectedVersion},
     );
     return DeliverySettings.fromJson(response.data as Map<String, dynamic>);
   }
@@ -233,8 +229,14 @@ class DeliverySettings {
       internalEnabled: readBool(json['internal_enabled'], fallback: true),
       driverDispatchEnabled: readBool(json['driver_dispatch_enabled']),
       deliveryProofRequired: readBool(json['delivery_proof_required']),
-      failureMinWaitMinutes: readInt(json['failure_min_wait_minutes'], fallback: 5),
-      failureMinCallAttempts: readInt(json['failure_min_call_attempts'], fallback: 1),
+      failureMinWaitMinutes: readInt(
+        json['failure_min_wait_minutes'],
+        fallback: 5,
+      ),
+      failureMinCallAttempts: readInt(
+        json['failure_min_call_attempts'],
+        fallback: 1,
+      ),
       version: readInt(json['version']),
     );
   }
@@ -323,8 +325,9 @@ class DeliveryZoneRule {
       label: json['label']?.toString() ?? '',
       kind: json['kind']?.toString() ?? kindFree,
       fee: json['fee'] == null ? null : readDouble(json['fee']),
-      minSubtotal:
-          json['min_subtotal'] == null ? null : readDouble(json['min_subtotal']),
+      minSubtotal: json['min_subtotal'] == null
+          ? null
+          : readDouble(json['min_subtotal']),
       daysOfWeek: (json['days_of_week'] as List? ?? const [])
           .map(readInt)
           .toList(),
@@ -479,10 +482,7 @@ class IsochroneZoneShape extends ZoneShape {
 }
 
 class ZonePreview {
-  const ZonePreview({
-    required this.points,
-    required this.areaKm2,
-  });
+  const ZonePreview({required this.points, required this.areaKm2});
 
   final List<LatLng> points;
   final double areaKm2;
@@ -501,8 +501,13 @@ List<LatLng> _ringFromPolygon(Object? polygon) {
   if (rings is! List || rings.isEmpty || rings.first is! List) return const [];
   final ring = <LatLng>[];
   for (final point in rings.first as List) {
-    if (point is List && point.length >= 2 && point[0] is num && point[1] is num) {
-      ring.add(LatLng((point[1] as num).toDouble(), (point[0] as num).toDouble()));
+    if (point is List &&
+        point.length >= 2 &&
+        point[0] is num &&
+        point[1] is num) {
+      ring.add(
+        LatLng((point[1] as num).toDouble(), (point[0] as num).toDouble()),
+      );
     }
   }
   // Retire le point de fermeture : l'affichage et l'edition travaillent sur les sommets.
@@ -663,10 +668,7 @@ class DeliveryCheckResult {
 }
 
 class AddressSuggestion {
-  const AddressSuggestion({
-    required this.label,
-    required this.point,
-  });
+  const AddressSuggestion({required this.label, required this.point});
 
   final String label;
   final LatLng point;
@@ -680,6 +682,9 @@ class AddressSuggestion {
       return null;
     }
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-    return AddressSuggestion(label: label, point: LatLng(lat.toDouble(), lng.toDouble()));
+    return AddressSuggestion(
+      label: label,
+      point: LatLng(lat.toDouble(), lng.toDouble()),
+    );
   }
 }

@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class OperationalFullscreenButton extends ConsumerWidget {
-  const OperationalFullscreenButton({
-    this.style,
-    super.key,
-  });
+  const OperationalFullscreenButton({this.style, super.key});
 
   final ButtonStyle? style;
 
@@ -20,9 +17,7 @@ class OperationalFullscreenButton extends ConsumerWidget {
         ref.read(operationalFullscreenProvider.notifier).state = !fullscreen;
       },
       icon: Icon(
-        fullscreen
-            ? Icons.fullscreen_exit_outlined
-            : Icons.fullscreen_outlined,
+        fullscreen ? Icons.fullscreen_exit_outlined : Icons.fullscreen_outlined,
       ),
     );
   }

@@ -41,7 +41,7 @@ class StaffAdminApp extends ConsumerWidget {
 
   void _applySystemUi(bool immersive) {
     if (immersive) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       return;
     }
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

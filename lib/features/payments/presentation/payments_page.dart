@@ -50,8 +50,9 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
         ? ref.watch(terminalReadersProvider)
         : const AsyncValue<List<TerminalReader>>.data([]);
     final connect = canRefund ? ref.watch(connectStatusProvider) : null;
-    final horizontalPadding =
-        AppBreakpoints.isMobile(context) ? AppSpacing.md : AppSpacing.xxl;
+    final horizontalPadding = AppBreakpoints.isMobile(context)
+        ? AppSpacing.md
+        : AppSpacing.xxl;
 
     return RefreshIndicator(
       onRefresh: () => _refresh(ref),
@@ -168,8 +169,9 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
   ) async {
     late final PaymentDetail detail;
     try {
-      detail =
-          await ref.read(paymentsRepositoryProvider).detail(payment.orderId);
+      detail = await ref
+          .read(paymentsRepositoryProvider)
+          .detail(payment.orderId);
     } catch (error) {
       if (context.mounted) {
         _snack(context, 'Impossible de charger le paiement');
@@ -192,7 +194,9 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
     }
 
     try {
-      await ref.read(paymentsRepositoryProvider).refund(
+      await ref
+          .read(paymentsRepositoryProvider)
+          .refund(
             orderId: payment.orderId,
             amountCents: draft.amountCents,
             reason: draft.reason,
@@ -215,8 +219,9 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
     PaymentListItem payment,
   ) async {
     try {
-      final detail =
-          await ref.read(paymentsRepositoryProvider).detail(payment.orderId);
+      final detail = await ref
+          .read(paymentsRepositoryProvider)
+          .detail(payment.orderId);
       if (!context.mounted) {
         return;
       }
@@ -229,7 +234,7 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
           detail: detail,
           canRefund:
               {'paid', 'partially_refunded'}.contains(detail.payment.status) &&
-                  detail.remainingRefundableCents > 0,
+              detail.remainingRefundableCents > 0,
           onRefund: () {
             Navigator.pop(context);
             _refund(context, ref, payment);
@@ -293,8 +298,9 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
   }
 
   void _snack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -326,16 +332,16 @@ class _PaymentsHeader extends StatelessWidget {
               Text(
                 'Paiements',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0,
-                    ),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Suivi des encaissements et remboursements',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -476,9 +482,9 @@ class _PaymentMetricCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
@@ -490,10 +496,10 @@ class _PaymentMetricCard extends StatelessWidget {
               child: Text(
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0,
-                    ),
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -501,9 +507,9 @@ class _PaymentMetricCard extends StatelessWidget {
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -682,9 +688,9 @@ class _LedgerTitle extends StatelessWidget {
           Expanded(
             child: Text(
               'Transactions',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
           ),
         ],
@@ -810,9 +816,9 @@ class _PaymentsTableRow extends StatelessWidget {
                 _reference(payment),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
               ),
             ),
             SizedBox(
@@ -882,16 +888,14 @@ class _PaymentCard extends StatelessWidget {
                     Text(
                       'Commande #${payment.orderId}',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       formatMoney(payment.amount),
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w900,
-                              ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                   ],
                 ),
@@ -907,9 +911,9 @@ class _PaymentCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             '${formatDateTime(payment.createdAt)}  -  Rembourse ${formatCents(payment.refundedAmountCents)}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -955,9 +959,9 @@ class _PaymentTableLabel extends StatelessWidget {
       textAlign: alignRight ? TextAlign.right : TextAlign.left,
       overflow: TextOverflow.ellipsis,
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w900,
-          ),
+        color: AppColors.textSecondary,
+        fontWeight: FontWeight.w900,
+      ),
     );
     if (width != null) {
       return SizedBox(width: width, child: text);
@@ -990,9 +994,8 @@ class _PaymentsInfrastructure extends StatelessWidget {
         if (canRefund) ...[
           connect?.when(
                 data: (value) => _ConnectPanel(status: value),
-                loading: () => const _InfrastructureSkeleton(
-                  title: 'Compte Stripe',
-                ),
+                loading: () =>
+                    const _InfrastructureSkeleton(title: 'Compte Stripe'),
                 error: (error, stackTrace) => _LoadErrorCard(
                   title: 'Impossible de charger le compte Stripe',
                   message: _friendlyError(error),
@@ -1004,9 +1007,8 @@ class _PaymentsInfrastructure extends StatelessWidget {
         if (canUseTerminal)
           readers.when(
             data: (items) => _TerminalPanel(readers: items),
-            loading: () => const _InfrastructureSkeleton(
-              title: 'Terminal de paiement',
-            ),
+            loading: () =>
+                const _InfrastructureSkeleton(title: 'Terminal de paiement'),
             error: (error, stackTrace) => _LoadErrorCard(
               title: 'Impossible de recuperer les lecteurs TPE',
               message: _friendlyError(error),
@@ -1024,11 +1026,13 @@ class _ConnectPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final operational = status.onboardingComplete &&
+    final operational =
+        status.onboardingComplete &&
         status.chargesEnabled &&
         status.payoutsEnabled;
-    final title =
-        operational ? 'Compte Stripe operationnel' : 'Onboarding requis';
+    final title = operational
+        ? 'Compte Stripe operationnel'
+        : 'Onboarding requis';
     final tone = operational ? StatusTone.success : StatusTone.warning;
     return DsCard(
       intensity: NeumorphicIntensity.subtle,
@@ -1042,8 +1046,9 @@ class _ConnectPanel extends ConsumerWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color:
-                      operational ? AppColors.successBg : AppColors.warningBg,
+                  color: operational
+                      ? AppColors.successBg
+                      : AppColors.warningBg,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: Icon(
@@ -1061,16 +1066,16 @@ class _ConnectPanel extends ConsumerWidget {
                     Text(
                       'Compte Stripe',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ],
                 ),
@@ -1114,18 +1119,19 @@ class _ConnectPanel extends ConsumerWidget {
       callbacks = StripeConnectCallbackConfig.fromEnvironment().validated();
     } on StateError catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
       return;
     }
 
-    final response =
-        await ref.read(paymentsRepositoryProvider).startConnectOnboarding(
-              returnUrl: callbacks.returnUrl,
-              refreshUrl: callbacks.refreshUrl,
-            );
+    final response = await ref
+        .read(paymentsRepositoryProvider)
+        .startConnectOnboarding(
+          returnUrl: callbacks.returnUrl,
+          refreshUrl: callbacks.refreshUrl,
+        );
     if (!context.mounted) {
       return;
     }
@@ -1134,8 +1140,9 @@ class _ConnectPanel extends ConsumerWidget {
   }
 
   Future<void> _openDashboard(BuildContext context, WidgetRef ref) async {
-    final url =
-        await ref.read(paymentsRepositoryProvider).connectDashboardUrl();
+    final url = await ref
+        .read(paymentsRepositoryProvider)
+        .connectDashboardUrl();
     if (!context.mounted) {
       return;
     }
@@ -1177,8 +1184,8 @@ class _ConnectChecks extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -1263,8 +1270,8 @@ class _TerminalPanelState extends ConsumerState<_TerminalPanel> {
                 child: Text(
                   'Terminal de paiement',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -1345,7 +1352,9 @@ class _TerminalPanelState extends ConsumerState<_TerminalPanel> {
         _readerId ?? (widget.readers.isEmpty ? null : widget.readers.first.id);
     setState(() => _processing = true);
     try {
-      await ref.read(paymentsRepositoryProvider).createTerminalIntent(
+      await ref
+          .read(paymentsRepositoryProvider)
+          .createTerminalIntent(
             orderId: orderId,
             readerId: readerId,
             processOnReader: readerId != null,
@@ -1368,8 +1377,9 @@ class _TerminalPanelState extends ConsumerState<_TerminalPanel> {
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -1397,8 +1407,8 @@ class _TerminalReaderTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -1447,10 +1457,8 @@ class _PaymentDetailSheet extends StatelessWidget {
                     children: [
                       Text(
                         'Paiement #${detail.orderId}',
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       _PaymentStatusBadge(status: detail.payment.status),
@@ -1460,8 +1468,8 @@ class _PaymentDetailSheet extends StatelessWidget {
                 Text(
                   formatCents(detail.paidAmountCents),
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
@@ -1490,7 +1498,10 @@ class _PaymentDetailSheet extends StatelessWidget {
               children: [
                 _DetailLine(
                   label: 'Moyen',
-                  value: _providerLabel(detail.payment.provider, purpose: detail.payment.purpose),
+                  value: _providerLabel(
+                    detail.payment.provider,
+                    purpose: detail.payment.purpose,
+                  ),
                 ),
                 _DetailLine(
                   label: 'Statut',
@@ -1582,16 +1593,16 @@ class _RefundSheetState extends State<_RefundSheet> {
         children: [
           Text(
             'Remboursement #${detail.orderId}',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Vous allez creer une operation financiere serveur.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.lg),
           Wrap(
@@ -1699,8 +1710,9 @@ class _RefundSheetState extends State<_RefundSheet> {
     }
 
     if (_mode == _RefundMode.partial) {
-      final amount =
-          double.tryParse(_amountController.text.trim().replaceAll(',', '.'));
+      final amount = double.tryParse(
+        _amountController.text.trim().replaceAll(',', '.'),
+      );
       amountCents = amount == null ? null : (amount * 100).round();
       if (amountCents == null || amountCents <= 0) {
         setState(() => _amountError = 'Montant invalide');
@@ -1714,10 +1726,7 @@ class _RefundSheetState extends State<_RefundSheet> {
 
     Navigator.pop(
       context,
-      _RefundDraft(
-        amountCents: amountCents,
-        reason: reason,
-      ),
+      _RefundDraft(amountCents: amountCents, reason: reason),
     );
   }
 }
@@ -1746,9 +1755,9 @@ class _DetailSection extends StatelessWidget {
         children: [
           Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.md),
           ...children,
@@ -1774,9 +1783,9 @@ class _DetailLine extends StatelessWidget {
             width: 150,
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
             ),
           ),
           Expanded(
@@ -1817,8 +1826,8 @@ class _RefundHistoryTile extends StatelessWidget {
                 Text(
                   '-${formatCents(refund.amount)}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(refund.reason ?? 'Sans raison renseignee'),
@@ -1828,9 +1837,9 @@ class _RefundHistoryTile extends StatelessWidget {
                   Text(
                     'Echec provider: ${refund.failureReason}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.danger,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ],
@@ -1844,9 +1853,9 @@ class _RefundHistoryTile extends StatelessWidget {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 formatDateTime(refund.createdAt),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -1857,10 +1866,7 @@ class _RefundHistoryTile extends StatelessWidget {
 }
 
 class _MoneyTile extends StatelessWidget {
-  const _MoneyTile({
-    required this.label,
-    required this.value,
-  });
+  const _MoneyTile({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -1874,8 +1880,10 @@ class _MoneyTile extends StatelessWidget {
         color: AppColors.adminSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.adminBorder),
-        boxShadow:
-            AppElevation.raisedSm(AppColors.adminSurface, intensity: 0.4),
+        boxShadow: AppElevation.raisedSm(
+          AppColors.adminSurface,
+          intensity: 0.4,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1884,9 +1892,9 @@ class _MoneyTile extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xs),
           FittedBox(
@@ -1894,9 +1902,9 @@ class _MoneyTile extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
           ),
         ],
@@ -1928,8 +1936,10 @@ class _PaymentsSummarySkeleton extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
-        final cards =
-            List.generate(4, (_) => const _SkeletonBlock(height: 128));
+        final cards = List.generate(
+          4,
+          (_) => const _SkeletonBlock(height: 128),
+        );
         if (compact) {
           return Column(
             children: [
@@ -2075,8 +2085,8 @@ class _LoadErrorCard extends StatelessWidget {
                 Text(
                   message,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),

@@ -67,19 +67,17 @@ class DriverRecapPage extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             Text(
               'Livraisons du jour',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: AppSpacing.xs),
             if (data.deliveries.isEmpty)
               Text(
                 'Aucune livraison terminee aujourd\'hui.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppColors.textSecondary),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             for (final item in data.deliveries)
               Padding(
@@ -94,7 +92,9 @@ class DriverRecapPage extends ConsumerWidget {
                           children: [
                             Text(
                               'Commande #${item.orderId}',
-                              style: const TextStyle(fontWeight: FontWeight.w800),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                             if (item.deliveryAddress != null)
                               Text(
@@ -154,10 +154,9 @@ class _Stat extends StatelessWidget {
                 Text(label, style: Theme.of(context).textTheme.bodySmall),
                 Text(
                   value,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ],
             ),

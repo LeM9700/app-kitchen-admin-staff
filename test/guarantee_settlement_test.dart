@@ -147,8 +147,14 @@ void main() {
 
     test('les statuts d\'empreinte ont un libelle dedie', () {
       expect(OrderStatusUi.from('guaranteed').label, 'Empreinte (a regler)');
-      expect(OrderStatusUi.from('guarantee_released').label, contains('liberee'));
-      expect(OrderStatusUi.from('guarantee_captured').label, contains('debitee'));
+      expect(
+        OrderStatusUi.from('guarantee_released').label,
+        contains('liberee'),
+      );
+      expect(
+        OrderStatusUi.from('guarantee_captured').label,
+        contains('debitee'),
+      );
     });
   });
 
@@ -178,8 +184,14 @@ void main() {
     test('especes : le montant recu doit couvrir le total', () {
       expect(check(GuaranteeSettlement.cash), isNull);
       expect(check(GuaranteeSettlement.cash, amount: '30'), isNull);
-      expect(check(GuaranteeSettlement.cash, amount: '10'), contains('inferieur'));
-      expect(check(GuaranteeSettlement.cash, amount: 'x'), contains('invalide'));
+      expect(
+        check(GuaranteeSettlement.cash, amount: '10'),
+        contains('inferieur'),
+      );
+      expect(
+        check(GuaranteeSettlement.cash, amount: 'x'),
+        contains('invalide'),
+      );
     });
 
     test('frais : montant, plafond et motif obligatoires', () {
@@ -209,10 +221,15 @@ void main() {
 
     setUp(() {
       repo = _MockPaymentsRepository();
-      when(() => repo.guaranteeCashCollected(any(), amountReceived: any(named: 'amountReceived')))
-          .thenAnswer((_) async {});
-      when(() => repo.releaseGuarantee(any(), reason: any(named: 'reason')))
-          .thenAnswer((_) async {});
+      when(
+        () => repo.guaranteeCashCollected(
+          any(),
+          amountReceived: any(named: 'amountReceived'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => repo.releaseGuarantee(any(), reason: any(named: 'reason')),
+      ).thenAnswer((_) async {});
       when(
         () => repo.captureGuarantee(
           any(),
@@ -241,12 +258,12 @@ void main() {
           child: MaterialApp(
             home: Builder(
               builder: (context) => TextButton(
-                onPressed: () async => result.value =
-                    await showGuaranteeSettlementDialog(
-                  context,
-                  orderId: 12,
-                  total: 25,
-                ),
+                onPressed: () async =>
+                    result.value = await showGuaranteeSettlementDialog(
+                      context,
+                      orderId: 12,
+                      total: 25,
+                    ),
                 child: const Text('ouvrir'),
               ),
             ),
@@ -260,15 +277,17 @@ void main() {
 
     Finder confirm() => find.widgetWithText(FilledButton, 'Confirmer');
 
-    testWidgets('rien n\'est envoye tant qu\'aucun choix n\'est fait',
-        (tester) async {
+    testWidgets('rien n\'est envoye tant qu\'aucun choix n\'est fait', (
+      tester,
+    ) async {
       await open(tester);
 
       expect(tester.widget<FilledButton>(confirm()).onPressed, isNull);
     });
 
-    testWidgets('especes : libere l\'empreinte et enregistre l\'encaissement',
-        (tester) async {
+    testWidgets('especes : libere l\'empreinte et enregistre l\'encaissement', (
+      tester,
+    ) async {
       final result = await open(tester);
 
       await tester.tap(find.text('Especes encaissees'));
@@ -278,7 +297,9 @@ void main() {
       await tester.tap(confirm());
       await tester.pumpAndSettle();
 
-      verify(() => repo.guaranteeCashCollected(12, amountReceived: 30)).called(1);
+      verify(
+        () => repo.guaranteeCashCollected(12, amountReceived: 30),
+      ).called(1);
       verifyNever(
         () => repo.captureGuarantee(
           any(),
@@ -301,8 +322,9 @@ void main() {
       expect(tester.widget<FilledButton>(confirm()).onPressed, isNull);
     });
 
-    testWidgets('frais d\'echec : montant en centimes et motif transmis',
-        (tester) async {
+    testWidgets('frais d\'echec : montant en centimes et motif transmis', (
+      tester,
+    ) async {
       final result = await open(tester);
 
       await tester.tap(find.text('Debiter des frais (echec client)'));
@@ -330,8 +352,9 @@ void main() {
       await tester.tap(confirm());
       await tester.pumpAndSettle();
 
-      verify(() => repo.releaseGuarantee(12, reason: 'released_by_staff'))
-          .called(1);
+      verify(
+        () => repo.releaseGuarantee(12, reason: 'released_by_staff'),
+      ).called(1);
       expect(result.value, isTrue);
     });
 
@@ -355,10 +378,12 @@ void main() {
       );
     });
 
-    testWidgets('une erreur de l\'API est affichee et la boite reste ouverte',
-        (tester) async {
-      when(() => repo.releaseGuarantee(any(), reason: any(named: 'reason')))
-          .thenThrow(
+    testWidgets('une erreur de l\'API est affichee et la boite reste ouverte', (
+      tester,
+    ) async {
+      when(
+        () => repo.releaseGuarantee(any(), reason: any(named: 'reason')),
+      ).thenThrow(
         const ApiError(
           message: 'Aucune empreinte active pour cette commande.',
           statusCode: 409,

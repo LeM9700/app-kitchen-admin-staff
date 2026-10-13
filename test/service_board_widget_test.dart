@@ -113,8 +113,9 @@ void main() {
     ) async {
       final repository = _FakeOrdersRepository();
       final payments = _MockPaymentsRepository();
-      when(() => payments.releaseGuarantee(any(), reason: any(named: 'reason')))
-          .thenAnswer((_) async {});
+      when(
+        () => payments.releaseGuarantee(any(), reason: any(named: 'reason')),
+      ).thenAnswer((_) async {});
       await _pumpService(
         tester,
         repository: repository,
@@ -135,8 +136,9 @@ void main() {
       await tester.tap(find.text('Confirmer'));
       await tester.pumpAndSettle();
 
-      verify(() => payments.releaseGuarantee(1, reason: 'released_by_staff'))
-          .called(1);
+      verify(
+        () => payments.releaseGuarantee(1, reason: 'released_by_staff'),
+      ).called(1);
       expect(repository.statusUpdates, ['delivered']);
     });
 
@@ -147,9 +149,7 @@ void main() {
       await _pumpService(
         tester,
         repository: repository,
-        orders: [
-          _summary(orderType: 'delivery', status: 'out_for_delivery'),
-        ],
+        orders: [_summary(orderType: 'delivery', status: 'out_for_delivery')],
       );
 
       await tester.tap(find.text('MARQUER LIVREE'));
@@ -174,11 +174,7 @@ void main() {
           _summary(id: 1, orderType: 'dine_in'),
           _summary(id: 2, orderType: 'pickup'),
           _summary(id: 3, orderType: 'delivery'),
-          _summary(
-            id: 4,
-            orderType: 'delivery',
-            status: 'out_for_delivery',
-          ),
+          _summary(id: 4, orderType: 'delivery', status: 'out_for_delivery'),
         ],
       );
 
@@ -199,7 +195,10 @@ void main() {
       orders: [_summary()],
     );
 
-    expect(find.byKey(const Key('service-remote-pairing-action')), findsNothing);
+    expect(
+      find.byKey(const Key('service-remote-pairing-action')),
+      findsNothing,
+    );
   });
 
   testWidgets('service genere un QR remote pour un ecran service', (
@@ -264,10 +263,7 @@ void main() {
     await tester.pump();
 
     expect(kdsRepository.generateCalls, 0);
-    expect(
-      find.text('AUCUN ÉCRAN SERVICE REMOTE DISPONIBLE'),
-      findsOneWidget,
-    );
+    expect(find.text('AUCUN ÉCRAN SERVICE REMOTE DISPONIBLE'), findsOneWidget);
   });
 
   testWidgets('service affiche le scanner remote seulement sur mobile', (
@@ -502,9 +498,7 @@ OrderSummary _summary({
   );
 }
 
-OrderDetail _detail({
-  List<OrderStationSummary> stationSummary = const [],
-}) {
+OrderDetail _detail({List<OrderStationSummary> stationSummary = const []}) {
   final summary = _summary();
   return OrderDetail(
     id: summary.id,
@@ -545,10 +539,8 @@ OrderDetail _detail({
 class _MockPaymentsRepository extends Mock implements PaymentsRepository {}
 
 class _FakeOrdersRepository implements OrdersRepository {
-  _FakeOrdersRepository({
-    OrderDetail? detail,
-    this.updateError,
-  }) : detail = detail ?? _detail();
+  _FakeOrdersRepository({OrderDetail? detail, this.updateError})
+    : detail = detail ?? _detail();
 
   final OrderDetail detail;
   final Object? updateError;
@@ -673,10 +665,7 @@ class _TestSessionController extends SessionController {
         email: 'staff@test.local',
         role: 'staff',
         tenantSlug: 'pizza',
-        permissions: {
-          'orders:read',
-          if (canPrepare) 'orders:preparation',
-        },
+        permissions: {'orders:read', if (canPrepare) 'orders:preparation'},
         mustChangePassword: false,
       ),
       tenantSlug: 'pizza',

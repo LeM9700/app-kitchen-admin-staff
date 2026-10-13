@@ -20,13 +20,16 @@ KitchenScreenProfile initialKitchenScreenProfileFor(KitchenScreenMode mode) {
   );
 }
 
-final kitchenScreenProfileProvider =
-    kitchenScreenProfileProviderFor(KitchenScreenMode.kitchen);
+final kitchenScreenProfileProvider = kitchenScreenProfileProviderFor(
+  KitchenScreenMode.kitchen,
+);
 
-final kitchenScreenProfileProviderFor = NotifierProvider.family<
-    KitchenScreenProfileController,
-    KitchenScreenProfile,
-    KitchenScreenMode>(KitchenScreenProfileController.new);
+final kitchenScreenProfileProviderFor =
+    NotifierProvider.family<
+      KitchenScreenProfileController,
+      KitchenScreenProfile,
+      KitchenScreenMode
+    >(KitchenScreenProfileController.new);
 
 class KitchenScreenProfileController
     extends FamilyNotifier<KitchenScreenProfile, KitchenScreenMode> {
@@ -46,19 +49,21 @@ class KitchenScreenProfileController
 /// mode-label title (`kitchenScreenModeLabel`) in that case. Runtime-only:
 /// no persistence for this lot, resets to `null` on app restart, which is
 /// the default `StateProvider` behavior (nothing extra to do).
-final kitchenSelectedScreenProvider =
-    kitchenSelectedScreenProviderFor(KitchenScreenMode.kitchen);
+final kitchenSelectedScreenProvider = kitchenSelectedScreenProviderFor(
+  KitchenScreenMode.kitchen,
+);
 
 final kitchenSelectedScreenProviderFor =
     StateProvider.family<KdsScreen?, KitchenScreenMode>((ref, arg) => null);
 
-final kitchenQueueProvider =
-    kitchenQueueProviderFor(KitchenScreenMode.kitchen);
+final kitchenQueueProvider = kitchenQueueProviderFor(KitchenScreenMode.kitchen);
 
-final kitchenQueueProviderFor = AsyncNotifierProvider.family<
-    KitchenQueueController,
-    KitchenQueueState,
-    KitchenScreenMode>(KitchenQueueController.new);
+final kitchenQueueProviderFor =
+    AsyncNotifierProvider.family<
+      KitchenQueueController,
+      KitchenQueueState,
+      KitchenScreenMode
+    >(KitchenQueueController.new);
 
 class KitchenQueueController
     extends FamilyAsyncNotifier<KitchenQueueState, KitchenScreenMode> {
@@ -83,10 +88,7 @@ class KitchenQueueController
       profile: profile,
     );
 
-    return _composeState(
-      tickets: tickets,
-      profile: profile,
-    );
+    return _composeState(tickets: tickets, profile: profile);
   }
 
   void nextPage() {
@@ -123,17 +125,11 @@ class KitchenQueueController
       _clearSecondarySnapshot();
     } else {
       _snapshotPage = targetPage;
-      _secondaryPageSnapshot = _ticketsForPage(
-        current.pages,
-        targetPage,
-      );
+      _secondaryPageSnapshot = _ticketsForPage(current.pages, targetPage);
     }
 
     state = AsyncValue.data(
-      _composeState(
-        tickets: current.tickets,
-        profile: current.profile,
-      ),
+      _composeState(tickets: current.tickets, profile: current.profile),
     );
   }
 
@@ -193,7 +189,8 @@ class KitchenQueueController
     final targetPage = targetIndex ~/ current.profile.ticketsPerPage;
     _currentPage = targetPage;
 
-    final targetVisibleInSnapshot = current.currentPage == targetPage &&
+    final targetVisibleInSnapshot =
+        current.currentPage == targetPage &&
         current.currentPageTickets.any(
           (ticket) => ticket.order.id == target.order.id,
         );
@@ -206,10 +203,7 @@ class KitchenQueueController
 
     _focusedOrderId = target.order.id;
     state = AsyncValue.data(
-      _composeState(
-        tickets: current.tickets,
-        profile: current.profile,
-      ),
+      _composeState(tickets: current.tickets, profile: current.profile),
     );
     return state.valueOrNull?.focusedOrderId == target.order.id;
   }
@@ -230,9 +224,9 @@ class KitchenQueueController
 
   void setProfile(KitchenScreenProfile profile) {
     _clearBrowsingState();
-    ref.read(kitchenScreenProfileProviderFor(_screenMode).notifier).setProfile(
-          profile,
-        );
+    ref
+        .read(kitchenScreenProfileProviderFor(_screenMode).notifier)
+        .setProfile(profile);
   }
 
   void _resetForProfileChange(KitchenScreenProfile profile) {
@@ -271,10 +265,7 @@ class KitchenQueueController
 
       final snapshot = _secondaryPageSnapshot!;
       currentPageTickets = snapshot;
-      queueChangedWhileBrowsing = !_hasSameOrderIds(
-        snapshot,
-        livePageTickets,
-      );
+      queueChangedWhileBrowsing = !_hasSameOrderIds(snapshot, livePageTickets);
     }
 
     _clearFocusIfMissingFrom(currentPageTickets);
@@ -340,10 +331,7 @@ List<KitchenTicketViewModel> _ticketsForPage(
     return const [];
   }
 
-  return List<KitchenTicketViewModel>.of(
-    pages[page],
-    growable: false,
-  );
+  return List<KitchenTicketViewModel>.of(pages[page], growable: false);
 }
 
 bool _hasSameOrderIds(

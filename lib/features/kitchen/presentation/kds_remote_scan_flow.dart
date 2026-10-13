@@ -10,8 +10,7 @@ typedef KdsRemoteQrScanReader = Future<String?> Function(BuildContext context);
 
 Future<void> scanAndOpenKdsRemote(
   BuildContext context,
-  WidgetRef ref,
-  {
+  WidgetRef ref, {
   KdsRemoteQrScanReader scanReader = _openKdsRemoteQrScanner,
 }) async {
   final rawValue = await scanReader(context);
@@ -28,10 +27,11 @@ Future<void> scanAndOpenKdsRemote(
   try {
     final code = switch (payload.kind) {
       KdsRemoteQrPayloadKind.pairingCode => payload.value,
-      KdsRemoteQrPayloadKind.pairingPayload => (await ref
-              .read(kdsRepositoryProvider)
-              .resolvePairingPayload(pairingPayload: payload.value))
-          .code,
+      KdsRemoteQrPayloadKind.pairingPayload =>
+        (await ref
+                .read(kdsRepositoryProvider)
+                .resolvePairingPayload(pairingPayload: payload.value))
+            .code,
     };
     if (!context.mounted) {
       return;
@@ -73,7 +73,5 @@ String _scanErrorMessage(Object error) {
 }
 
 void _showScanMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message)),
-  );
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }

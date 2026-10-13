@@ -27,7 +27,9 @@ class EstablishmentDispatchCard extends ConsumerWidget {
     Map<String, Object?> changes,
   ) async {
     try {
-      await ref.read(dispatchRepositoryProvider).updateDispatchSettings(
+      await ref
+          .read(dispatchRepositoryProvider)
+          .updateDispatchSettings(
             current.establishmentId,
             expectedVersion: current.version,
             changes: changes,
@@ -37,9 +39,9 @@ class EstablishmentDispatchCard extends ConsumerWidget {
         final message = error is ApiError
             ? error.message
             : 'Enregistrement impossible. Reessayez.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       ref.invalidate(dispatchSettingsProvider(current.establishmentId));
@@ -50,8 +52,9 @@ class EstablishmentDispatchCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final establishment = ref.watch(currentEstablishmentProvider).valueOrNull;
     if (establishment == null) return const SizedBox.shrink();
-    final settings =
-        ref.watch(dispatchSettingsProvider(establishment.id)).valueOrNull;
+    final settings = ref
+        .watch(dispatchSettingsProvider(establishment.id))
+        .valueOrNull;
     // Pas de droit de lecture ou erreur reseau : on n'affiche rien plutot qu'une carte vide.
     if (settings == null) return const SizedBox.shrink();
 
@@ -66,15 +69,17 @@ class EstablishmentDispatchCard extends ConsumerWidget {
           children: [
             Text(
               'Livraison : ${establishment.name}',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             DropdownButtonFormField<String>(
               key: const ValueKey('dispatch-mode'),
               initialValue: settings.dispatchMode,
-              decoration:
-                  const InputDecoration(labelText: 'Attribution des courses'),
+              decoration: const InputDecoration(
+                labelText: 'Attribution des courses',
+              ),
               items: const [
                 DropdownMenuItem(
                   value: 'counter',
@@ -88,8 +93,9 @@ class EstablishmentDispatchCard extends ConsumerWidget {
               onChanged: isAdmin
                   ? (value) {
                       if (value != null && value != settings.dispatchMode) {
-                        _update(
-                            context, ref, settings, {'dispatch_mode': value},);
+                        _update(context, ref, settings, {
+                          'dispatch_mode': value,
+                        });
                       }
                     }
                   : null,
@@ -109,12 +115,9 @@ class EstablishmentDispatchCard extends ConsumerWidget {
                   ? (value) {
                       if (value != null &&
                           value != settings.maxActiveDeliveries) {
-                        _update(
-                          context,
-                          ref,
-                          settings,
-                          {'max_active_deliveries': value},
-                        );
+                        _update(context, ref, settings, {
+                          'max_active_deliveries': value,
+                        });
                       }
                     }
                   : null,
@@ -123,7 +126,7 @@ class EstablishmentDispatchCard extends ConsumerWidget {
             Text(
               settings.selfAssign
                   ? 'Le plafond limite ce qu\'un livreur peut prendre seul ; le comptoir peut '
-                      'toujours attribuer au-dela.'
+                        'toujours attribuer au-dela.'
                   : 'Le plafond s\'applique quand le mode « Les livreurs se servent » est actif.',
               style: theme.textTheme.bodySmall,
             ),
@@ -132,8 +135,9 @@ class EstablishmentDispatchCard extends ConsumerWidget {
               settings.failureRulesOverridden
                   ? 'Client absent ou injoignable : regles propres a cet etablissement'
                   : 'Client absent ou injoignable : regles generales',
-              style: theme.textTheme.labelLarge
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             Row(
@@ -143,14 +147,17 @@ class EstablishmentDispatchCard extends ConsumerWidget {
                     key: const ValueKey('est-failure-wait'),
                     initialValue:
                         waitOptions.contains(settings.failureMinWaitMinutes)
-                            ? settings.failureMinWaitMinutes
-                            : null,
-                    decoration:
-                        const InputDecoration(labelText: 'Attendu (min)'),
+                        ? settings.failureMinWaitMinutes
+                        : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Attendu (min)',
+                    ),
                     items: [
                       for (final value in waitOptions)
                         DropdownMenuItem(
-                            value: value, child: Text('$value min'),),
+                          value: value,
+                          child: Text('$value min'),
+                        ),
                       const DropdownMenuItem(
                         value: _inherit,
                         child: Text('Reglage general'),
@@ -158,9 +165,10 @@ class EstablishmentDispatchCard extends ConsumerWidget {
                     ],
                     onChanged: isAdmin
                         ? (value) => _update(context, ref, settings, {
-                              'failure_min_wait_minutes':
-                                  value == _inherit ? null : value,
-                            })
+                            'failure_min_wait_minutes': value == _inherit
+                                ? null
+                                : value,
+                          })
                         : null,
                   ),
                 ),
@@ -170,13 +178,15 @@ class EstablishmentDispatchCard extends ConsumerWidget {
                     key: const ValueKey('est-failure-calls'),
                     initialValue:
                         callOptions.contains(settings.failureMinCallAttempts)
-                            ? settings.failureMinCallAttempts
-                            : null,
+                        ? settings.failureMinCallAttempts
+                        : null,
                     decoration: const InputDecoration(labelText: 'Appels'),
                     items: [
                       for (final value in callOptions)
                         DropdownMenuItem(
-                            value: value, child: Text('$value appel(s)'),),
+                          value: value,
+                          child: Text('$value appel(s)'),
+                        ),
                       const DropdownMenuItem(
                         value: _inherit,
                         child: Text('Reglage general'),
@@ -184,9 +194,10 @@ class EstablishmentDispatchCard extends ConsumerWidget {
                     ],
                     onChanged: isAdmin
                         ? (value) => _update(context, ref, settings, {
-                              'failure_min_call_attempts':
-                                  value == _inherit ? null : value,
-                            })
+                            'failure_min_call_attempts': value == _inherit
+                                ? null
+                                : value,
+                          })
                         : null,
                   ),
                 ),

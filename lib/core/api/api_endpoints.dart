@@ -230,13 +230,15 @@ class ApiEndpoints {
       '/delivery/driver/deliveries/$id/release';
   static String dispatchSettings(int establishmentId) =>
       '/delivery/establishments/$establishmentId/dispatch-settings';
-  static String driverFailed(int id) => '/delivery/driver/deliveries/$id/failed';
+  static String driverFailed(int id) =>
+      '/delivery/driver/deliveries/$id/failed';
   static const deliveryFailures = '/delivery/failures';
   static String deliveryFailureResolve(int id) =>
       '/delivery/failures/$id/resolve';
   static String deliverWithoutCode(int orderId) =>
       '/delivery/dispatch/orders/$orderId/deliver-without-code';
-  static String driverArrived(int id) => '/delivery/driver/deliveries/$id/arrived';
+  static String driverArrived(int id) =>
+      '/delivery/driver/deliveries/$id/arrived';
   static String driverDelivered(int id) =>
       '/delivery/driver/deliveries/$id/delivered';
   static String deliveryZone(int zoneId) => '/delivery/zones/$zoneId';

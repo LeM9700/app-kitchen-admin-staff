@@ -52,10 +52,9 @@ class LiveDriversSection extends ConsumerWidget {
         children: [
           Text(
             'Livreurs en route (${onRoad.length})',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.xs),
           if (alerts.isNotEmpty)
@@ -126,7 +125,11 @@ class _LiveMap extends ConsumerWidget {
                     point: point,
                     width: 28,
                     height: 28,
-                    child: const Icon(Icons.flag_rounded, color: AppColors.neutral, size: 24),
+                    child: const Icon(
+                      Icons.flag_rounded,
+                      color: AppColors.neutral,
+                      size: 24,
+                    ),
                   ),
                 for (final d in drivers)
                   if (d.hasPosition)
@@ -149,7 +152,10 @@ class _LiveMap extends ConsumerWidget {
                             child: Text(
                               d.label,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -183,7 +189,10 @@ class _LiveDriverRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(driver.label, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text(
+                    driver.label,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                   Text(
                     liveDriverStatusLabel(driver),
                     key: ValueKey('live-status-${driver.driverId}'),

@@ -23,11 +23,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class AdminShell extends ConsumerWidget {
-  const AdminShell({
-    required this.location,
-    required this.child,
-    super.key,
-  });
+  const AdminShell({required this.location, required this.child, super.key});
 
   final String location;
   final Widget child;
@@ -37,9 +33,9 @@ class AdminShell extends ConsumerWidget {
     final permissions = ref.watch(currentPermissionSetProvider);
     final isAdmin =
         permissions.role == 'admin' || permissions.role == 'super-admin';
-    final destinations = visibleNavigationFor(permissions)
-        .map(_ShellDestination.fromCapability)
-        .toList();
+    final destinations = visibleNavigationFor(
+      permissions,
+    ).map(_ShellDestination.fromCapability).toList();
     final selectedIndex = _selectedIndex(destinations, location);
     final fullscreen = ref.watch(operationalFullscreenProvider);
     final fullscreenAllowed = isOperationalFullscreenRoute(location);
@@ -68,10 +64,7 @@ class AdminShell extends ConsumerWidget {
     if (Breakpoints.isMobile(context)) {
       if (!isAdmin) {
         if (operationalFullscreen) {
-          return _OperationalFullscreenShell(
-            useStaffTheme: true,
-            child: child,
-          );
+          return _OperationalFullscreenShell(useStaffTheme: true, child: child);
         }
         return _StaffMobileShell(
           destinations: _staffMobileDestinations(destinations),
@@ -121,17 +114,15 @@ class _OperationalFullscreenShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shell = Scaffold(
-      backgroundColor:
-          useStaffTheme ? AppColors.staffBackground : AppColors.adminBackground,
+      backgroundColor: useStaffTheme
+          ? AppColors.staffBackground
+          : AppColors.adminBackground,
       body: child,
     );
     if (!useStaffTheme) {
       return shell;
     }
-    return Theme(
-      data: ApiKitchenTheme.staffDark(),
-      child: shell,
-    );
+    return Theme(data: ApiKitchenTheme.staffDark(), child: shell);
   }
 }
 
@@ -159,10 +150,7 @@ class _KitchenDesktopShell extends StatelessWidget {
               selectedIndex: selectedIndex,
             ),
             Expanded(
-              child: ColoredBox(
-                color: AppColors.adminBackground,
-                child: child,
-              ),
+              child: ColoredBox(color: AppColors.adminBackground, child: child),
             ),
           ],
         ),
@@ -186,11 +174,11 @@ class _KitchenTopBar extends ConsumerWidget {
       ),
       decoration: BoxDecoration(
         color: AppColors.adminSurface,
-        border: const Border(
-          bottom: BorderSide(color: AppColors.adminBorder),
+        border: const Border(bottom: BorderSide(color: AppColors.adminBorder)),
+        boxShadow: AppElevation.raisedSm(
+          AppColors.adminSurface,
+          intensity: .35,
         ),
-        boxShadow:
-            AppElevation.raisedSm(AppColors.adminSurface, intensity: .35),
       ),
       child: Row(
         children: [
@@ -243,8 +231,10 @@ class _KitchenBrandMark extends StatelessWidget {
             color: AppColors.adminSurface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(color: AppColors.adminBorder),
-            boxShadow:
-                AppElevation.raisedSm(AppColors.adminSurface, intensity: .65),
+            boxShadow: AppElevation.raisedSm(
+              AppColors.adminSurface,
+              intensity: .65,
+            ),
           ),
           child: const Icon(
             Icons.local_pizza_outlined,
@@ -361,10 +351,7 @@ class _KitchenTenantSwitcher extends ConsumerWidget {
 }
 
 class _TenantShellLabel extends StatelessWidget {
-  const _TenantShellLabel({
-    required this.title,
-    required this.subtitle,
-  });
+  const _TenantShellLabel({required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;
@@ -470,11 +457,8 @@ class _KitchenGlobalSearchState extends ConsumerState<_KitchenGlobalSearch> {
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
                 ),
-                onSubmitted: (value) => _openResults(
-                  context,
-                  permissions,
-                  value,
-                ),
+                onSubmitted: (value) =>
+                    _openResults(context, permissions, value),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -677,16 +661,14 @@ class _KitchenModuleBar extends StatelessWidget {
     final selectedPath = destinations.isEmpty
         ? ''
         : destinations[selectedIndex.clamp(0, destinations.length - 1).toInt()]
-            .path;
+              .path;
 
     return Container(
       height: 58,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
       decoration: const BoxDecoration(
         color: AppColors.adminBackground,
-        border: Border(
-          bottom: BorderSide(color: AppColors.adminBorder),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.adminBorder)),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -701,10 +683,7 @@ class _KitchenModuleBar extends StatelessWidget {
             ],
             if (more.isNotEmpty) ...[
               const SizedBox(width: AppSpacing.xs),
-              _KitchenMoreMenu(
-                destinations: more,
-                selectedPath: selectedPath,
-              ),
+              _KitchenMoreMenu(destinations: more, selectedPath: selectedPath),
             ],
           ],
         ),
@@ -714,10 +693,7 @@ class _KitchenModuleBar extends StatelessWidget {
 }
 
 class _KitchenModuleButton extends StatefulWidget {
-  const _KitchenModuleButton({
-    required this.item,
-    required this.selected,
-  });
+  const _KitchenModuleButton({required this.item, required this.selected});
 
   final _ShellDestination item;
   final bool selected;
@@ -732,8 +708,9 @@ class _KitchenModuleButtonState extends State<_KitchenModuleButton> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
-    final fill =
-        selected ? AppColors.adminSurface : AppColors.adminSurfaceMuted;
+    final fill = selected
+        ? AppColors.adminSurface
+        : AppColors.adminSurfaceMuted;
     return Tooltip(
       message: widget.item.label,
       child: InkWell(
@@ -819,8 +796,9 @@ class _KitchenMoreMenu extends StatelessWidget {
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         decoration: BoxDecoration(
-          color:
-              selected ? AppColors.adminSurface : AppColors.adminSurfaceMuted,
+          color: selected
+              ? AppColors.adminSurface
+              : AppColors.adminSurfaceMuted,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
             color: selected ? AppColors.accent : AppColors.adminBorder,
@@ -904,8 +882,9 @@ class _AdminMobileShell extends ConsumerWidget {
                   onChanged: serviceMode
                       ? null
                       : (value) {
-                          ref.read(appThemeModeProvider.notifier).state =
-                              value ? ThemeMode.dark : ThemeMode.light;
+                          ref.read(appThemeModeProvider.notifier).state = value
+                              ? ThemeMode.dark
+                              : ThemeMode.light;
                         },
                 ),
               ),
@@ -957,15 +936,15 @@ class _StaffMobileShell extends StatelessWidget {
               Text(
                 'API KITCHEN',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.staffText,
-                      fontSize: 14,
-                    ),
+                  color: AppColors.staffText,
+                  fontSize: 14,
+                ),
               ),
               Text(
                 destinations[selectedIndex].label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.staffMuted,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.staffMuted),
               ),
             ],
           ),
@@ -974,10 +953,7 @@ class _StaffMobileShell extends StatelessWidget {
             SizedBox(width: AppSpacing.sm),
           ],
         ),
-        body: ColoredBox(
-          color: AppColors.staffBackground,
-          child: child,
-        ),
+        body: ColoredBox(color: AppColors.staffBackground, child: child),
         bottomNavigationBar: NavigationBar(
           height: 68,
           selectedIndex: selectedIndex,
@@ -1219,7 +1195,14 @@ String _initialsFor(String value) {
 List<_ShellDestination> _staffMobileDestinations(
   List<_ShellDestination> destinations,
 ) {
-  const preferred = ['/home', '/orders', '/kitchen', '/counter', '/stock', '/hr'];
+  const preferred = [
+    '/home',
+    '/orders',
+    '/kitchen',
+    '/counter',
+    '/stock',
+    '/hr',
+  ];
   final selected = <_ShellDestination>[];
   for (final path in preferred) {
     for (final item in destinations) {

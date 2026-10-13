@@ -25,13 +25,13 @@ class LocationSample {
   final double? heading;
 
   Map<String, dynamic> toJson() => {
-        'lat': lat,
-        'lng': lng,
-        'recorded_at': recordedAt.toUtc().toIso8601String(),
-        if (accuracyM != null) 'accuracy_m': accuracyM,
-        if (speedMps != null && speedMps! >= 0) 'speed_mps': speedMps,
-        if (heading != null && heading! >= 0 && heading! <= 360) 'heading': heading,
-      };
+    'lat': lat,
+    'lng': lng,
+    'recorded_at': recordedAt.toUtc().toIso8601String(),
+    if (accuracyM != null) 'accuracy_m': accuracyM,
+    if (speedMps != null && speedMps! >= 0) 'speed_mps': speedMps,
+    if (heading != null && heading! >= 0 && heading! <= 360) 'heading': heading,
+  };
 }
 
 enum PositionPermission { granted, denied, deniedForever, serviceDisabled }
@@ -48,10 +48,16 @@ abstract class PositionSource {
 /// - iPhone : mises a jour en arriere-plan avec l'indicateur de localisation visible, sans pause automatique ;
 /// - ailleurs : reglages simples.
 /// Le flux n'est ouvert que pendant une livraison en route (voir `DriverLocationSharer`).
-LocationSettings buildLocationSettings(TargetPlatform platform, {bool isWeb = false}) {
+LocationSettings buildLocationSettings(
+  TargetPlatform platform, {
+  bool isWeb = false,
+}) {
   const distanceFilter = 10;
   if (isWeb) {
-    return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: distanceFilter);
+    return const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: distanceFilter,
+    );
   }
   switch (platform) {
     case TargetPlatform.android:
@@ -64,7 +70,10 @@ LocationSettings buildLocationSettings(TargetPlatform platform, {bool isWeb = fa
           notificationText:
               'Votre position est partagee avec le restaurant et le client pendant la livraison.',
           notificationChannelName: 'Livraison en cours',
-          notificationIcon: AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
+          notificationIcon: AndroidResource(
+            name: 'ic_launcher',
+            defType: 'mipmap',
+          ),
           enableWakeLock: true,
           setOngoing: true,
         ),
@@ -82,7 +91,10 @@ LocationSettings buildLocationSettings(TargetPlatform platform, {bool isWeb = fa
     case TargetPlatform.fuchsia:
     case TargetPlatform.linux:
     case TargetPlatform.windows:
-      return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: distanceFilter);
+      return const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: distanceFilter,
+      );
   }
 }
 
@@ -100,8 +112,7 @@ class GeolocatorPositionSource implements PositionSource {
     }
     return switch (permission) {
       LocationPermission.always ||
-      LocationPermission.whileInUse =>
-        PositionPermission.granted,
+      LocationPermission.whileInUse => PositionPermission.granted,
       LocationPermission.deniedForever => PositionPermission.deniedForever,
       _ => PositionPermission.denied,
     };
@@ -110,7 +121,10 @@ class GeolocatorPositionSource implements PositionSource {
   @override
   Stream<LocationSample> watch() {
     return Geolocator.getPositionStream(
-      locationSettings: buildLocationSettings(defaultTargetPlatform, isWeb: kIsWeb),
+      locationSettings: buildLocationSettings(
+        defaultTargetPlatform,
+        isWeb: kIsWeb,
+      ),
     ).map(
       (p) => LocationSample(
         lat: p.latitude,
@@ -124,8 +138,9 @@ class GeolocatorPositionSource implements PositionSource {
   }
 }
 
-final positionSourceProvider =
-    Provider<PositionSource>((ref) => const GeolocatorPositionSource());
+final positionSourceProvider = Provider<PositionSource>(
+  (ref) => const GeolocatorPositionSource(),
+);
 
 enum SharingStatus {
   /// Rien a partager (pas de livraison en route) : aucune position n'est lue.
@@ -196,11 +211,13 @@ class DriverLocationSharer extends StateNotifier<SharingState> {
   Future<void> recheckPermission() async {
     if (!mounted || !_active) return;
     final permission = await _source.requestPermission();
-    if (!mounted || !_active || permission == PositionPermission.granted) return;
+    if (!mounted || !_active || permission == PositionPermission.granted)
+      return;
     _stop();
     state = const SharingState(
       status: SharingStatus.permissionDenied,
-      lastError: 'Autorisation de localisation retiree : la position n\'est plus partagee.',
+      lastError:
+          'Autorisation de localisation retiree : la position n\'est plus partagee.',
     );
   }
 
@@ -222,7 +239,8 @@ class DriverLocationSharer extends StateNotifier<SharingState> {
         state = SharingState(
           status: SharingStatus.permissionDenied,
           lastError: switch (permission) {
-            PositionPermission.serviceDisabled => 'Localisation desactivee sur le telephone.',
+            PositionPermission.serviceDisabled =>
+              'Localisation desactivee sur le telephone.',
             PositionPermission.deniedForever =>
               'Autorisation refusee : activez-la dans les reglages du telephone.',
             _ => 'Autorisation de localisation refusee.',
@@ -288,7 +306,8 @@ class DriverLocationSharer extends StateNotifier<SharingState> {
         if (mounted) state = const SharingState();
       } else if (error.code == 'LOCATION_CONSENT_REQUIRED') {
         _stop();
-        if (mounted) state = const SharingState(status: SharingStatus.consentRequired);
+        if (mounted)
+          state = const SharingState(status: SharingStatus.consentRequired);
       } else if (mounted) {
         state = SharingState(
           status: SharingStatus.sharing,
@@ -330,8 +349,8 @@ class DriverLocationSharer extends StateNotifier<SharingState> {
 
 final driverLocationSharerProvider =
     StateNotifierProvider<DriverLocationSharer, SharingState>((ref) {
-  return DriverLocationSharer(
-    ref.watch(dispatchRepositoryProvider),
-    ref.watch(positionSourceProvider),
-  );
-});
+      return DriverLocationSharer(
+        ref.watch(dispatchRepositoryProvider),
+        ref.watch(positionSourceProvider),
+      );
+    });

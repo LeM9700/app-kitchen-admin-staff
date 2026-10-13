@@ -70,7 +70,8 @@ class _DeliveryAddressPickerState extends ConsumerState<DeliveryAddressPicker> {
       setState(() {
         _suggestions = results;
         if (results.isEmpty) {
-          _problem = 'Aucune adresse trouvee. Choisissez la zone a la main ci-dessous.';
+          _problem =
+              'Aucune adresse trouvee. Choisissez la zone a la main ci-dessous.';
         }
       });
     } catch (error) {
@@ -95,7 +96,9 @@ class _DeliveryAddressPickerState extends ConsumerState<DeliveryAddressPicker> {
       _problem = null;
     });
     try {
-      final result = await ref.read(deliveryRepositoryProvider).checkAddress(
+      final result = await ref
+          .read(deliveryRepositoryProvider)
+          .checkAddress(
             lat: suggestion.point.latitude,
             lng: suggestion.point.longitude,
             address: suggestion.label,
@@ -114,10 +117,13 @@ class _DeliveryAddressPickerState extends ConsumerState<DeliveryAddressPicker> {
       widget.onPointChanged(null);
       setState(() {
         _result = null;
-        if (error is AppException && error.code == 'DELIVERY_ZONE_UNREACHABLE') {
+        if (error is AppException &&
+            error.code == 'DELIVERY_ZONE_UNREACHABLE') {
           _outside = true;
         } else {
-          _problem = error is AppException ? error.message : 'Verification impossible';
+          _problem = error is AppException
+              ? error.message
+              : 'Verification impossible';
         }
       });
     } finally {
@@ -178,7 +184,10 @@ class _DeliveryAddressPickerState extends ConsumerState<DeliveryAddressPicker> {
             child: Text(
               _problem!,
               key: const ValueKey('checkout-address-problem'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+              ),
             ),
           ),
         if (_outside)

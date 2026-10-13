@@ -24,7 +24,10 @@ class HaccpStrictStatus {
       strictEnabled: readBool(json['strict_enabled']),
       blockers: raw
           .whereType<Map>()
-          .map((item) => HaccpStrictBlocker.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) =>
+                HaccpStrictBlocker.fromJson(Map<String, dynamic>.from(item)),
+          )
           .toList(),
     );
   }

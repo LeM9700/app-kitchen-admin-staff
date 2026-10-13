@@ -90,7 +90,8 @@ class _DriverShellState extends ConsumerState<DriverShell>
             key: const ValueKey('driver-logout'),
             tooltip: 'Se deconnecter',
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(sessionControllerProvider.notifier).logout(),
+            onPressed: () =>
+                ref.read(sessionControllerProvider.notifier).logout(),
           ),
         ],
       ),

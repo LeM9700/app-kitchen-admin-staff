@@ -10,19 +10,22 @@ final ordersRepositoryProvider = Provider<OrdersRepository>((ref) {
   return OrdersRepository(ref.watch(apiClientProvider));
 });
 
-final activeOrdersProvider =
-    FutureProvider.autoDispose<List<OrderSummary>>((ref) async {
-  final currentEstablishment =
-      await ref.watch(currentEstablishmentProvider.future);
+final activeOrdersProvider = FutureProvider.autoDispose<List<OrderSummary>>((
+  ref,
+) async {
+  final currentEstablishment = await ref.watch(
+    currentEstablishmentProvider.future,
+  );
   return ref
       .watch(ordersRepositoryProvider)
       .listActiveOrders(establishmentId: currentEstablishment?.id);
 });
 
-final orderDetailProvider =
-    FutureProvider.autoDispose.family<OrderDetail, int>((ref, orderId) {
-  return ref.watch(ordersRepositoryProvider).getOrder(orderId);
-});
+final orderDetailProvider = FutureProvider.autoDispose.family<OrderDetail, int>(
+  (ref, orderId) {
+    return ref.watch(ordersRepositoryProvider).getOrder(orderId);
+  },
+);
 
 class OrdersRepository {
   const OrdersRepository(this._apiClient);
@@ -258,17 +261,15 @@ class OrderDetail extends OrderSummary {
       stationSummary: (json['station_summary'] as List? ?? const [])
           .whereType<Map>()
           .map(
-            (value) => OrderStationSummary.fromJson(
-              Map<String, dynamic>.from(value),
-            ),
+            (value) =>
+                OrderStationSummary.fromJson(Map<String, dynamic>.from(value)),
           )
           .toList(),
       statusHistory: (json['status_history'] as List? ?? const [])
           .whereType<Map>()
           .map(
-            (value) => OrderStatusHistory.fromJson(
-              Map<String, dynamic>.from(value),
-            ),
+            (value) =>
+                OrderStatusHistory.fromJson(Map<String, dynamic>.from(value)),
           )
           .toList(),
     );
@@ -337,9 +338,8 @@ class OrderItem {
       extras: (json['extras'] as List? ?? const [])
           .whereType<Map>()
           .map(
-            (value) => OrderItemExtra.fromJson(
-              Map<String, dynamic>.from(value),
-            ),
+            (value) =>
+                OrderItemExtra.fromJson(Map<String, dynamic>.from(value)),
           )
           .toList(),
       preparationStatus: json['preparation_status']?.toString() ?? 'pending',
@@ -466,19 +466,13 @@ class ManualOrderLine {
 }
 
 class ManualOrderExtraLine {
-  const ManualOrderExtraLine({
-    required this.extraId,
-    this.quantity = 1,
-  });
+  const ManualOrderExtraLine({required this.extraId, this.quantity = 1});
 
   final int extraId;
   final int quantity;
 
   Map<String, dynamic> toJson() {
-    return {
-      'extra_id': extraId,
-      'quantity': quantity,
-    };
+    return {'extra_id': extraId, 'quantity': quantity};
   }
 }
 

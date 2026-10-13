@@ -22,8 +22,9 @@ String locationNoticeText(int retentionHours) {
       'puis supprimees. Vous pouvez retirer votre accord a tout moment : le partage s\'arrete.';
 }
 
-String _message(Object error) =>
-    error is ApiError ? error.message : 'Action impossible pour le moment. Reessayez.';
+String _message(Object error) => error is ApiError
+    ? error.message
+    : 'Action impossible pour le moment. Reessayez.';
 
 /// Accord du livreur et etat du partage de position, en haut de l'ecran des livraisons.
 class LocationSharingPanel extends ConsumerWidget {
@@ -31,10 +32,14 @@ class LocationSharingPanel extends ConsumerWidget {
 
   Future<void> _grant(BuildContext context, WidgetRef ref, DriverMe me) async {
     try {
-      await ref.read(dispatchRepositoryProvider).grantLocationConsent(me.locationNoticeVersion);
+      await ref
+          .read(dispatchRepositoryProvider)
+          .grantLocationConsent(me.locationNoticeVersion);
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_message(error))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_message(error))));
       }
     } finally {
       ref.invalidate(driverMeProvider);
@@ -68,7 +73,9 @@ class LocationSharingPanel extends ConsumerWidget {
       await ref.read(driverLocationSharerProvider.notifier).setActive(false);
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_message(error))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_message(error))));
       }
     } finally {
       ref.invalidate(driverMeProvider);
@@ -96,10 +103,9 @@ class LocationSharingPanel extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       'Partage de votre position',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w900),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ],
@@ -126,25 +132,26 @@ class LocationSharingPanel extends ConsumerWidget {
 
     final (icon, text, color) = switch (sharing.status) {
       SharingStatus.sharing => (
-          Icons.my_location,
-          'Position partagee avec le restaurant et le client, meme ecran verrouille.',
-          AppColors.success,
-        ),
+        Icons.my_location,
+        'Position partagee avec le restaurant et le client, meme ecran verrouille.',
+        AppColors.success,
+      ),
       SharingStatus.permissionDenied => (
-          Icons.location_disabled_outlined,
-          sharing.lastError ?? 'Localisation indisponible : la position n\'est pas partagee.',
-          AppColors.dangerAlt,
-        ),
+        Icons.location_disabled_outlined,
+        sharing.lastError ??
+            'Localisation indisponible : la position n\'est pas partagee.',
+        AppColors.dangerAlt,
+      ),
       SharingStatus.consentRequired => (
-          Icons.privacy_tip_outlined,
-          'Votre accord est requis pour partager la position.',
-          AppColors.warning,
-        ),
+        Icons.privacy_tip_outlined,
+        'Votre accord est requis pour partager la position.',
+        AppColors.warning,
+      ),
       SharingStatus.idle => (
-          Icons.location_off_outlined,
-          'Votre position n\'est partagee que pendant une livraison en route.',
-          AppColors.textSecondary,
-        ),
+        Icons.location_off_outlined,
+        'Votre position n\'est partagee que pendant une livraison en route.',
+        AppColors.textSecondary,
+      ),
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -167,15 +174,17 @@ class LocationSharingPanel extends ConsumerWidget {
                 ),
               ],
             ),
-            if (sharing.isSharing && sharing.pending > 0 && sharing.lastError != null)
+            if (sharing.isSharing &&
+                sharing.pending > 0 &&
+                sharing.lastError != null)
               Padding(
                 padding: const EdgeInsets.only(left: 36),
                 child: Text(
                   '${sharing.pending} position(s) en attente d\'envoi (${sharing.lastError})',
                   key: const ValueKey('sharing-pending'),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.warning,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
                 ),
               ),
           ],

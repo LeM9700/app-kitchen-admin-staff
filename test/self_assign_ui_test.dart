@@ -10,11 +10,7 @@ import 'package:mocktail/mocktail.dart';
 
 class _MockDispatchRepository extends Mock implements DispatchRepository {}
 
-DriverMe _me({
-  String mode = 'self_assign',
-  int cap = 3,
-  int active = 0,
-}) =>
+DriverMe _me({String mode = 'self_assign', int cap = 3, int active = 0}) =>
     DriverMe(
       id: 1,
       clockedIn: true,
@@ -29,38 +25,37 @@ AvailableOrders _available(
   int cap = 3,
   int active = 0,
   bool enabled = true,
-}) =>
-    AvailableOrders(
-      enabled: enabled,
-      dispatchMode: enabled ? 'self_assign' : 'counter',
-      maxActiveDeliveries: cap,
-      activeDeliveries: active,
-      remainingCapacity: cap - active,
-      orders: orders,
-    );
+}) => AvailableOrders(
+  enabled: enabled,
+  dispatchMode: enabled ? 'self_assign' : 'counter',
+  maxActiveDeliveries: cap,
+  activeDeliveries: active,
+  remainingCapacity: cap - active,
+  orders: orders,
+);
 
 DispatchOrder _order(int id) => DispatchOrder(
-      orderId: id,
-      status: 'ready',
-      total: 25,
-      paymentStatus: 'paid',
-      deliveryAddress: '$id rue de la Paix',
-      itemsCount: 2,
-    );
+  orderId: id,
+  status: 'ready',
+  total: 25,
+  paymentStatus: 'paid',
+  deliveryAddress: '$id rue de la Paix',
+  itemsCount: 2,
+);
 
 DriverDelivery _delivery(int id, {String phase = 'ready'}) => DriverDelivery(
-      id: id,
-      orderId: id + 1000,
-      status: phase == 'en_route' ? 'out_for_delivery' : 'assigned',
-      phase: phase,
-      total: 25,
-      amountDue: 0,
-      paymentStatus: 'paid',
-      customerName: 'Claire D.',
-      customerPhone: '0698765432',
-      deliveryAddress: '1 rue de la Paix, Paris',
-      itemsCount: 2,
-    );
+  id: id,
+  orderId: id + 1000,
+  status: phase == 'en_route' ? 'out_for_delivery' : 'assigned',
+  phase: phase,
+  total: 25,
+  amountDue: 0,
+  paymentStatus: 'paid',
+  customerName: 'Claire D.',
+  customerPhone: '0698765432',
+  deliveryAddress: '1 rue de la Paix, Paris',
+  itemsCount: 2,
+);
 
 EstablishmentDispatchSettings _settings({
   String mode = 'counter',
@@ -69,16 +64,15 @@ EstablishmentDispatchSettings _settings({
   int calls = 1,
   bool overridden = false,
   int version = 0,
-}) =>
-    EstablishmentDispatchSettings(
-      establishmentId: 7,
-      dispatchMode: mode,
-      maxActiveDeliveries: cap,
-      failureMinWaitMinutes: wait,
-      failureMinCallAttempts: calls,
-      failureRulesOverridden: overridden,
-      version: version,
-    );
+}) => EstablishmentDispatchSettings(
+  establishmentId: 7,
+  dispatchMode: mode,
+  maxActiveDeliveries: cap,
+  failureMinWaitMinutes: wait,
+  failureMinCallAttempts: calls,
+  failureRulesOverridden: overridden,
+  version: version,
+);
 
 void main() {
   group('ecran livreur en libre-service', () {
@@ -95,9 +89,9 @@ void main() {
       when(() => repo.driverDeliveries()).thenAnswer((_) async => deliveries);
       when(() => repo.driverMe()).thenAnswer((_) async => me);
       when(() => repo.driverAvailable()).thenAnswer((_) async => available);
-      when(() => repo.driverRecap()).thenAnswer(
-        (_) async => throw StateError('not used'),
-      );
+      when(
+        () => repo.driverRecap(),
+      ).thenAnswer((_) async => throw StateError('not used'));
       when(() => repo.claim(any())).thenAnswer((_) async {});
       when(() => repo.release(any())).thenAnswer((_) async {});
     });
@@ -157,41 +151,43 @@ void main() {
       verifyNever(() => repo.claim(any()));
     });
 
-    testWidgets('une commande prise par un autre affiche l\'erreur du serveur', (
-      tester,
-    ) async {
-      when(() => repo.claim(any())).thenThrow(
-        const ApiError(
-          code: 'ORDER_ALREADY_TAKEN',
-          message: 'La commande #11 est deja prise.',
-          statusCode: 409,
-        ),
-      );
-      await pump(tester);
+    testWidgets(
+      'une commande prise par un autre affiche l\'erreur du serveur',
+      (tester) async {
+        when(() => repo.claim(any())).thenThrow(
+          const ApiError(
+            code: 'ORDER_ALREADY_TAKEN',
+            message: 'La commande #11 est deja prise.',
+            statusCode: 409,
+          ),
+        );
+        await pump(tester);
 
-      await tester.tap(find.byKey(const ValueKey('claim-order-11')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('claim-order-11')));
+        await tester.pumpAndSettle();
 
-      expect(find.text('La commande #11 est deja prise.'), findsOneWidget);
-    });
+        expect(find.text('La commande #11 est deja prise.'), findsOneWidget);
+      },
+    );
 
-    testWidgets('rendre : confirmation puis appel, jamais une commande en route', (
-      tester,
-    ) async {
-      deliveries = [_delivery(1), _delivery(2, phase: 'en_route')];
-      me = _me(active: 2);
-      available = _available([], active: 2);
-      await pump(tester);
+    testWidgets(
+      'rendre : confirmation puis appel, jamais une commande en route',
+      (tester) async {
+        deliveries = [_delivery(1), _delivery(2, phase: 'en_route')];
+        me = _me(active: 2);
+        available = _available([], active: 2);
+        await pump(tester);
 
-      expect(find.byKey(const ValueKey('release-2')), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('release-1')));
-      await tester.pumpAndSettle();
-      verifyNever(() => repo.release(any()));
+        expect(find.byKey(const ValueKey('release-2')), findsNothing);
+        await tester.tap(find.byKey(const ValueKey('release-1')));
+        await tester.pumpAndSettle();
+        verifyNever(() => repo.release(any()));
 
-      await tester.tap(find.byKey(const ValueKey('release-confirm')));
-      await tester.pumpAndSettle();
-      verify(() => repo.release(1)).called(1);
-    });
+        await tester.tap(find.byKey(const ValueKey('release-confirm')));
+        await tester.pumpAndSettle();
+        verify(() => repo.release(1)).called(1);
+      },
+    );
 
     testWidgets('en mode comptoir : ni section Disponibles ni bouton Rendre', (
       tester,
@@ -294,7 +290,10 @@ void main() {
     ) async {
       current = _settings(wait: 1, overridden: true, version: 2);
       await pump(tester);
-      expect(find.textContaining('propres a cet etablissement'), findsOneWidget);
+      expect(
+        find.textContaining('propres a cet etablissement'),
+        findsOneWidget,
+      );
 
       await choose(tester, 'est-failure-wait', 'Reglage general');
 
@@ -319,7 +318,8 @@ void main() {
       ).thenThrow(
         const ApiError(
           code: 'DISPATCH_SETTINGS_CONFLICT',
-          message: 'Les reglages ont ete modifies entre-temps, rechargez la page.',
+          message:
+              'Les reglages ont ete modifies entre-temps, rechargez la page.',
           statusCode: 409,
         ),
       );
@@ -330,7 +330,9 @@ void main() {
       expect(find.textContaining('modifies entre-temps'), findsOneWidget);
     });
 
-    testWidgets('hors administrateur, tout est en lecture seule', (tester) async {
+    testWidgets('hors administrateur, tout est en lecture seule', (
+      tester,
+    ) async {
       await pump(tester, isAdmin: false);
 
       for (final key in [

@@ -16,7 +16,9 @@ final stockLevelFilterProvider = StateProvider<StockLevelFilter>((ref) {
 final ingredientsProvider = FutureProvider.autoDispose<List<Ingredient>>((ref) {
   final search = ref.watch(stockSearchProvider).trim();
   final level = ref.watch(stockLevelFilterProvider);
-  return ref.watch(stockRepositoryProvider).listIngredients(
+  return ref
+      .watch(stockRepositoryProvider)
+      .listIngredients(
         pageSize: 100,
         search: search.length >= 2 ? search : null,
         belowThreshold: level == StockLevelFilter.low ? true : null,
@@ -35,20 +37,21 @@ final stockMovementsProvider = FutureProvider.autoDispose<List<StockMovement>>((
 
 final stockMissingRecipesProvider =
     FutureProvider.autoDispose<List<MissingStockRecipe>>((ref) {
-  return ref.watch(stockRepositoryProvider).listMissingRecipes();
-});
+      return ref.watch(stockRepositoryProvider).listMissingRecipes();
+    });
 
-final stockDlcOverviewProvider =
-    FutureProvider.autoDispose<StockDlcOverview>((ref) {
+final stockDlcOverviewProvider = FutureProvider.autoDispose<StockDlcOverview>((
+  ref,
+) {
   return ref.watch(stockRepositoryProvider).getDlcOverview();
 });
 
 final adjustmentRequestsProvider =
     FutureProvider.autoDispose<List<StockAdjustmentRequest>>((ref) {
-  return ref
-      .watch(stockRepositoryProvider)
-      .listAdjustmentRequests(pageSize: 50);
-});
+      return ref
+          .watch(stockRepositoryProvider)
+          .listAdjustmentRequests(pageSize: 50);
+    });
 
 enum StockLevelFilter { all, low, out }
 
@@ -585,8 +588,9 @@ class MissingStockRecipe {
       recipeType: json['recipe_type']?.toString() ?? 'product',
       targetId: readInt(json['target_id']),
       name: json['name']?.toString() ?? '',
-      productId:
-          json['product_id'] == null ? null : readInt(json['product_id']),
+      productId: json['product_id'] == null
+          ? null
+          : readInt(json['product_id']),
     );
   }
 }
@@ -655,10 +659,7 @@ class IngredientBatch {
 }
 
 class StockDlcOverview {
-  const StockDlcOverview({
-    required this.counters,
-    required this.items,
-  });
+  const StockDlcOverview({required this.counters, required this.items});
 
   final StockDlcCounters counters;
   final List<StockDlcItem> items;
@@ -670,7 +671,9 @@ class StockDlcOverview {
       ),
       items: (json['items'] as List? ?? const [])
           .whereType<Map>()
-          .map((value) => StockDlcItem.fromJson(Map<String, dynamic>.from(value)))
+          .map(
+            (value) => StockDlcItem.fromJson(Map<String, dynamic>.from(value)),
+          )
           .toList(),
     );
   }
@@ -716,8 +719,9 @@ class StockDlcCounters {
       secondaryNearCount: readInt(json['secondary_near_count']),
       tertiaryNearCount: readInt(json['tertiary_near_count']),
       expiredBatchCount: readInt(json['expired_batch_count']),
-      missingOrNoncompliantCheckCount:
-          readInt(json['missing_or_noncompliant_check_count']),
+      missingOrNoncompliantCheckCount: readInt(
+        json['missing_or_noncompliant_check_count'],
+      ),
     );
   }
 }

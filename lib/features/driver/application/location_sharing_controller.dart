@@ -20,14 +20,23 @@ final driverLocationControllerProvider = Provider.autoDispose<void>((ref) {
   final sharer = ref.read(driverLocationSharerProvider.notifier);
 
   void evaluate() {
-    final consent = ref.read(driverMeProvider).valueOrNull?.locationConsent ?? false;
+    final consent =
+        ref.read(driverMeProvider).valueOrNull?.locationConsent ?? false;
     final ongoing =
-        ref.read(driverDeliveriesProvider).valueOrNull?.any((d) => d.isOngoing) ?? false;
+        ref
+            .read(driverDeliveriesProvider)
+            .valueOrNull
+            ?.any((d) => d.isOngoing) ??
+        false;
     unawaited(sharer.setActive(consent && ongoing));
   }
 
   ref.listen(driverMeProvider, (_, __) => evaluate(), fireImmediately: true);
-  ref.listen(driverDeliveriesProvider, (_, __) => evaluate(), fireImmediately: true);
+  ref.listen(
+    driverDeliveriesProvider,
+    (_, __) => evaluate(),
+    fireImmediately: true,
+  );
 
   final timer = Timer.periodic(driverLocationWatchInterval, (_) {
     ref.invalidate(driverDeliveriesProvider);

@@ -31,13 +31,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-final _serviceFilterProvider =
-    StateProvider<ServiceFilter>((ref) => ServiceFilter.all);
+final _serviceFilterProvider = StateProvider<ServiceFilter>(
+  (ref) => ServiceFilter.all,
+);
 final _serviceSearchProvider = StateProvider<String>((ref) => '');
-final _serviceMobileTabProvider =
-    StateProvider<_ServiceMobileTab>((ref) => _ServiceMobileTab.ready);
-final _orderActionBusyProvider =
-    StateProvider<Set<String>>((ref) => const <String>{});
+final _serviceMobileTabProvider = StateProvider<_ServiceMobileTab>(
+  (ref) => _ServiceMobileTab.ready,
+);
+final _orderActionBusyProvider = StateProvider<Set<String>>(
+  (ref) => const <String>{},
+);
 final _serviceRemotePairingBusyProvider = StateProvider<bool>((ref) => false);
 
 enum _ServiceMobileTab { ready, outForDelivery }
@@ -52,7 +55,9 @@ class OrdersBoardPage extends ConsumerWidget {
     final user = ref.watch(sessionControllerProvider).valueOrNull?.user;
     final permissions = ref.watch(currentPermissionSetProvider);
     final isAdmin = user?.role == 'admin' || user?.role == 'super-admin';
-    final canGenerateRemoteQr = permissions.can(AppPermission.ordersPreparation);
+    final canGenerateRemoteQr = permissions.can(
+      AppPermission.ordersPreparation,
+    );
     final filter = ref.watch(_serviceFilterProvider);
     final query = ref.watch(_serviceSearchProvider);
     final remotePairingBusy = ref.watch(_serviceRemotePairingBusyProvider);
@@ -104,9 +109,9 @@ class OrdersBoardPage extends ConsumerWidget {
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     try {
-      final csv = await ref.read(ordersRepositoryProvider).exportCsv(
-            status: 'ready,out_for_delivery',
-          );
+      final csv = await ref
+          .read(ordersRepositoryProvider)
+          .exportCsv(status: 'ready,out_for_delivery');
       if (!context.mounted) {
         return;
       }
@@ -125,9 +130,9 @@ class OrdersBoardPage extends ConsumerWidget {
       );
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_friendlyError(error))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_friendlyError(error))));
       }
     }
   }
@@ -141,15 +146,15 @@ class OrdersBoardPage extends ConsumerWidget {
       ref.invalidate(activeOrdersProvider);
       await ref.read(activeOrdersProvider.future);
       if (context.mounted && !silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Service rafraichi')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Service rafraichi')));
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_friendlyError(error))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_friendlyError(error))));
       }
     }
   }
@@ -189,9 +194,9 @@ class OrdersBoardPage extends ConsumerWidget {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mapKdsError(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(mapKdsError(error))));
     } finally {
       ref.read(_serviceRemotePairingBusyProvider.notifier).state = false;
     }
@@ -238,9 +243,9 @@ class OrdersBoardPage extends ConsumerWidget {
             children: [
               Text(
                 'ÉCRAN SERVICE REMOTE',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
               for (final screen in candidates)
@@ -404,8 +409,7 @@ class _ServiceHeader extends StatelessWidget {
             IconButton.filledTonal(
               key: const Key('service-remote-pairing-action'),
               tooltip: 'QR remote',
-              onPressed:
-                  remotePairingBusy ? null : onRemotePairingRequested,
+              onPressed: remotePairingBusy ? null : onRemotePairingRequested,
               icon: remotePairingBusy
                   ? const SizedBox(
                       width: 18,
@@ -637,8 +641,10 @@ class _FilterButton extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 38),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -673,7 +679,8 @@ class _ServiceResponsiveBoard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final useMobile = Breakpoints.isMobile(context) ||
+        final useMobile =
+            Breakpoints.isMobile(context) ||
             constraints.maxWidth < Breakpoints.tablet;
         if (useMobile) {
           return _MobileServiceBoard(state: state);
@@ -823,9 +830,9 @@ class _ServiceBoardColumn extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0,
-                        ),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                    ),
                   ),
                 ),
                 Badge(label: Text(orders.length.toString())),
@@ -876,8 +883,9 @@ class _ServiceOrderCard extends ConsumerWidget {
       child: DsCard(
         padding: EdgeInsets.zero,
         backgroundColor: const Color(0xFFFFFCF4),
-        borderColor:
-            viewModel.isLate ? AppColors.dangerAlt : const Color(0xFFE1D8C9),
+        borderColor: viewModel.isLate
+            ? AppColors.dangerAlt
+            : const Color(0xFFE1D8C9),
         borderRadius: 14,
         onTap: () => _showDetail(context, order.id),
         child: Stack(
@@ -915,9 +923,7 @@ class _ServiceOrderCard extends ConsumerWidget {
                               'Commande #${order.id}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(
                                     fontWeight: FontWeight.w900,
                                     color: AppColors.textPrimary,
@@ -962,9 +968,9 @@ class _ServiceOrderCard extends ConsumerWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     if (order.deliveryInstructions != null) ...[
                       const SizedBox(height: 4),
@@ -973,9 +979,9 @@ class _ServiceOrderCard extends ConsumerWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                              fontStyle: FontStyle.italic,
-                            ),
+                          color: AppColors.textSecondary,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ],
                   ],
@@ -985,11 +991,11 @@ class _ServiceOrderCard extends ConsumerWidget {
                       estimate,
                       key: ValueKey('service-eta-${order.id}'),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: viewModel.isLate
-                                ? AppColors.dangerAlt
-                                : AppColors.textSecondary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: viewModel.isLate
+                            ? AppColors.dangerAlt
+                            : AppColors.textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -1000,11 +1006,11 @@ class _ServiceOrderCard extends ConsumerWidget {
                           formatMoney(order.total),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1012,10 +1018,10 @@ class _ServiceOrderCard extends ConsumerWidget {
                         onPressed: nextStatus == null || isBusy
                             ? null
                             : () => _runAction(
-                                  ref,
-                                  nextStatus,
-                                  () => _advance(context, ref, nextStatus),
-                                ),
+                                ref,
+                                nextStatus,
+                                () => _advance(context, ref, nextStatus),
+                              ),
                         child: Text(viewModel.actionLabel.toUpperCase()),
                       ),
                     ],
@@ -1124,7 +1130,9 @@ class _ServiceOrderCard extends ConsumerWidget {
         return;
       }
 
-      ref.read(syncQueueProvider.notifier).add(
+      ref
+          .read(syncQueueProvider.notifier)
+          .add(
             feature: 'orders',
             label: 'Commande #${order.id} -> ${humanStatus(status)}',
             endpoint: ApiEndpoints.orderStatus(order.id),
@@ -1145,8 +1153,9 @@ class _ServiceOrderCard extends ConsumerWidget {
 
   Future<void> _printOrder(BuildContext context, WidgetRef ref) async {
     try {
-      final detail =
-          await ref.read(ordersRepositoryProvider).getOrder(order.id);
+      final detail = await ref
+          .read(ordersRepositoryProvider)
+          .getOrder(order.id);
       _enqueuePrint(ref, detail);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1155,9 +1164,9 @@ class _ServiceOrderCard extends ConsumerWidget {
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_friendlyError(error))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_friendlyError(error))));
       }
     }
   }
@@ -1201,9 +1210,9 @@ class _ServiceLocationLine extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
@@ -1222,16 +1231,18 @@ class _ServiceTimer extends StatelessWidget {
     if (since == null) {
       return const SizedBox.shrink();
     }
-    final color =
-        viewModel.isLate ? AppColors.dangerAlt : AppColors.textPrimary;
+    final color = viewModel.isLate
+        ? AppColors.dangerAlt
+        : AppColors.textPrimary;
     return Semantics(
       label: viewModel.isLate ? 'Commande en retard' : 'Temps ecoule',
       child: Container(
         constraints: const BoxConstraints(minHeight: 32),
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(
-          color:
-              viewModel.isLate ? AppColors.dangerBg : const Color(0xFFEFE9DD),
+          color: viewModel.isLate
+              ? AppColors.dangerBg
+              : const Color(0xFFEFE9DD),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: viewModel.isLate
@@ -1340,9 +1351,7 @@ class _ServiceTypeBadge extends StatelessWidget {
 }
 
 class _OrderStatusBadge extends StatelessWidget {
-  const _OrderStatusBadge({
-    required this.status,
-  });
+  const _OrderStatusBadge({required this.status});
 
   final String status;
 
@@ -1385,9 +1394,7 @@ class _ServiceOrderDetailSheet extends ConsumerWidget {
                       children: [
                         Text(
                           'Commande #${order.id}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
+                          style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 6),
@@ -1440,9 +1447,9 @@ class _ServiceOrderDetailSheet extends ConsumerWidget {
               const SizedBox(height: 20),
               Text(
                 'Articles',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 8),
               ...order.items.map((item) => _DetailItemTile(item: item)),
@@ -1451,8 +1458,8 @@ class _ServiceOrderDetailSheet extends ConsumerWidget {
                 Text(
                   'Historique',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 ...order.statusHistory.map(_HistoryTile.new),
@@ -1472,15 +1479,11 @@ class _ServiceOrderDetailSheet extends ConsumerWidget {
     );
   }
 
-  void _print(
-    BuildContext context,
-    WidgetRef ref,
-    OrderDetail order,
-  ) {
+  void _print(BuildContext context, WidgetRef ref, OrderDetail order) {
     _enqueuePrint(ref, order);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tickets ajoutes a la file')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Tickets ajoutes a la file')));
   }
 }
 
@@ -1518,18 +1521,18 @@ class _DetailGrid extends StatelessWidget {
                 Text(
                   row.$1,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   row.$2,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -1567,9 +1570,9 @@ class _PreparationSummary extends StatelessWidget {
               Expanded(
                 child: Text(
                   allReady ? 'Preparation terminee' : 'Preparation a verifier',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
             ],
@@ -1582,8 +1585,9 @@ class _PreparationSummary extends StatelessWidget {
               return StatusBadge(
                 label:
                     '${station.station} ${station.readyItems}/${station.totalItems}',
-                tone:
-                    station.allReady ? StatusTone.success : StatusTone.warning,
+                tone: station.allReady
+                    ? StatusTone.success
+                    : StatusTone.warning,
                 icon: station.allReady
                     ? Icons.task_alt_outlined
                     : Icons.timelapse_outlined,
@@ -1619,9 +1623,9 @@ class _DetailItemTile extends StatelessWidget {
       ),
       trailing: Text(
         formatMoney(item.total),
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
       ),
     );
   }
@@ -1728,10 +1732,7 @@ class _SkeletonTicket extends StatelessWidget {
 }
 
 class _SkeletonLine extends StatelessWidget {
-  const _SkeletonLine({
-    required this.width,
-    required this.height,
-  });
+  const _SkeletonLine({required this.width, required this.height});
 
   final double width;
   final double height;
@@ -1753,10 +1754,7 @@ class _SkeletonLine extends StatelessWidget {
 }
 
 class _ServiceErrorState extends StatelessWidget {
-  const _ServiceErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ServiceErrorState({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -1777,9 +1775,9 @@ class _ServiceErrorState extends StatelessWidget {
               Text(
                 'Chargement du service impossible',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 6),
               Text(
@@ -1821,9 +1819,9 @@ String _friendlyError(Object error) {
 }
 
 void _enqueuePrint(WidgetRef ref, OrderDetail order) {
-  ref.read(printJobsProvider.notifier).enqueue(
-        ReceiptBuilder.customerReceipt(order),
-      );
+  ref
+      .read(printJobsProvider.notifier)
+      .enqueue(ReceiptBuilder.customerReceipt(order));
   for (final ticket in ReceiptBuilder.kitchenTickets(order)) {
     ref.read(printJobsProvider.notifier).enqueue(ticket);
   }

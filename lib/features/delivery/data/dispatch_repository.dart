@@ -1,7 +1,8 @@
 import 'package:app_admin_staff/core/api/api_client.dart';
 import 'package:app_admin_staff/core/api/api_endpoints.dart';
 import 'package:app_admin_staff/core/utils/json.dart';
-import 'package:app_admin_staff/features/driver/application/location_sharing.dart' show LocationSample;
+import 'package:app_admin_staff/features/driver/application/location_sharing.dart'
+    show LocationSample;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final dispatchRepositoryProvider = Provider<DispatchRepository>((ref) {
@@ -9,21 +10,22 @@ final dispatchRepositoryProvider = Provider<DispatchRepository>((ref) {
 });
 
 /// Tableau du comptoir : commandes a attribuer, livraisons en cours, livreurs.
-final dispatchBoardProvider =
-    FutureProvider.autoDispose<DispatchBoard>((ref) async {
+final dispatchBoardProvider = FutureProvider.autoDispose<DispatchBoard>((
+  ref,
+) async {
   return ref.watch(dispatchRepositoryProvider).board();
 });
 
 final driverDeliveriesProvider =
     FutureProvider.autoDispose<List<DriverDelivery>>((ref) async {
-  return ref.watch(dispatchRepositoryProvider).driverDeliveries();
-});
+      return ref.watch(dispatchRepositoryProvider).driverDeliveries();
+    });
 
 /// Echecs de livraison a traiter (administrateur : rembourser, retenir, relivrer).
 final deliveryFailuresProvider =
     FutureProvider.autoDispose<List<DeliveryFailure>>((ref) async {
-  return ref.watch(dispatchRepositoryProvider).failures();
-});
+      return ref.watch(dispatchRepositoryProvider).failures();
+    });
 
 /// Profil du livreur connecte, avec son accord de partage de position.
 final driverMeProvider = FutureProvider.autoDispose<DriverMe>((ref) async {
@@ -31,25 +33,30 @@ final driverMeProvider = FutureProvider.autoDispose<DriverMe>((ref) async {
 });
 
 /// Carte du comptoir : livreurs actifs et positions, actualisee par la page de dispatch.
-final liveDriversProvider =
-    FutureProvider.autoDispose<List<LiveDriver>>((ref) async {
+final liveDriversProvider = FutureProvider.autoDispose<List<LiveDriver>>((
+  ref,
+) async {
   return ref.watch(dispatchRepositoryProvider).liveDrivers();
 });
 
 /// Commandes que le livreur peut prendre lui-meme (vide hors mode libre-service).
-final driverAvailableProvider =
-    FutureProvider.autoDispose<AvailableOrders>((ref) async {
+final driverAvailableProvider = FutureProvider.autoDispose<AvailableOrders>((
+  ref,
+) async {
   return ref.watch(dispatchRepositoryProvider).driverAvailable();
 });
 
 /// Reglages de livraison d'un etablissement (mode, plafond, regles d'echec).
 final dispatchSettingsProvider = FutureProvider.autoDispose
     .family<EstablishmentDispatchSettings, int>((ref, establishmentId) async {
-  return ref.watch(dispatchRepositoryProvider).dispatchSettings(establishmentId);
-});
+      return ref
+          .watch(dispatchRepositoryProvider)
+          .dispatchSettings(establishmentId);
+    });
 
-final driverRecapProvider =
-    FutureProvider.autoDispose<DriverRecap>((ref) async {
+final driverRecapProvider = FutureProvider.autoDispose<DriverRecap>((
+  ref,
+) async {
   return ref.watch(dispatchRepositoryProvider).driverRecap();
 });
 
@@ -124,7 +131,9 @@ class DispatchRepository {
     final response = await _apiClient.get(ApiEndpoints.driverDeliveries);
     return (response.data as List? ?? const [])
         .whereType<Map>()
-        .map((value) => DriverDelivery.fromJson(Map<String, dynamic>.from(value)))
+        .map(
+          (value) => DriverDelivery.fromJson(Map<String, dynamic>.from(value)),
+        )
         .toList();
   }
 
@@ -236,7 +245,9 @@ class DispatchRepository {
     );
     return (response.data as List? ?? const [])
         .whereType<Map>()
-        .map((value) => DeliveryFailure.fromJson(Map<String, dynamic>.from(value)))
+        .map(
+          (value) => DeliveryFailure.fromJson(Map<String, dynamic>.from(value)),
+        )
         .toList();
   }
 
@@ -276,8 +287,9 @@ class DispatchRepository {
   Future<EstablishmentDispatchSettings> dispatchSettings(
     int establishmentId,
   ) async {
-    final response =
-        await _apiClient.get(ApiEndpoints.dispatchSettings(establishmentId));
+    final response = await _apiClient.get(
+      ApiEndpoints.dispatchSettings(establishmentId),
+    );
     return EstablishmentDispatchSettings.fromJson(readMap(response.data));
   }
 
@@ -556,8 +568,14 @@ class DriverDelivery {
       arrivedAt: readDateTime(json['arrived_at']),
       proofRequired: readBool(json['proof_required']),
       codeLocked: readBool(json['code_locked']),
-      failureMinWaitMinutes: readInt(json['failure_min_wait_minutes'], fallback: 5),
-      failureMinCallAttempts: readInt(json['failure_min_call_attempts'], fallback: 1),
+      failureMinWaitMinutes: readInt(
+        json['failure_min_wait_minutes'],
+        fallback: 5,
+      ),
+      failureMinCallAttempts: readInt(
+        json['failure_min_call_attempts'],
+        fallback: 1,
+      ),
     );
   }
 }
@@ -689,12 +707,14 @@ class DriverRecap {
       cashCollected: readDouble(json['cash_collected']),
       deliveries: (json['deliveries'] as List? ?? const [])
           .whereType<Map>()
-          .map((value) => DriverRecapItem.fromJson(Map<String, dynamic>.from(value)))
+          .map(
+            (value) =>
+                DriverRecapItem.fromJson(Map<String, dynamic>.from(value)),
+          )
           .toList(),
     );
   }
 }
-
 
 /// Le livreur connecte : etat de pointage et accord de partage de position.
 class DriverMe {
@@ -739,10 +759,12 @@ class DriverMe {
       clockedIn: readBool(json['clocked_in']),
       locationConsent: readBool(json['location_consent']),
       locationNoticeVersion: json['location_notice_version']?.toString() ?? '',
-      locationRetentionHours: readInt(json['location_retention_hours'], fallback: 96),
+      locationRetentionHours: readInt(
+        json['location_retention_hours'],
+        fallback: 96,
+      ),
       dispatchMode: json['dispatch_mode']?.toString() ?? 'counter',
-      maxActiveDeliveries:
-          readInt(json['max_active_deliveries'], fallback: 3),
+      maxActiveDeliveries: readInt(json['max_active_deliveries'], fallback: 3),
       activeDeliveries: readInt(json['active_deliveries']),
       remainingCapacity: readInt(json['remaining_capacity'], fallback: 3),
     );
@@ -771,13 +793,14 @@ class AvailableOrders {
     return AvailableOrders(
       enabled: readBool(json['enabled']),
       dispatchMode: json['dispatch_mode']?.toString() ?? 'counter',
-      maxActiveDeliveries:
-          readInt(json['max_active_deliveries'], fallback: 3),
+      maxActiveDeliveries: readInt(json['max_active_deliveries'], fallback: 3),
       activeDeliveries: readInt(json['active_deliveries']),
       remainingCapacity: readInt(json['remaining_capacity'], fallback: 3),
       orders: (json['orders'] as List? ?? const [])
           .whereType<Map>()
-          .map((value) => DispatchOrder.fromJson(Map<String, dynamic>.from(value)))
+          .map(
+            (value) => DispatchOrder.fromJson(Map<String, dynamic>.from(value)),
+          )
           .toList(),
     );
   }
@@ -811,12 +834,15 @@ class EstablishmentDispatchSettings {
     return EstablishmentDispatchSettings(
       establishmentId: readInt(json['establishment_id']),
       dispatchMode: json['dispatch_mode']?.toString() ?? 'counter',
-      maxActiveDeliveries:
-          readInt(json['max_active_deliveries'], fallback: 3),
-      failureMinWaitMinutes:
-          readInt(json['failure_min_wait_minutes'], fallback: 5),
-      failureMinCallAttempts:
-          readInt(json['failure_min_call_attempts'], fallback: 1),
+      maxActiveDeliveries: readInt(json['max_active_deliveries'], fallback: 3),
+      failureMinWaitMinutes: readInt(
+        json['failure_min_wait_minutes'],
+        fallback: 5,
+      ),
+      failureMinCallAttempts: readInt(
+        json['failure_min_call_attempts'],
+        fallback: 1,
+      ),
       failureRulesOverridden: readBool(json['failure_rules_overridden']),
       version: readInt(json['version']),
     );
@@ -900,13 +926,17 @@ class LiveDriver {
       state: json['state']?.toString() ?? 'free',
       lat: map == null ? null : readDouble(map['lat']),
       lng: map == null ? null : readDouble(map['lng']),
-      ageSeconds: json['age_seconds'] == null ? null : readInt(json['age_seconds']),
+      ageSeconds: json['age_seconds'] == null
+          ? null
+          : readInt(json['age_seconds']),
       stale: readBool(json['stale']),
       signalLost: readBool(json['signal_lost']),
       sharingConsent: readBool(json['sharing_consent']),
       deliveries: (json['deliveries'] as List? ?? const [])
           .whereType<Map>()
-          .map((value) => LiveDelivery.fromJson(Map<String, dynamic>.from(value)))
+          .map(
+            (value) => LiveDelivery.fromJson(Map<String, dynamic>.from(value)),
+          )
           .toList(),
     );
   }

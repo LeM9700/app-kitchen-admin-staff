@@ -110,7 +110,8 @@ class _ProofDialogState extends State<_ProofDialog> {
   bool get _needsCode => widget.delivery.proofRequired;
   bool get _needsCash => widget.delivery.amountDue > 0;
 
-  double? get _cashValue => validCashReceived(_cash.text, widget.delivery.amountDue);
+  double? get _cashValue =>
+      validCashReceived(_cash.text, widget.delivery.amountDue);
 
   bool get _valid =>
       (!_needsCode || isValidDeliveryCode(_code.text)) &&
@@ -167,13 +168,17 @@ class _ProofDialogState extends State<_ProofDialog> {
               const SizedBox(height: 12),
             ],
             if (_needsCash) ...[
-              Text('Commande #${delivery.orderId} : a regler en especes a la remise.'),
+              Text(
+                'Commande #${delivery.orderId} : a regler en especes a la remise.',
+              ),
               const SizedBox(height: 8),
               TextField(
                 key: const ValueKey('cash-received'),
                 controller: _cash,
                 autofocus: !_needsCode,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Especes recues',
                   suffixText: 'EUR',
@@ -206,12 +211,12 @@ class _ProofDialogState extends State<_ProofDialog> {
           key: const ValueKey('confirm-delivered'),
           onPressed: _valid
               ? () => Navigator.pop(
-                    context,
-                    DeliveryProofInput(
-                      code: _needsCode ? _code.text.trim() : null,
-                      cash: _needsCash ? cash : null,
-                    ),
-                  )
+                  context,
+                  DeliveryProofInput(
+                    code: _needsCode ? _code.text.trim() : null,
+                    cash: _needsCash ? cash : null,
+                  ),
+                )
               : null,
           child: Text(_needsCash ? 'Encaisse et livree' : 'Livree'),
         ),
@@ -328,7 +333,9 @@ class _FailureDialogState extends State<_FailureDialog> {
                   child: Text(
                     block,
                     key: const ValueKey('failure-block'),
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
             ],
@@ -344,9 +351,9 @@ class _FailureDialogState extends State<_FailureDialog> {
           key: const ValueKey('confirm-failure'),
           onPressed: block == null
               ? () => Navigator.pop(
-                    context,
-                    FailureInput(reason: _reason!, note: _note.text.trim()),
-                  )
+                  context,
+                  FailureInput(reason: _reason!, note: _note.text.trim()),
+                )
               : null,
           child: const Text('Declarer l\'echec'),
         ),

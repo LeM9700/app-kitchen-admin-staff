@@ -1,5 +1,8 @@
 # Mise en production - Menus admin phase 5
 
+Version candidate de l'application admin : `0.2.0+2`. Elle doit etre livree
+apres l'API menus `0.2.0` et la migration Alembic `0081`.
+
 Ce guide concerne uniquement l'interface admin de creation et de publication des
 menus. Il n'active pas la section client, qui reste dans la phase 6.
 

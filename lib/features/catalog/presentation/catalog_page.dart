@@ -11,6 +11,7 @@ import 'package:app_admin_staff/design_system/tokens/app_radius.dart';
 import 'package:app_admin_staff/design_system/tokens/app_spacing.dart';
 import 'package:app_admin_staff/features/catalog/application/catalog_view_state.dart';
 import 'package:app_admin_staff/features/catalog/data/catalog_repository.dart';
+import 'package:app_admin_staff/features/catalog/presentation/menu_management_page.dart';
 import 'package:app_admin_staff/features/stock/data/stock_repository.dart';
 import 'package:app_admin_staff/features/stock/presentation/stock_page.dart';
 import 'package:flutter/material.dart';
@@ -58,6 +59,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
             _CatalogHeader(
               isMobile: isMobile,
               canWrite: canWrite,
+              onManageMenus: _openMenus,
               onRefresh: _refreshCatalog,
               onCreateProduct: () =>
                   _productDialog(categories.valueOrNull ?? const []),
@@ -194,6 +196,14 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _openMenus() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => const MenuManagementPage(),
       ),
     );
   }
@@ -2356,6 +2366,7 @@ class _CatalogHeader extends StatelessWidget {
   const _CatalogHeader({
     required this.isMobile,
     required this.canWrite,
+    required this.onManageMenus,
     required this.onRefresh,
     required this.onCreateProduct,
     required this.onCreateCategory,
@@ -2366,6 +2377,7 @@ class _CatalogHeader extends StatelessWidget {
 
   final bool isMobile;
   final bool canWrite;
+  final VoidCallback onManageMenus;
   final Future<void> Function() onRefresh;
   final VoidCallback onCreateProduct;
   final VoidCallback onCreateCategory;
@@ -2400,6 +2412,11 @@ class _CatalogHeader extends StatelessWidget {
       runSpacing: AppSpacing.xs,
       alignment: WrapAlignment.end,
       children: [
+        IconButton.filledTonal(
+          tooltip: 'Menus',
+          onPressed: onManageMenus,
+          icon: const Icon(Icons.restaurant_menu),
+        ),
         IconButton.filledTonal(
           tooltip: 'Rafraichir',
           onPressed: onRefresh,

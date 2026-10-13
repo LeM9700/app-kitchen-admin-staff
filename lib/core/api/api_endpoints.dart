@@ -37,6 +37,21 @@ class ApiEndpoints {
   }
 
   static const catalogProducts = '/catalog/products';
+  static const catalogAdminMenus = '/catalog/admin/menus';
+  static String catalogAdminMenu(int menuId) =>
+      '/catalog/admin/menus/$menuId';
+  static String catalogAdminMenuGroups(int menuId) =>
+      '/catalog/admin/menus/$menuId/groups';
+  static String catalogAdminMenuGroup(int menuId, int groupId) =>
+      '/catalog/admin/menus/$menuId/groups/$groupId';
+  static String catalogAdminMenuGroupItems(int menuId, int groupId) =>
+      '/catalog/admin/menus/$menuId/groups/$groupId/items';
+  static String catalogAdminMenuGroupItem(
+    int menuId,
+    int groupId,
+    int itemId,
+  ) =>
+      '/catalog/admin/menus/$menuId/groups/$groupId/items/$itemId';
   static const catalogCategories = '/catalog/categories';
   static const catalogExtras = '/catalog/extras';
   static const catalogExportCsv = '/catalog/exports/csv';

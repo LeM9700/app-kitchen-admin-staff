@@ -46,6 +46,15 @@ void main() {
       await repository.createMenu(
         const MenuDraft(name: 'Soir', fixedPrice: 19.5),
       );
+      await repository.updateMenu(
+        12,
+        const MenuDraft(
+          name: 'Soir publie',
+          fixedPrice: 20,
+          isActive: true,
+          changeReason: 'Validation phase 7',
+        ),
+      );
       await repository.createGroup(
         12,
         const MenuGroupDraft(
@@ -54,8 +63,18 @@ void main() {
           maxChoices: 1,
         ),
       );
+      await repository.updateGroup(
+        12,
+        31,
+        const MenuGroupDraft(
+          name: 'Boissons',
+          minChoices: 1,
+          maxChoices: 2,
+        ),
+      );
       await repository.addProduct(12, 31, 8, displayOrder: 2);
       await repository.removeProduct(12, 31, 44);
+      await repository.deleteGroup(12, 31);
       await repository.deleteMenu(12);
 
       expect(
@@ -71,6 +90,23 @@ void main() {
       expect(create.data['fixed_price'], 19.5);
       expect(create.data['is_active'], isFalse);
 
+      final update = requests.firstWhere(
+        (request) =>
+            request.method == 'PUT' &&
+            request.path == ApiEndpoints.catalogAdminMenu(12),
+      );
+      expect(update.data['fixed_price'], 20);
+      expect(update.data['is_active'], isTrue);
+      expect(update.data['change_reason'], 'Validation phase 7');
+
+      final updateGroup = requests.firstWhere(
+        (request) =>
+            request.method == 'PUT' &&
+            request.path == ApiEndpoints.catalogAdminMenuGroup(12, 31),
+      );
+      expect(updateGroup.data['name'], 'Boissons');
+      expect(updateGroup.data['max_choices'], 2);
+
       final addProduct = requests.firstWhere(
         (request) =>
             request.method == 'POST' &&
@@ -83,6 +119,14 @@ void main() {
               request.method == 'DELETE' &&
               request.path ==
                   ApiEndpoints.catalogAdminMenuGroupItem(12, 31, 44),
+        ),
+        isTrue,
+      );
+      expect(
+        requests.any(
+          (request) =>
+              request.method == 'DELETE' &&
+              request.path == ApiEndpoints.catalogAdminMenuGroup(12, 31),
         ),
         isTrue,
       );
@@ -176,6 +220,53 @@ void main() {
       );
       expect(add.data['product_id'], 8);
       expect(find.text('Margherita ajoute.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('ajoute puis supprime un groupe avec confirmation',
+        (tester) async {
+      final requests = <RequestOptions>[];
+      final api = _client((options) {
+        requests.add(options);
+        return _jsonResponse(_menuJson());
+      });
+      await _pumpPage(tester, menus: [_menu()], api: api);
+
+      await tester.tap(
+        find.widgetWithText(FilledButton, 'Ajouter un groupe'),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Nom du groupe'),
+        'Dessert',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Enregistrer'));
+      await tester.pumpAndSettle();
+
+      final createGroup = requests.singleWhere(
+        (request) =>
+            request.method == 'POST' &&
+            request.path == ApiEndpoints.catalogAdminMenuGroups(12),
+      );
+      expect(createGroup.data['name'], 'Dessert');
+      expect(createGroup.data['min_choices'], 1);
+      expect(createGroup.data['max_choices'], 1);
+      expect(find.text('Groupe ajoute.'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Supprimer le groupe').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Supprimer Pizza ?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Supprimer'));
+      await tester.pumpAndSettle();
+
+      expect(
+        requests.any(
+          (request) =>
+              request.method == 'DELETE' &&
+              request.path == ApiEndpoints.catalogAdminMenuGroup(12, 31),
+        ),
+        isTrue,
+      );
       expect(tester.takeException(), isNull);
     });
 
